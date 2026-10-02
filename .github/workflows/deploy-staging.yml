@@ -1,9 +1,8 @@
 name: Deploy Database - Staging
 
 on:
-  push:
-    branches:
-      - staging
+  # Run only manually via the Actions UI to avoid automatic deploys.
+  workflow_dispatch: {}
 
 jobs:
   migrate:
