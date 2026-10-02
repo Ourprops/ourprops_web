@@ -314,6 +314,12 @@ Document metadata lives in PostgreSQL; content stays in private Storage. Any del
 
 Manager-approved requirements may alter tables, relationships, states, and policies. A migration should follow an explicit domain and authorization review rather than patching an isolated column or UI flow.
 
+### ADR-007: Agent Management
+
+**Status:** Accepted.
+
+An owner can choose to delegate property management to an agent. The agent is a verified user with a defined relationship to the property owner. The system must enforce that agents can only act on behalf of the owners they are authorized to represent. In V1, agent management is not implemented, but the architecture must support future agent delegation and authorization.
+
 ## 18. Open questions
 
 - What is the final separation between product profile types and authorization roles?
