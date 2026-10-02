@@ -39,3 +39,23 @@ yarn-error.log*
 # typescript
 *.tsbuildinfo
 next-env.d.ts
+
+# Supabase: ignore local CLI state, DB files, caches and secrets
+supabase/.supabase/
+supabase/.local/
+supabase/.db
+supabase/.psql_history
+supabase/.cache/
+supabase/.tmp
+supabase/.secrets
+supabase/.env
+supabase/.env.local
+supabase/.temp/
+supabase/.branches/
+
+# Supabase functions build artifacts
+supabase/functions/**/node_modules/
+supabase/functions/**/dist/
+
+# Optional: local storage or uploads
+supabase/storage/
