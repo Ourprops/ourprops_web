@@ -36,7 +36,58 @@ export async function updateSession(request: NextRequest) {
 
     // IMPORTANT: If you remove getClaims() and you use server-side rendering
     // with the Supabase client, your users may be randomly logged out.
-    await supabase.auth.getClaims()
+    const { data } = await supabase.auth.getClaims()
+    const userId = data?.claims?.sub
+    
+    const { pathname } = request.nextUrl
+    const isLogin = pathname === '/login'
+    const isOnboarding = pathname === '/onboarding' || pathname.startsWith('/onboarding/')
+    const isDashboard = pathname === '/dashboard' || pathname.startsWith('/dashboard/')
+
+    // Redirect while keeping any refreshed auth cookies set above
+    function redirectTo(path: string) {
+        const url = request.nextUrl.clone()
+        url.pathname = path
+        url.search = ''
+        const response = NextResponse.redirect(url)
+        supabaseResponse.cookies.getAll().forEach((cookie) => response.cookies.set(cookie))
+        return response
+    }
+
+    if (!userId) {
+        if (isOnboarding || isDashboard) {
+            return redirectTo('/login')
+        }
+        return supabaseResponse
+    }
+
+    if (isLogin) {
+        return redirectTo('/dashboard')
+    }
+
+    if (isOnboarding || isDashboard) {
+        const { data: profile, error: profileError } = await supabase
+            .from('profiles')
+            .select('onboarding_complete')
+            .eq('id', userId)
+            .maybeSingle()
+
+        // Valid token but no profile row: the user was deleted (or never finished signup).
+        // Clear the stale session so they can log in again.
+        if (!profile && !profileError) {
+            await supabase.auth.signOut({ scope: 'local' })
+            return redirectTo('/login')
+        }
+
+        const onboardingComplete = profile?.onboarding_complete === true
+
+        if (isOnboarding && onboardingComplete) {
+            return redirectTo('/dashboard')
+        }
+        if (isDashboard && !onboardingComplete) {
+            return redirectTo('/onboarding')
+        }
+    }
 
     return supabaseResponse
 }
