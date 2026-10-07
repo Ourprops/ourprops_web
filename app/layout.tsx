@@ -1,6 +1,7 @@
 import type { Metadata } from "next";
 import { Inter } from "next/font/google";
 import { Toaster } from "@/components/ui/toast"
+import Providers from "@/components/providers"
 import "./globals.css";
 
 const inter = Inter({
@@ -21,7 +22,9 @@ export default function RootLayout({ children }: LayoutProps<"/">) {
       className={`${inter.className} h-full antialiased`}
     >
       <body className="min-h-full">
-        {children}
+        <Providers>
+          {children}
+        </Providers>
         <Toaster />
         </body>
     </html>

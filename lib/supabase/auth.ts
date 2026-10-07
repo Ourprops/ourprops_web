@@ -1,25 +1,25 @@
 import { createClient } from "./client";
+import type { SignUpInput } from "@/lib/validators/signup";
 
 
-export async function signUp(email: string, password: string, fullName: string) {
-    const supabase = createClient();
-
-    const { data, error } = await supabase.auth.signUp({
-        email,
-        password,
-        options: {
-            data: {
-                full_name: fullName,
-            },
-        },
+// Sign up runs server-side (/api/auth/signup) so the profile row can be created with the service role
+export async function signUp(input: SignUpInput) {
+    const response = await fetch("/api/auth/signup", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(input),
     });
 
-    if (error) {
+    if (!response.ok) {
+        const body = await response.json().catch(() => null);
+        const error = {
+            message: body?.error?.message ?? "Unable to create account. Please try again.",
+            code: body?.error?.code,
+            status: response.status,
+        };
         console.error("Error signing up:", error);
         throw error;
     }
-
-    return data;
 }
 
 export async function signIn(email: string, password: string) {

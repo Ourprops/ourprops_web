@@ -2,11 +2,14 @@
 
 import Image from "next/image";
 import Link from "next/link";
+import { useRouter } from "next/navigation";
 import { type FormEvent, useState } from "react";
 import { z } from "zod";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
-import { formatAuthError, signIn, signUp } from "@/lib/supabase/auth";
+import { formatAuthError } from "@/lib/supabase/auth";
+import { useSignIn, useSignUp } from "@/lib/queries/auth";
+import { signUpSchema as baseSignUpSchema } from "@/lib/validators/signup";
 
 type AuthMode = "login" | "signup";
 
@@ -23,16 +26,8 @@ const loginSchema = z.object({
     password: z.string().min(1, "Password is required."),
 });
 
-const signUpSchema = z
-    .object({
-        fullName: z.string().trim().min(1, "Full name is required."),
-        email: z.email("Invalid email address."),
-        password: z
-            .string()
-            .regex(
-                /^(?=.*[A-Za-z])(?=.*\d).{8,}$/,
-                "Weak password. Use at least 8 characters with letters and numbers."
-            ),
+const signUpSchema = baseSignUpSchema
+    .extend({
         confirmPassword: z.string(),
     })
     .refine((values) => values.password === values.confirmPassword, {
@@ -79,7 +74,10 @@ function toFormErrors(
 export default function LoginPage() {
     const [mode, setMode] = useState<AuthMode>("login");
     const [signupSuccess, setSignupSuccess] = useState(false);
-    const [isLoading, setIsLoading] = useState(false);
+    const router = useRouter();
+    const signInMutation = useSignIn();
+    const signUpMutation = useSignUp();
+    const isLoading = signInMutation.isPending || signUpMutation.isPending;
     const [errors, setErrors] = useState<FormErrors>({});
 
     const [fullName, setFullName] = useState("");
@@ -116,61 +114,57 @@ export default function LoginPage() {
     function validateSignUpForm() {
         const parsed = signUpSchema.safeParse({
             fullName,
-            email: email.trim(),
+            email,
             password,
             confirmPassword,
         });
 
         if (parsed.success) {
-            return {};
+            return { errors: {}, data: parsed.data };
         }
 
-        return toFormErrors(parsed.error.issues, "signup");
+        return { errors: toFormErrors(parsed.error.issues, "signup") };
     }
 
-    async function handleLogin(event: FormEvent<HTMLFormElement>) {
-        try {
-            event.preventDefault();
-            const formErrors = validateLoginForm();
-            setErrors(formErrors);
-    
-            if (Object.keys(formErrors).length > 0) {
-                return;
-            }
-    
-            setIsLoading(true);
-    
-            await signIn(email.trim(), password);
-            setErrors({ form: "Authentication is not connected yet for MVP." });
-            setIsLoading(false);
-        } catch (error) {
-            const { message } = formatAuthError(error);
-            setErrors({ form: message });
-            setIsLoading(false);
+    function handleLogin(event: FormEvent<HTMLFormElement>) {
+        event.preventDefault();
+        const formErrors = validateLoginForm();
+        setErrors(formErrors);
+
+        if (Object.keys(formErrors).length > 0) {
+            return;
         }
+
+        signInMutation.mutate(
+            { email: email.trim(), password },
+            {
+                // The proxy sends users who haven't finished onboarding on to /onboarding
+                onSuccess: () => router.replace("/dashboard"),
+                onError: (error) => setErrors({ form: formatAuthError(error).message }),
+            }
+        );
     }
 
-    async function handleSignUp(event: FormEvent<HTMLFormElement>) {
-        try {
-            event.preventDefault();
-            const formErrors = validateSignUpForm();
-            setErrors(formErrors);
-    
-            if (Object.keys(formErrors).length > 0) {
-                return;
-            }
-    
-            setIsLoading(true);
-    
-            await signUp(email.trim(), password, fullName);
-    
-            setSignupSuccess(true);
-            setIsLoading(false);
-        } catch (error) {
-            const { message } = formatAuthError(error);
-            setErrors({ form: message });
-            setIsLoading(false);
+    function handleSignUp(event: FormEvent<HTMLFormElement>) {
+        event.preventDefault();
+        const { errors: formErrors, data } = validateSignUpForm();
+        setErrors(formErrors);
+
+        if (!data) {
+            return;
         }
+
+        signUpMutation.mutate(
+            {
+                fullName: data.fullName,
+                email: data.email,
+                password: data.password,
+            },
+            {
+                onSuccess: () => setSignupSuccess(true),
+                onError: (error) => setErrors({ form: formatAuthError(error).message }),
+            }
+        );
     }
 
     const buttonText = isLoading
