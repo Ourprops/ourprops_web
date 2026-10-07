@@ -1,9 +1,7 @@
 import type { Metadata } from "next";
-import { Geist, Geist_Mono, Inter } from "next/font/google";
+import { Inter } from "next/font/google";
+import { Toaster } from "@/components/ui/toast"
 import "./globals.css";
-import ClientWrapper from "./_components/client-wrapper";
-import Header from "./(marketing)/_components/header";
-import Footer from "./(marketing)/_components/footer";
 
 const inter = Inter({
   subsets: ["latin"],
@@ -22,15 +20,10 @@ export default function RootLayout({ children }: LayoutProps<"/">) {
       lang="en"
       className={`${inter.className} h-full antialiased`}
     >
-      <body className="min-h-full flex flex-col">
-        <Header />
-        <ClientWrapper>
-          <div className="flex-1">
-            {children}
-          </div>
-          <Footer />
-        </ClientWrapper>
-      </body>
+      <body className="min-h-full">
+        {children}
+        <Toaster />
+        </body>
     </html>
   );
 }
