@@ -16,48 +16,31 @@ import {
 	type WaitlistSignupInput,
 	waitlistSignupSchema,
 } from "@/lib/validators/waitlist"
+import { useJoinWaitlist } from "@/lib/queries/waitlist"
 
 export default function Waitlist() {
 	const [email, setEmail] = useState("")
 	const [role, setRole] = useState<WaitlistSignupInput["role"] | "">("")
-	const [submitted, setSubmitted] = useState(false)
-	const [isSubmitting, setIsSubmitting] = useState(false)
-	const [errorMessage, setErrorMessage] = useState<string | null>(null)
+	const [validationError, setValidationError] = useState<string | null>(null)
+	const joinWaitlist = useJoinWaitlist()
 
-	async function handleSubmit(event: React.FormEvent<HTMLFormElement>) {
+	const submitted = joinWaitlist.isSuccess
+	const isSubmitting = joinWaitlist.isPending
+	const errorMessage = validationError ?? joinWaitlist.error?.message ?? null
+
+	function handleSubmit(event: React.FormEvent<HTMLFormElement>) {
 		event.preventDefault()
 
-		setErrorMessage(null)
+		setValidationError(null)
+		joinWaitlist.reset()
 
 		const parsed = waitlistSignupSchema.safeParse({ email, role })
 		if (!parsed.success) {
-			setErrorMessage("Please enter a valid email and choose your role.")
+			setValidationError("Please enter a valid email and choose your role.")
 			return
 		}
 
-		setIsSubmitting(true)
-
-		try {
-			const response = await fetch("/api/marketing/waitlist", {
-				method: "POST",
-				headers: {
-					"Content-Type": "application/json",
-				},
-				body: JSON.stringify(parsed.data),
-			})
-
-			if (!response.ok) {
-				const data = (await response.json()) as { error?: string }
-				setErrorMessage(data.error ?? "Unable to submit right now. Please try again.")
-				return
-			}
-
-			setSubmitted(true)
-		} catch {
-			setErrorMessage("Unable to submit right now. Please try again.")
-		} finally {
-			setIsSubmitting(false)
-		}
+		joinWaitlist.mutate(parsed.data)
 	}
 
 	return (
