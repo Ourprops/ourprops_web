@@ -2,7 +2,7 @@
 
 import Image from "next/image";
 import { useRouter } from "next/navigation";
-import { type FormEvent, useEffect, useState } from "react";
+import { type FormEvent, useState } from "react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { formatAuthError } from "@/lib/supabase/auth";
@@ -20,18 +20,12 @@ type FormErrors = {
 // Where users land once onboarding is done
 const AFTER_ONBOARDING_PATH = "/dashboard";
 
+// Access is enforced by the proxy: signed-out users are sent to /login and
+// users who have finished onboarding are sent to /dashboard before this renders.
 export default function OnboardingPage() {
-    const router = useRouter();
     const { data: profile, isPending, isError } = useMyProfile();
 
-    useEffect(() => {
-        if (profile === null) {
-            router.replace("/login");
-        } else if (profile?.onboarding_complete) {
-            router.replace(AFTER_ONBOARDING_PATH);
-        }
-    }, [profile, router]);
-
+    // Stays false after a successful submit so the spinner shows while navigating away
     const isReady = profile != null && !profile.onboarding_complete;
 
     return (
@@ -52,7 +46,7 @@ export default function OnboardingPage() {
                     <OnboardingForm profile={profile} />
                 ) : (
                     <div className="flex justify-center py-10" role="status" aria-label="Loading">
-                        {isError && !isPending ? (
+                        {(isError && !isPending) || profile === null ? (
                             <p className="text-sm text-[#C0392B]">
                                 We couldn&apos;t load your profile. Please refresh and try again.
                             </p>

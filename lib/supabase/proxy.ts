@@ -66,11 +66,18 @@ export async function updateSession(request: NextRequest) {
     }
 
     if (isOnboarding || isDashboard) {
-        const { data: profile } = await supabase
+        const { data: profile, error: profileError } = await supabase
             .from('profiles')
             .select('onboarding_complete')
             .eq('id', userId)
             .maybeSingle()
+
+        // Valid token but no profile row: the user was deleted (or never finished signup).
+        // Clear the stale session so they can log in again.
+        if (!profile && !profileError) {
+            await supabase.auth.signOut({ scope: 'local' })
+            return redirectTo('/login')
+        }
 
         const onboardingComplete = profile?.onboarding_complete === true
 
