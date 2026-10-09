@@ -59,3 +59,5 @@ supabase/functions/**/dist/
 
 # Optional: local storage or uploads
 supabase/storage/
+# Hosted Sanity Studio build output (npm run studio:build)
+/dist

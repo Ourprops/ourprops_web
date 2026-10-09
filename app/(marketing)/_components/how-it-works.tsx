@@ -1,73 +1,33 @@
-import { FolderUp, Share2, SquarePlus } from "lucide-react"
+import type { HomeContent } from "@/lib/content/defaults"
+import { getIcon } from "./icons"
+import SectionHeading from "./section-heading"
 
-const STEPS = [
-	{
-		number: "01",
-		title: "Add",
-		description:
-			"Add the relevant information about a property. Input cadastral numbers, physical location, size, and essential profile parameters.",
-		icon: SquarePlus,
-	},
-	{
-		number: "02",
-		title: "Organize",
-		description:
-			"Keep property information and supporting documents together. Attach site plans, verified survey records, clearances, and notes securely.",
-		icon: FolderUp,
-	},
-	{
-		number: "03",
-		title: "Access",
-		description:
-			"View and share property information when needed. Deliver clear, organized records directly to family members, lawyers, or prospective buyers.",
-		icon: Share2,
-	},
-]
-
-export default function HowItWorks() {
+export default function HowItWorks({ content }: { content: HomeContent["howItWorks"] }) {
 	return (
-		<section className="w-full py-14 sm:py-20 md:py-28" id="how-it-works">
-			<div className="max-w-310 mx-auto px-4 md:px-8">
-				<div className="text-center max-w-2xl mx-auto mb-10 sm:mb-14 md:mb-16">
-					<span className="text-xs font-semibold uppercase tracking-widest text-muted-foreground">
-						Workflow
-					</span>
-					<h2 className="text-3xl sm:text-4xl md:text-5xl text-foreground font-semibold mt-2 text-balance">
-						How OurProps works
-					</h2>
-					<p className="text-sm sm:text-base text-muted-foreground mt-2">
-						A dependable, step-by-step process designed to eliminate confusion
-						and fragmented files.
-					</p>
-				</div>
+		<section className="w-full py-20 md:py-28" id="how-it-works">
+			<div className="mx-auto max-w-310 px-5 md:px-8">
+				<SectionHeading align="center" {...content.header} />
 
-				<div className="grid grid-cols-1 md:grid-cols-3 gap-5 sm:gap-6 md:gap-8">
-					{STEPS.map((step) => {
-						const Icon = step.icon
+				{/* The ::before line connects the step markers on wide screens */}
+				<ol className="relative mt-14 grid grid-cols-1 gap-10 before:absolute before:left-[16.66%] before:right-[16.66%] before:top-6 before:hidden before:h-px before:bg-border md:grid-cols-3 md:gap-8 md:before:block">
+
+					{content.steps.map((step, index) => {
+						const Icon = getIcon(step.icon)
 
 						return (
-							<article
-								key={step.number}
-								className="bg-card p-5 sm:p-6 md:p-8 rounded-xl border border-border relative shadow-xs"
-							>
-								<div className="flex items-center justify-between mb-5 sm:mb-6">
-									<span className="text-4xl sm:text-5xl font-bold text-primary/20 leading-none">
-										{step.number}
-									</span>
-									<span className="w-10 h-10 rounded-full bg-muted flex items-center justify-center text-foreground">
-										<Icon size={20} />
-									</span>
-								</div>
-								<h3 className="text-xl sm:text-2xl text-foreground font-semibold mb-2">
-									{step.title}
-								</h3>
-								<p className="text-sm sm:text-base text-muted-foreground">
-									{step.description}
+							<li key={step.title} className="relative flex flex-col items-center text-center">
+								<span className="relative flex size-12 items-center justify-center rounded-full border border-border bg-card text-primary shadow-xs">
+									<Icon size={20} aria-hidden />
+								</span>
+								<p className="text-eyebrow mt-6 text-muted-foreground">
+									Step {String(index + 1).padStart(2, "0")}
 								</p>
-							</article>
+								<h3 className="text-heading mt-2 text-foreground">{step.title}</h3>
+								<p className="mt-3 max-w-xs text-base leading-relaxed text-copy">{step.description}</p>
+							</li>
 						)
 					})}
-				</div>
+				</ol>
 			</div>
 		</section>
 	)
