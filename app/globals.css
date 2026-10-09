@@ -6,7 +6,7 @@
 @theme inline {
   --color-background: var(--background);
   --color-foreground: var(--foreground);
-  --font-sans: var(--font-sans);
+  --font-sans: var(--font-inter), ui-sans-serif, system-ui, sans-serif;
   --font-mono: var(--font-geist-mono);
   --font-heading: var(--font-sans);
   --color-sidebar-ring: var(--sidebar-ring);
@@ -38,6 +38,11 @@
   --color-popover: var(--popover);
   --color-card-foreground: var(--card-foreground);
   --color-card: var(--card);
+  --color-copy: var(--copy);
+  --color-success: var(--success);
+  --color-success-soft: var(--success-soft);
+  --color-warning: var(--warning);
+  --color-warning-soft: var(--warning-soft);
   --radius-sm: calc(var(--radius) * 0.6);
   --radius-md: calc(var(--radius) * 0.8);
   --radius-lg: var(--radius);
@@ -60,7 +65,12 @@
   --secondary: #FF6B35; /* Orange accent */
   --secondary-foreground: #FFFFFF;
   --muted: #F7F9FB;
-  --muted-foreground: #7B8794; /* text-muted */
+  --muted-foreground: #7B8794; /* text-muted: labels and meta only, too light for body copy */
+  --copy: #52606D; /* text-secondary: body copy, passes WCAG AA on white and page-bg */
+  --success: #2E7D5B;
+  --success-soft: #E6F2EC;
+  --warning: #B7791F;
+  --warning-soft: #FBF1E1;
   --accent: #FF6B35;
   --accent-foreground: #FFFFFF;
   --destructive: #C0392B; /* status-error */
@@ -96,6 +106,11 @@
   --secondary-foreground: #0B1E33;
   --muted: #0B1E33;
   --muted-foreground: #7B8794;
+  --copy: #BCCCDC;
+  --success: #6FCF97;
+  --success-soft: rgba(46, 125, 91, 0.2);
+  --warning: #F0B429;
+  --warning-soft: rgba(183, 121, 31, 0.2);
   --accent: #FF6B35;
   --accent-foreground: #0B1E33;
   --destructive: #C0392B;
@@ -126,5 +141,99 @@
   }
   html {
     @apply font-sans;
+  }
+}
+
+/*
+ * Type scale. Tracking and leading change with size: large text gets tighter
+ * tracking and leading, small uppercase labels get slightly looser tracking.
+ */
+@utility text-display {
+  font-size: clamp(2.5rem, 1.6rem + 3.4vw, 4rem);
+  line-height: 1.04;
+  letter-spacing: -0.032em;
+  font-weight: 650;
+  text-wrap: balance;
+}
+
+@utility text-title {
+  font-size: clamp(2rem, 1.55rem + 1.8vw, 3rem);
+  line-height: 1.08;
+  letter-spacing: -0.026em;
+  font-weight: 600;
+  text-wrap: balance;
+}
+
+@utility text-heading {
+  font-size: 1.25rem;
+  line-height: 1.3;
+  letter-spacing: -0.012em;
+  font-weight: 600;
+}
+
+@utility text-lead {
+  font-size: clamp(1.0625rem, 1rem + 0.25vw, 1.1875rem);
+  line-height: 1.6;
+  text-wrap: pretty;
+}
+
+@utility text-eyebrow {
+  font-size: 0.75rem;
+  line-height: 1rem;
+  letter-spacing: 0.08em;
+  font-weight: 600;
+  text-transform: uppercase;
+}
+
+/* Translucent chrome: content scrolls under it rather than behind an opaque bar */
+@utility material {
+  background-color: color-mix(in oklab, var(--card) 72%, transparent);
+  backdrop-filter: blur(20px) saturate(180%);
+  -webkit-backdrop-filter: blur(20px) saturate(180%);
+
+  @media (prefers-reduced-transparency: reduce) {
+    background-color: var(--card);
+    backdrop-filter: none;
+    -webkit-backdrop-filter: none;
+  }
+
+  @media (prefers-contrast: more) {
+    background-color: var(--card);
+    backdrop-filter: none;
+    -webkit-backdrop-filter: none;
+    border-color: var(--foreground);
+  }
+}
+
+/* Instant feedback on press, not on release */
+@utility pressable {
+  transition: transform 100ms ease-out, background-color 150ms ease, color 150ms ease;
+
+  &:active {
+    transform: scale(0.97);
+  }
+
+  @media (prefers-reduced-motion: reduce) {
+    &:active {
+      transform: none;
+    }
+  }
+}
+
+@layer base {
+  html {
+    scroll-behavior: smooth;
+    -webkit-tap-highlight-color: transparent;
+  }
+
+  /* Leave room for the fixed header when jumping to a section */
+  section[id] {
+    scroll-margin-top: 6rem;
+  }
+
+  @media (prefers-reduced-motion: reduce) {
+    html {
+      scroll-behavior: auto;
+    }
   }
 }
