@@ -1,4 +1,5 @@
-import Link from "next/link"
+import { Menu } from "lucide-react"
+
 import { Button } from "@/components/ui/button"
 import {
     Sheet,
@@ -9,60 +10,53 @@ import {
     SheetTitle,
     SheetTrigger,
 } from "@/components/ui/sheet"
-import { Menu, ShieldCheck } from "lucide-react"
+import type { Link } from "@/lib/content/defaults"
 
-const NAV_LINKS = [
-    { label: "About", href: "#about" },
-    { label: "How it works", href: "#how-it-works" },
-    { label: "Who it's for", href: "#who-its-for" },
-    { label: "Our values", href: "#our-values" },
-]
-
-export default function Sidebar() {
+export default function Sidebar({ navigation, cta }: { navigation: Link[]; cta: Link }) {
     return (
         <Sheet>
-            <SheetTrigger>
-                <Button
-                    variant="ghost"
-                    size="icon"
-                    className="md:hidden rounded-md border border-slate-200 bg-white/90 text-slate-700 hover:bg-slate-100"
-                    aria-label="Open menu"
-                >
-                    <Menu size={22} />
-                </Button>
+            <SheetTrigger
+                render={
+                    <Button
+                        variant="ghost"
+                        size="icon"
+                        className="size-9 rounded-lg text-foreground hover:bg-background md:hidden"
+                        aria-label="Open menu"
+                    />
+                }
+            >
+                <Menu size={20} />
             </SheetTrigger>
-            <SheetContent className="bg-white/95 backdrop-blur-xl border-l border-slate-200">
-                <SheetHeader className="gap-3">
-                    <SheetTitle className="text-slate-900">OurProps</SheetTitle>
-                    <div className="inline-flex w-fit items-center gap-1.5 rounded-full border border-slate-200 bg-white px-2.5 py-1 text-[11px] font-medium text-slate-600">
-                        <ShieldCheck size={13} className="text-emerald-600" />
-                        Secure ownership platform
-                    </div>
+            <SheetContent className="bg-card">
+                <SheetHeader>
+                    <SheetTitle className="text-primary">OurProps</SheetTitle>
                 </SheetHeader>
-                <nav className="flex flex-col gap-1 px-4">
-                    {NAV_LINKS.map((link) => (
-                        <SheetClose key={link.href} render={<Link href={link.href} />}>
-                            <span className="block rounded-md px-3 py-2 text-sm font-medium text-slate-600 hover:text-slate-900 hover:bg-slate-100 transition-colors">
-                                {link.label}
-                            </span>
+                <nav className="flex flex-col gap-1 px-4" aria-label="Main">
+                    {navigation.map((link) => (
+                        <SheetClose
+                            key={link.href}
+                            nativeButton={false}
+                            render={<a href={link.href} />}
+                            className="rounded-lg px-3 py-3 text-base font-medium text-foreground transition-colors hover:bg-background"
+                        >
+                            {link.label}
                         </SheetClose>
                     ))}
                 </nav>
 
                 <SheetFooter>
-                    <Button
-                        variant="outline"
-                        className="w-full rounded-md border-slate-200 bg-white text-slate-700 hover:bg-slate-50"
-                        render={<a href="#about" />}
+                    <SheetClose
+                        nativeButton={false}
+                        render={
+                            <Button
+                                className="pressable h-12 w-full rounded-lg bg-secondary text-[15px] text-secondary-foreground hover:bg-secondary/90"
+                                nativeButton={false}
+                                render={<a href={cta.href} />}
+                            />
+                        }
                     >
-                        Our mission
-                    </Button>
-                    <Button
-                        className="w-full rounded-md bg-slate-900 text-white hover:bg-slate-800"
-                        render={<a href="#waitlist" />}
-                    >
-                        Join waitlist
-                    </Button>
+                        {cta.label}
+                    </SheetClose>
                 </SheetFooter>
             </SheetContent>
         </Sheet>

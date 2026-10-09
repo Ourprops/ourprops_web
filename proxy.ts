@@ -2,9 +2,6 @@ import { type NextRequest } from 'next/server'
 import { updateSession } from '@/lib/supabase/proxy'
 
 export async function proxy(request: NextRequest) {
-
-    
-
     // update user's auth session
     return await updateSession(request)
 }
@@ -16,8 +13,9 @@ export const config = {
          * - _next/static (static files)
          * - _next/image (image optimization files)
          * - favicon.ico (favicon file)
+         * - studio (embedded Sanity Studio, uses its own auth)
          * Feel free to modify this pattern to include more paths.
          */
-        '/((?!_next/static|_next/image|favicon.ico|.*\\.(?:svg|png|jpg|jpeg|gif|webp)$).*)',
+        '/((?!_next/static|_next/image|favicon.ico|studio|.*\\.(?:svg|png|jpg|jpeg|gif|webp)$).*)',
     ],
 }

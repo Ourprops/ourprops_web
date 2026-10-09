@@ -276,7 +276,13 @@ Operational logs must capture failures in authentication, database operations, s
 
 Measure technical health such as request failures, latency, migration status, storage failures, and asynchronous job failures. Product events may include submission, review outcome, checkpoint change, overlap detection, Passport view, and data-room request or decision, subject to a privacy review. Analytics must use the minimum information required and must not become an alternate store of sensitive property data.
 
-## 17. Architectural decisions
+## 17. Sanity.io Content Management System
+
+Marketing and public-facing content is managed in Sanity.io. The CMS is not a source of truth for property, verification, or document data. It is used for marketing pages, FAQs, and other public-facing content. The CMS should be configured to prevent accidental exposure of sensitive data and should be integrated with the application in a way that respects the same authorization and visibility rules as the rest of the platform.
+
+See [SANITY.md](./SANITY.md) for the content model, data fetching, caching, and editor workflow.
+
+## 18. Architectural decisions
 
 ### ADR-001: Supabase is the V1 backend platform
 
