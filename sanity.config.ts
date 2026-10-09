@@ -17,7 +17,8 @@ import {structure} from './sanity/structure'
 const SINGLETON_ACTIONS = new Set(['publish', 'discardChanges', 'restore'])
 
 export default defineConfig({
-  basePath: '/studio',
+  // Embedded at /studio in the Next.js app; the hosted Studio (`npm run studio:deploy`) is served from /
+  basePath: process.env.SANITY_STUDIO_BASE_PATH || '/studio',
   projectId,
   dataset,
   // Add and edit the content schema in the './sanity/schemaTypes' folder

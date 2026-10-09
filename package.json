@@ -7,7 +7,9 @@
     "build": "next build",
     "start": "next start",
     "lint": "eslint",
-    "test": "vitest"
+    "test": "vitest",
+    "studio:build": "SANITY_STUDIO_BASE_PATH=/ sanity build",
+    "studio:deploy": "SANITY_STUDIO_BASE_PATH=/ sanity deploy"
   },
   "dependencies": {
     "@base-ui/react": "^1.8.0",
