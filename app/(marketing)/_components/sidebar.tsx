@@ -2,20 +2,20 @@ import { Menu } from "lucide-react"
 
 import { Button } from "@/components/ui/button"
 import {
-    Sheet,
-    SheetClose,
-    SheetContent,
-    SheetFooter,
-    SheetHeader,
-    SheetTitle,
-    SheetTrigger,
-} from "@/components/ui/sheet"
+    Drawer,
+    DrawerClose,
+    DrawerContent,
+    DrawerFooter,
+    DrawerHeader,
+    DrawerTitle,
+    DrawerTrigger,
+} from "@/components/ui/drawer"
 import type { Link } from "@/lib/content/defaults"
 
 export default function Sidebar({ navigation, cta }: { navigation: Link[]; cta: Link }) {
     return (
-        <Sheet>
-            <SheetTrigger
+        <Drawer showSwipeHandle>
+            <DrawerTrigger
                 render={
                     <Button
                         variant="ghost"
@@ -26,26 +26,26 @@ export default function Sidebar({ navigation, cta }: { navigation: Link[]; cta: 
                 }
             >
                 <Menu size={20} />
-            </SheetTrigger>
-            <SheetContent className="bg-card">
-                <SheetHeader>
-                    <SheetTitle className="text-primary">OurProps</SheetTitle>
-                </SheetHeader>
-                <nav className="flex flex-col gap-1 px-4" aria-label="Main">
+            </DrawerTrigger>
+            <DrawerContent className="bg-card">
+                <DrawerHeader>
+                    <DrawerTitle className="text-primary">OurProps</DrawerTitle>
+                </DrawerHeader>
+                <nav className="flex flex-col gap-1 p-4" aria-label="Main">
                     {navigation.map((link) => (
-                        <SheetClose
+                        <DrawerClose
                             key={link.href}
                             nativeButton={false}
                             render={<a href={link.href} />}
                             className="rounded-lg px-3 py-3 text-base font-medium text-foreground transition-colors hover:bg-background"
                         >
                             {link.label}
-                        </SheetClose>
+                        </DrawerClose>
                     ))}
                 </nav>
 
-                <SheetFooter>
-                    <SheetClose
+                <DrawerFooter>
+                    <DrawerClose
                         nativeButton={false}
                         render={
                             <Button
@@ -56,9 +56,9 @@ export default function Sidebar({ navigation, cta }: { navigation: Link[]; cta: 
                         }
                     >
                         {cta.label}
-                    </SheetClose>
-                </SheetFooter>
-            </SheetContent>
-        </Sheet>
+                    </DrawerClose>
+                </DrawerFooter>
+            </DrawerContent>
+        </Drawer>
     )
 }

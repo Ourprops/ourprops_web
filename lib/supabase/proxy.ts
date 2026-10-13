@@ -42,7 +42,10 @@ export async function updateSession(request: NextRequest) {
     const { pathname } = request.nextUrl
     const isLogin = pathname === '/login'
     const isOnboarding = pathname === '/onboarding' || pathname.startsWith('/onboarding/')
-    const isDashboard = pathname === '/dashboard' || pathname.startsWith('/dashboard/')
+    // Signed-in pages that also need onboarding finished
+    const isAppPage =
+        pathname === '/dashboard' || pathname.startsWith('/dashboard/') ||
+        pathname === '/properties' || pathname.startsWith('/properties/')
 
     // Redirect while keeping any refreshed auth cookies set above
     function redirectTo(path: string) {
@@ -55,7 +58,7 @@ export async function updateSession(request: NextRequest) {
     }
 
     if (!userId) {
-        if (isOnboarding || isDashboard) {
+        if (isOnboarding || isAppPage) {
             return redirectTo('/login')
         }
         return supabaseResponse
@@ -65,7 +68,7 @@ export async function updateSession(request: NextRequest) {
         return redirectTo('/dashboard')
     }
 
-    if (isOnboarding || isDashboard) {
+    if (isOnboarding || isAppPage) {
         const { data: profile, error: profileError } = await supabase
             .from('profiles')
             .select('onboarding_complete')
@@ -84,7 +87,7 @@ export async function updateSession(request: NextRequest) {
         if (isOnboarding && onboardingComplete) {
             return redirectTo('/dashboard')
         }
-        if (isDashboard && !onboardingComplete) {
+        if (isAppPage && !onboardingComplete) {
             return redirectTo('/onboarding')
         }
     }
