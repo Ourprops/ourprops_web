@@ -7,7 +7,7 @@ create extension if not exists pgcrypto;
 alter table public.properties
     add column if not exists acquisition_method text not null default 'unsure',
     add column if not exists acquisition_metadata jsonb,
-    add column if not exists prop_id text not null unique default concat('PROP-', left(regexp_replace(encode(gen_random_bytes(9), 'base64'), '[^A-Za-z0-9]', '', 'g'), 6));
+    add column if not exists prop_id text not null unique default concat('PROP-', left(regexp_replace(encode(extensions.gen_random_bytes(9), 'base64'), '[^A-Za-z0-9]', '', 'g'), 6));
 
 -- enforce valid acquisition methods
 alter table public.properties

@@ -4,9 +4,9 @@ import { updateDraft } from "@/lib/supabase/property-drafts"
 
 import { errorResponse, readDraftRequest } from "../request"
 
-export async function PATCH(request: NextRequest, { params }: { params: Promise<{ id: string }> }) {
+export async function PATCH(request: NextRequest, { params }: { params: Promise<{ id: string }> }): Promise<Response> {
     const result = await readDraftRequest(request)
-    if ("response" in result) return result.response
+    if (!result.ok) return result.response
 
     const { id } = await params
 

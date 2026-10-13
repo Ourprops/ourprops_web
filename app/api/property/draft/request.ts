@@ -12,20 +12,20 @@ export async function readDraftRequest(request: NextRequest) {
     const supabase = await createClient()
     const { data: { user } } = await supabase.auth.getUser()
     if (!user) {
-        return { response: errorResponse("Sign in to save your draft.", 401) } as const
+        return { ok: false, response: errorResponse("Sign in to save your draft.", 401) } as const
     }
 
     let body: unknown
     try {
         body = await request.json()
     } catch {
-        return { response: errorResponse("Invalid request body.", 400) } as const
+        return { ok: false, response: errorResponse("Invalid request body.", 400) } as const
     }
 
     const parsed = draftSchema.safeParse(body)
     if (!parsed.success) {
-        return { response: errorResponse(parsed.error.issues[0]?.message ?? "Invalid draft.", 400) } as const
+        return { ok: false, response: errorResponse(parsed.error.issues[0]?.message ?? "Invalid draft.", 400) } as const
     }
 
-    return { supabase, user, draft: parsed.data } as const
+    return { ok: true, supabase, user, draft: parsed.data } as const
 }
