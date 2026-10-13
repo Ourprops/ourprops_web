@@ -1,19 +1,18 @@
 "use client"
 
-import { ArrowLeft, Check, Save, X } from "lucide-react"
+import { ArrowLeft, Check, Cloud, CloudCheck, X } from "lucide-react"
 import { useRouter } from "next/navigation"
 import { useState } from "react"
 
 import { Button } from "@/components/ui/button"
+import { Spinner } from "@/components/ui/spinner"
 import { cn } from "@/lib/utils"
-import { toast } from "sonner"
 import { useNewPropertyStore, type Screen } from "@/stores/new-property-store"
 
-import ExitAlert, { type ExitAlertVariant } from "./exit-alert"
-import { useMutation } from "@tanstack/react-query"
+import ExitAlert from "./exit-alert"
 
 // Where the user goes when they leave the flow
-const EXIT_HREF = "/"
+const EXIT_HREF = "/dashboard"
 
 type Step = {
     title: string
@@ -31,30 +30,14 @@ const STEPS: Step[] = [
 export default function ProgressIndicator() {
     const screen = useNewPropertyStore((state) => state.screen)
     const handleBack = useNewPropertyStore((state) => state.handleBack)
-    const reset = useNewPropertyStore((state) => state.reset)
+    const savingDraft = useNewPropertyStore((state) => state.savingDraft)
+    const draftSavedAt = useNewPropertyStore((state) => state.draftSavedAt)
     const router = useRouter()
-    const [alert, setAlert] = useState<ExitAlertVariant | null>(null);
-
-    const handleSaveDraft = useMutation({
-        mutationFn: async () => {
-
-        },
-        onSuccess: () => {
-            setAlert("saved")
-        }
-    })
-
-
-    function handleSaveAndLeave() {
-        // saveDraft()
-        setAlert(null)
-        router.push(EXIT_HREF)
-    }
+    const [exitOpen, setExitOpen] = useState(false)
 
     function handleLeave() {
-        // A saved draft is kept so the user can resume it; otherwise start over next time
-        if (alert === "exit") reset()
-        setAlert(null)
+        // The draft is saved automatically, so leaving keeps it for the user to resume
+        setExitOpen(false)
         router.push(EXIT_HREF)
     }
 
@@ -89,20 +72,12 @@ export default function ProgressIndicator() {
                     </div>
 
                     <div className="flex items-center gap-1 justify-self-end">
-                        <Button
-                            type="button"
-                            variant="ghost"
-                            onClick={() => handleSaveDraft.mutate()}
-                            className="pressable h-9 w-9 rounded-lg px-0 text-sm font-medium text-primary hover:bg-background sm:w-auto sm:px-3"
-                        >
-                            <Save size={16} aria-hidden />
-                            <span className="sr-only sm:not-sr-only">Save draft</span>
-                        </Button>
+                        <SaveStatus saving={savingDraft} savedAt={draftSavedAt} />
                         <Button
                             type="button"
                             variant="ghost"
                             size="icon"
-                            onClick={() => setAlert("exit")}
+                            onClick={() => setExitOpen(true)}
                             aria-label="Exit"
                             className="pressable size-9 rounded-lg text-primary hover:bg-background"
                         >
@@ -153,12 +128,34 @@ export default function ProgressIndicator() {
                 </nav>
             </div>
 
-            <ExitAlert
-                variant={alert}
-                onClose={() => setAlert(null)}
-                onSaveAndLeave={handleSaveAndLeave}
-                onLeave={handleLeave}
-            />
+            <ExitAlert open={exitOpen} onClose={() => setExitOpen(false)} onLeave={handleLeave} />
         </header>
+    )
+}
+
+type SaveStatusProps = {
+    saving: boolean
+    savedAt: Date | null
+}
+
+// Shows that the draft saves itself, so the user doesn't need to think about saving
+function SaveStatus({ saving, savedAt }: SaveStatusProps) {
+    const label = saving ? "Saving…" : savedAt ? "Draft saved" : "Autosave on"
+    
+    return (
+        <p
+            role="status"
+            title="Your progress is saved as a draft automatically, so you can leave and finish later."
+            className="flex h-9 items-center gap-1.5 rounded-lg px-2 text-sm font-medium text-muted-foreground sm:px-3"
+        >
+            {saving ? (
+                <Spinner aria-hidden className="text-primary motion-reduce:animate-none" />
+            ) : savedAt ? (
+                <CloudCheck size={16} className="text-success" aria-hidden />
+            ) : (
+                <Cloud size={16} aria-hidden />
+            )}
+            <span className="sr-only sm:not-sr-only">{label}</span>
+        </p>
     )
 }

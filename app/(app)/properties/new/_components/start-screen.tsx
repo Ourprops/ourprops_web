@@ -1,6 +1,6 @@
 "use client"
 
-import { ArrowRight, Clock, FileText, House, MapPinned, type LucideIcon } from "lucide-react"
+import { ArrowRight, CloudCheck, FileText, House, MapPinned, type LucideIcon } from "lucide-react"
 
 import { Badge } from "@/components/ui/badge"
 import { Button } from "@/components/ui/button"
@@ -73,8 +73,8 @@ export default function StartScreen() {
             </Card>
 
             <p className="mt-6 flex items-center gap-2 text-sm text-muted-foreground">
-                <Clock size={15} aria-hidden />
-                You can save a draft and finish later.
+                <CloudCheck size={15} aria-hidden />
+                We save your progress as a draft as you go, so you can finish later.
             </p>
 
             <div className="mt-10 flex w-full flex-col gap-3 sm:w-auto sm:flex-row-reverse">
