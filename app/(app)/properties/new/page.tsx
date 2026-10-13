@@ -1,16 +1,20 @@
-"use client"
-import { useNewPropertyStore } from "@/stores/new-property-store"
-import Details from "./_components/details"
-import StartScreen from "./_components/start-screen"
+import { notFound } from "next/navigation"
 
+import { getDraft } from "@/lib/supabase/property-drafts"
+import { createClient } from "@/lib/supabase/server"
 
-export default function NewPropertyPage() {
-    const screen = useNewPropertyStore((state) => state.screen)
+import NewPropertyFlow from "./_components/new-property-flow"
 
-    return (
-        <main className="flex-1">
-            {screen === "start" && <StartScreen />}
-            {screen === "details" && <Details />}
-        </main>
-    )
+export default async function NewPropertyPage({
+    searchParams,
+}: {
+    searchParams: Promise<{ draft?: string | string[] }>
+}) {
+    const { draft: draftId } = await searchParams
+
+    // ?draft=<id> resumes a saved draft; the user can only load their own
+    const draft = typeof draftId === "string" ? await getDraft(await createClient(), draftId) : null
+    if (typeof draftId === "string" && !draft) notFound()
+
+    return <NewPropertyFlow draft={draft} />
 }

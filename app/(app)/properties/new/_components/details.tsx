@@ -1,7 +1,7 @@
 "use client"
 
 import { ArrowRight } from "lucide-react"
-import { useEffect, useRef, useState, type SubmitEvent } from "react"
+import { useState, type SubmitEvent } from "react"
 import { z } from "zod"
 
 import { Button } from "@/components/ui/button"
@@ -19,15 +19,12 @@ import {
 import { Input } from "@/components/ui/input"
 import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group"
 import { Textarea } from "@/components/ui/textarea"
-import { useHandleSaveDraft } from "@/lib/queries/property"
+import { useAutosaveDraft } from "@/lib/queries/property"
 import { detailsSchema, type Details as DetailsValues, type PropertyType } from "@/lib/validators/property"
 import { useNewPropertyStore } from "@/stores/new-property-store"
 import { TYPE_OPTIONS } from "@/lib/types/property"
 
 type FieldErrors = Partial<Record<keyof DetailsValues, string[]>>
-
-// How long the user must pause before their changes are saved
-const AUTOSAVE_DELAY_MS = 1000
 
 export default function Details() {
     // One selector per field, so typing in one field doesn't re-render for the others
@@ -40,39 +37,11 @@ export default function Details() {
     // Errors only show after the first attempt to continue, then update as the user fixes them
     const [submitted, setSubmitted] = useState(false)
 
-    const { mutate: saveDraft } = useHandleSaveDraft()
-    const key = JSON.stringify([name, type, description])
-    // What was last saved, so the draft isn't saved on first load or when an edit is undone
-    const lastSaved = useRef(key)
-    // Whether a change is waiting for the timer, so it can be saved straight away if the screen closes first
-    const pending = useRef(false)
+    useAutosaveDraft([name, type, description])
 
     // The schema trims the text, so the raw values can be checked as they are
     const result = detailsSchema.safeParse({ name, type, description })
     const errors: FieldErrors = submitted && !result.success ? z.flattenError(result.error).fieldErrors : {}
-
-    // Save the draft once the user has stopped typing or changing the type for a second
-    useEffect(() => {
-        if (key === lastSaved.current) {
-            pending.current = false
-            return
-        }
-
-        pending.current = true
-        const timeout = setTimeout(() => {
-            pending.current = false
-            lastSaved.current = key
-            saveDraft()
-        }, AUTOSAVE_DELAY_MS)
-        return () => clearTimeout(timeout)
-    }, [key, saveDraft])
-
-    // Leaving the screen (Continue, Back or Exit) cancels the timer, so save any change it was waiting on
-    useEffect(() => {
-        return () => {
-            if (pending.current) saveDraft()
-        }
-    }, [saveDraft])
 
     function handleSubmit(event: SubmitEvent<HTMLFormElement>) {
         event.preventDefault()

@@ -1,7 +1,7 @@
 import { z } from 'zod'
 import { create } from 'zustand'
 
-import type { DetailsDraft, Location } from '@/lib/validators/property'
+import type { DetailsDraft, LocationDraft, SavedDraft } from '@/lib/validators/property'
 
 // Screens in the order the flow shows them
 export const screenSchema = z.enum(['start', 'details', 'location', 'map', 'acquisition', 'documents', 'review', 'confirmation'])
@@ -11,12 +11,13 @@ export type Screen = z.infer<typeof screenSchema>;
 const SCREENS = screenSchema.options;
 
 export type NewPropertyStoreState = {
+    /** The draft's id on the server, set by the first save */
     propertyId?: string;
     screen: Screen;
     savingDraft: boolean;
     draftSavedAt: Date | null;
     details: DetailsDraft;
-    location: Location | null;
+    location: LocationDraft;
 };
 
 export type NewPropertyStoreActions = {
@@ -27,9 +28,12 @@ export type NewPropertyStoreActions = {
     handleNext: () => void;
     handleBack: () => void;
     reset: () => void;
+    /** Resumes a draft saved earlier, starting from the first step */
+    loadDraft: (draft: SavedDraft) => void;
     /** Merges the given fields into the details draft */
     updateDetails: (details: DetailsDraft) => void;
-    setLocation: (location: Location) => void;
+    /** Merges the given fields into the location draft */
+    updateLocation: (location: LocationDraft) => void;
 };
 
 export type NewPropertyStore = NewPropertyStoreState & NewPropertyStoreActions;
@@ -46,8 +50,15 @@ export const useNewPropertyStore = create<NewPropertyStore>((set) => ({
     setPropertyId: (propertyId: string) => set({ propertyId }),
     setSavingDraft: (saving: boolean) => set({ savingDraft: saving }),
     setDraftSavedAt: (savedAt: Date) => set({ draftSavedAt: savedAt }),
-    // TODO: persist the draft once there is an API for it. For now this only records the save time.
-    reset: () => set({ screen: 'start', savingDraft: false, draftSavedAt: null, details: {}, location: null }),
+    reset: () => set({ propertyId: undefined, screen: 'start', savingDraft: false, draftSavedAt: null, details: {}, location: {} }),
+    loadDraft: (draft: SavedDraft) => set({
+        propertyId: draft.id,
+        screen: 'details',
+        savingDraft: false,
+        draftSavedAt: new Date(draft.updatedAt),
+        details: draft.details,
+        location: draft.location,
+    }),
     handleNext: () => set((state: NewPropertyStore) => {
         const currentIndex = SCREENS.indexOf(state.screen);
         if (currentIndex === SCREENS.length - 1) return state;
@@ -60,6 +71,6 @@ export const useNewPropertyStore = create<NewPropertyStore>((set) => ({
     }),
     details: {},
     updateDetails: (details: DetailsDraft) => set((state) => ({ details: { ...state.details, ...details } })),
-    location: null,
-    setLocation: (location: Location) => set({ location }),
+    location: {},
+    updateLocation: (location: LocationDraft) => set((state) => ({ location: { ...state.location, ...location } })),
 }))

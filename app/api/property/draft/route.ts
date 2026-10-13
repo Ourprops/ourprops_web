@@ -1,34 +1,19 @@
 import { NextRequest } from "next/server"
 
-import { draftSchema } from "@/lib/validators/property"
-import { createClient } from "@/lib/supabase/server"
+import { createDraft } from "@/lib/supabase/property-drafts"
 
-export async function PATCH(request: NextRequest) {
-    let body: unknown
-    try {
-        body = await request.json()
-    } catch {
-        return Response.json({ error: { message: "Invalid request body." } }, { status: 400 })
-    }
+import { errorResponse, readDraftRequest } from "./request"
 
-    const parsed = draftSchema.safeParse(body)
-    if (!parsed.success) {
-        return Response.json(
-            { error: { message: parsed.error.issues[0]?.message ?? "Invalid draft." } },
-            { status: 400 }
-        )
-    }
+// Creates a draft from the first save; later saves update it through /api/property/draft/[id]
+export async function POST(request: NextRequest) {
+    const result = await readDraftRequest(request)
+    if ("response" in result) return result.response
 
     try {
-        const supabase = await createClient()
-        const {data: property, error: propertyError} = await supabase.from("property")
-            .upsert({
-                
-            })
+        const saved = await createDraft(result.supabase, result.user.id, result.draft)
+        return Response.json(saved, { status: 201 })
     } catch (error) {
-        
+        console.error("Error creating property draft:", error)
+        return errorResponse("Unable to save your draft right now.", 500)
     }
-
-
-    return Response.json({ ok: true })
 }
