@@ -1,6 +1,6 @@
 import type { Metadata } from "next";
 import { Inter } from "next/font/google";
-import { Toaster } from "@/components/ui/toast"
+import { Toaster } from "@/components/ui/sonner"
 import Providers from "@/components/providers"
 import { getSiteContent } from "@/lib/content"
 import { SITE_NAME, SITE_URL } from "@/lib/site"
