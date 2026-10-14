@@ -68,10 +68,29 @@ export const locationDraftSchema = locationSchema
 
 export type LocationDraft = z.infer<typeof locationDraftSchema>
 
+export const coordinateSchema = z.object({
+  latitude: z.number(),
+  longitude: z.number(),
+})
+
+export type Coordinate = z.infer<typeof coordinateSchema>
+
+export const boundarySchema = z.object({
+  pin: coordinateSchema,
+  polygon: z.array(coordinateSchema),
+})
+
+export type Boundary = z.infer<typeof boundarySchema>
+
+export const boundaryDraftSchema = boundarySchema.partial().strict()
+
+export type BoundaryDraft = z.infer<typeof boundaryDraftSchema>
+
 // The body sent when saving a draft. The draft's id goes in the URL, not here.
 export const draftSchema = z.strictObject({
   details: detailsDraftSchema,
   location: locationDraftSchema,
+  boundary: boundaryDraftSchema,
 })
 
 export type Draft = z.infer<typeof draftSchema>

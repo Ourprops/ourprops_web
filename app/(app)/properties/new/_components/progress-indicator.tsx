@@ -23,7 +23,7 @@ type Step = {
 // so related screens are grouped under one step.
 const STEPS: Step[] = [
     { title: "Property details", screens: ["details"] },
-    { title: "Location and boundary", screens: ["location", "map"] },
+    { title: "Location and boundary", screens: ["location", "boundary"] },
     { title: "Ownership and documents", screens: ["acquisition", "documents"] },
 ]
 

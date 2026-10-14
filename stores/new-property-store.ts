@@ -1,10 +1,10 @@
 import { z } from 'zod'
 import { create } from 'zustand'
 
-import type { DetailsDraft, LocationDraft, SavedDraft } from '@/lib/validators/property'
+import type { BoundaryDraft, DetailsDraft, LocationDraft, SavedDraft } from '@/lib/validators/property'
 
 // Screens in the order the flow shows them
-export const screenSchema = z.enum(['start', 'details', 'location', 'map', 'acquisition', 'documents', 'review', 'confirmation'])
+export const screenSchema = z.enum(['start', 'details', 'location', 'boundary', 'acquisition', 'documents', 'review', 'confirmation'])
 
 export type Screen = z.infer<typeof screenSchema>;
 
@@ -18,6 +18,7 @@ export type NewPropertyStoreState = {
     draftSavedAt: Date | null;
     details: DetailsDraft;
     location: LocationDraft;
+    boundary: BoundaryDraft;
 };
 
 export type NewPropertyStoreActions = {
@@ -34,6 +35,7 @@ export type NewPropertyStoreActions = {
     updateDetails: (details: DetailsDraft) => void;
     /** Merges the given fields into the location draft */
     updateLocation: (location: LocationDraft) => void;
+    updateBoundary: (boundary: BoundaryDraft) => void;
 };
 
 export type NewPropertyStore = NewPropertyStoreState & NewPropertyStoreActions;
@@ -73,4 +75,6 @@ export const useNewPropertyStore = create<NewPropertyStore>((set) => ({
     updateDetails: (details: DetailsDraft) => set((state) => ({ details: { ...state.details, ...details } })),
     location: {},
     updateLocation: (location: LocationDraft) => set((state) => ({ location: { ...state.location, ...location } })),
+    boundary: {},
+    updateBoundary: (boundary: BoundaryDraft) => set((state) => ({ boundary: { ...state.boundary, ...boundary } })),
 }))

@@ -25,7 +25,7 @@ export function useHandleSaveDraft() {
             const { propertyId, details, location } = useNewPropertyStore.getState()
             // Parse so the body always matches what the API accepts; this also trims the text fields
             const draft = draftSchema.parse({ details, location })
-
+            console.log("Saving draft", propertyId, draft)
             const response = await fetch(propertyId ? `/api/property/draft/${propertyId}` : "/api/property/draft", {
                 method: propertyId ? "PATCH" : "POST",
                 headers: {
