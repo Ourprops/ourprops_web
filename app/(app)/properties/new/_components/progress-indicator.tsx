@@ -1,11 +1,12 @@
 "use client"
 
-import { ArrowLeft, Check, Cloud, CloudCheck, X } from "lucide-react"
+import { ArrowLeft, Check, Cloud, CloudAlert, CloudCheck, X } from "lucide-react"
 import { useRouter } from "next/navigation"
 import { useState } from "react"
 
 import { Button } from "@/components/ui/button"
 import { Spinner } from "@/components/ui/spinner"
+import { useHandleSaveDraft } from "@/lib/queries/property"
 import { cn } from "@/lib/utils"
 import { useNewPropertyStore, type Screen } from "@/stores/new-property-store"
 
@@ -32,6 +33,8 @@ export default function ProgressIndicator() {
     const handleBack = useNewPropertyStore((state) => state.handleBack)
     const savingDraft = useNewPropertyStore((state) => state.savingDraft)
     const draftSavedAt = useNewPropertyStore((state) => state.draftSavedAt)
+    const draftSaveFailed = useNewPropertyStore((state) => state.draftSaveFailed)
+    const { mutate: saveDraft } = useHandleSaveDraft()
     const router = useRouter()
     const [exitOpen, setExitOpen] = useState(false)
 
@@ -72,7 +75,12 @@ export default function ProgressIndicator() {
                     </div>
 
                     <div className="flex items-center gap-1 justify-self-end">
-                        <SaveStatus saving={savingDraft} savedAt={draftSavedAt} />
+                        <SaveStatus
+                            saving={savingDraft}
+                            savedAt={draftSavedAt}
+                            failed={draftSaveFailed}
+                            onRetry={() => saveDraft()}
+                        />
                         <Button
                             type="button"
                             variant="ghost"
@@ -136,10 +144,31 @@ export default function ProgressIndicator() {
 type SaveStatusProps = {
     saving: boolean
     savedAt: Date | null
+    /** Whether the last save failed */
+    failed: boolean
+    onRetry: () => void
 }
 
 // Shows that the draft saves itself, so the user doesn't need to think about saving
-function SaveStatus({ saving, savedAt }: SaveStatusProps) {
+function SaveStatus({ saving, savedAt, failed, onRetry }: SaveStatusProps) {
+    // A failed save is retried on the next change, but the user can also retry straight away
+    if (failed && !saving) {
+        return (
+            <p role="alert" className="flex h-9 items-center">
+                <Button
+                    type="button"
+                    variant="ghost"
+                    onClick={onRetry}
+                    title="Your latest changes aren't saved yet. Check your connection and try again."
+                    className="pressable h-9 gap-1.5 rounded-lg px-2 text-sm font-medium text-destructive hover:bg-background hover:text-destructive sm:px-3"
+                >
+                    <CloudAlert size={16} aria-hidden />
+                    <span className="sr-only sm:not-sr-only">Couldn&apos;t save.</span> Retry
+                </Button>
+            </p>
+        )
+    }
+
     const label = saving ? "Saving…" : savedAt ? "Draft saved" : "Autosave on"
     
     return (

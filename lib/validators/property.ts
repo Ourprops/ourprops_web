@@ -1,5 +1,9 @@
 import { z } from "zod"
 
+import { isSimplePolygon } from "@/lib/geo"
+import { ACCEPTED_DOCUMENTS, DOCUMENT_MIME_TYPES, MAX_DOCUMENT_BYTES } from "@/lib/storage/property-documents"
+import { phoneNumberSchema } from "@/lib/validators/onboarding"
+
 export const propertyTypeSchema = z.enum(
   ["residential", "commercial", "industrial", "land", "mixed-use", "other"],
   { error: "Choose a property type" }
@@ -68,29 +72,172 @@ export const locationDraftSchema = locationSchema
 
 export type LocationDraft = z.infer<typeof locationDraftSchema>
 
-export const coordinateSchema = z.object({
-  latitude: z.number(),
-  longitude: z.number(),
+export const coordinateSchema = z.strictObject({
+  latitude: z.number().min(-90).max(90),
+  longitude: z.number().min(-180).max(180),
 })
 
 export type Coordinate = z.infer<typeof coordinateSchema>
 
-export const boundarySchema = z.object({
-  pin: coordinateSchema,
-  polygon: z.array(coordinateSchema),
-})
+// The corners of a boundary in the order they were drawn, without repeating the first corner at the end
+export const polygonSchema = z
+  .array(coordinateSchema)
+  .min(3, "A boundary needs at least three corners")
+  .max(1000, "A boundary can have at most 1,000 corners")
+  // Matches the check PostGIS makes when the boundary is saved
+  .refine(isSimplePolygon, "The boundary can't cross over itself")
+
+// Where a boundary came from: drawn on the map, or uploaded as a GeoJSON file. Editing an uploaded boundary on the map makes it drawn.
+export const boundarySourceSchema = z.enum(["manual_draw", "geojson_import"])
+
+export type BoundarySource = z.infer<typeof boundarySourceSchema>
+
+// A property is marked on the map by drawing its boundary or, when the boundary isn't known, by dropping a pin on it
+export const boundarySchema = z.union([
+  z.strictObject({ polygon: polygonSchema, source: boundarySourceSchema }),
+  z.strictObject({ pin: coordinateSchema, source: boundarySourceSchema }),
+])
 
 export type Boundary = z.infer<typeof boundarySchema>
 
-export const boundaryDraftSchema = boundarySchema.partial().strict()
+// A boundary is only saved once the user finishes drawing it, so a draft holds a whole boundary or pin.
+// null means nothing is marked yet, or the user cleared the map.
+export const boundaryDraftSchema = boundarySchema.nullable()
 
 export type BoundaryDraft = z.infer<typeof boundaryDraftSchema>
+
+export const acquisitionMethodSchema = z.enum(
+  ["direct_purchase", "purchase_from_owner", "transfer_assignment", "lease_sublease", "inheritance", "other", "unsure"],
+  { error: "Choose how you got the property" }
+)
+
+export type AcquisitionMethod = z.infer<typeof acquisitionMethodSchema>
+
+// A document uploaded with an answer. The file is in the private property-documents bucket at `path`, which is kept
+// rather than a link because links to private files expire; the server makes a fresh one when the file is opened.
+export const documentReferenceSchema = z.strictObject({
+  id: z.uuid(),
+  path: z.string().min(1),
+  file_name: z.string().min(1),
+})
+
+export type DocumentReference = z.infer<typeof documentReferenceSchema>
+
+// The person who sold or transferred the property, so a reviewer can contact them
+export const transferredBySchema = z.strictObject({
+  name: z.string().trim().min(1, "Enter the name of the person who transferred it"),
+  phone: phoneNumberSchema,
+})
+
+const DOCUMENT_NEEDED = "Upload the document, or choose No if you don't have it"
+
+// The answer saved as acquisition_method and acquisition_metadata; the questions asked depend on the method.
+// The full rules are checked when the user continues.
+export const acquisitionSchema = z.discriminatedUnion("method", [
+  z.strictObject({
+    method: z.literal("direct_purchase"),
+    metadata: z.strictObject({ document: documentReferenceSchema.optional() }),
+  }),
+  z.strictObject({
+    method: z.literal("purchase_from_owner"),
+    metadata: z
+      .strictObject({
+        transferred_by: transferredBySchema,
+        has_document: z.boolean({ error: "Say whether you have the document showing the transfer" }),
+        document: documentReferenceSchema.optional(),
+      })
+      .refine((metadata) => !metadata.has_document || metadata.document, { message: DOCUMENT_NEEDED, path: ["document"] }),
+  }),
+  z.strictObject({
+    method: z.literal("transfer_assignment"),
+    metadata: z.strictObject({ document: documentReferenceSchema.optional() }),
+  }),
+  z.strictObject({
+    method: z.literal("lease_sublease"),
+    metadata: z.strictObject({
+      lease_years: z
+        .number({ error: "Enter how many years the lease is for" })
+        .int("Enter a whole number of years")
+        .min(1, "Enter how many years the lease is for")
+        .max(999, "Enter a lease of 999 years or less"),
+    }),
+  }),
+  z.strictObject({
+    method: z.literal("inheritance"),
+    metadata: z
+      .strictObject({
+        has_document: z.boolean({ error: "Say whether you have documents supporting the inheritance" }),
+        document: documentReferenceSchema.optional(),
+      })
+      .refine((metadata) => !metadata.has_document || metadata.document, { message: DOCUMENT_NEEDED, path: ["document"] }),
+  }),
+  z.strictObject({
+    method: z.literal("other"),
+    metadata: z.strictObject({ note: z.string().trim().min(1, "Tell us how you got the property") }),
+  }),
+  // A reviewer works out the method later
+  z.strictObject({ method: z.literal("unsure"), metadata: z.strictObject({}) }),
+])
+
+export type Acquisition = z.infer<typeof acquisitionSchema>
+
+// While the user is answering, any follow-up may be missing and text may be empty or half typed.
+// null means no method has been chosen yet.
+export const acquisitionDraftSchema = z
+  .discriminatedUnion("method", [
+    z.strictObject({
+      method: z.literal("direct_purchase"),
+      metadata: z.strictObject({ document: documentReferenceSchema.optional() }),
+    }),
+    z.strictObject({
+      method: z.literal("purchase_from_owner"),
+      metadata: z
+        .strictObject({
+          transferred_by: z.strictObject({ name: z.string().trim(), phone: z.string().trim() }).partial(),
+          has_document: z.boolean(),
+          document: documentReferenceSchema,
+        })
+        .partial(),
+    }),
+    z.strictObject({
+      method: z.literal("transfer_assignment"),
+      metadata: z.strictObject({ document: documentReferenceSchema.optional() }),
+    }),
+    z.strictObject({
+      method: z.literal("lease_sublease"),
+      metadata: z.strictObject({ lease_years: z.number().int().min(0).max(999) }).partial(),
+    }),
+    z.strictObject({
+      method: z.literal("inheritance"),
+      metadata: z.strictObject({ has_document: z.boolean(), document: documentReferenceSchema }).partial(),
+    }),
+    z.strictObject({
+      method: z.literal("other"),
+      metadata: z.strictObject({ note: z.string().trim() }).partial(),
+    }),
+    z.strictObject({ method: z.literal("unsure"), metadata: z.strictObject({}) }),
+  ])
+  .nullable()
+
+export type AcquisitionDraft = z.infer<typeof acquisitionDraftSchema>
+
+// The body sent to record a document before its file is uploaded
+export const documentUploadSchema = z.strictObject({
+  file_name: z.string().trim().min(1, "The file needs a name").max(255, "The file name is too long"),
+  file_size_bytes: z.number().int().positive("The file is empty").max(MAX_DOCUMENT_BYTES, "The file is larger than 20 MB"),
+  mime_type: z.enum(DOCUMENT_MIME_TYPES, { error: `Upload ${ACCEPTED_DOCUMENTS}` }),
+})
+
+export type DocumentUpload = z.infer<typeof documentUploadSchema>
 
 // The body sent when saving a draft. The draft's id goes in the URL, not here.
 export const draftSchema = z.strictObject({
   details: detailsDraftSchema,
   location: locationDraftSchema,
-  boundary: boundaryDraftSchema,
+  // Left out, the saved boundary is kept
+  boundary: boundaryDraftSchema.optional(),
+  // Left out, the saved answer is kept
+  acquisition: acquisitionDraftSchema.optional(),
 })
 
 export type Draft = z.infer<typeof draftSchema>

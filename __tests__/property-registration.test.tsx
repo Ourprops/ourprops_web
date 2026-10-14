@@ -3,12 +3,22 @@ import { act, cleanup, fireEvent, render, renderHook, screen, waitFor } from '@t
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query'
 import type { ReactNode } from 'react'
 
+import Acquisition from '../app/(app)/properties/new/_components/acquisition'
 import Details from '../app/(app)/properties/new/_components/details'
 import Location from '../app/(app)/properties/new/_components/location'
 import NewPropertyFlow from '../app/(app)/properties/new/_components/new-property-flow'
+import ProgressIndicator from '../app/(app)/properties/new/_components/progress-indicator'
 import { useHandleSaveDraft } from '../lib/queries/property'
 import type { SavedDraft } from '../lib/validators/property'
 import { useNewPropertyStore } from '../stores/new-property-store'
+
+vi.mock('next/navigation', () => ({ useRouter: () => ({ push: vi.fn() }) }))
+
+// Stands in for uploading a file straight to the storage bucket
+const storageUpload = vi.fn<(path: string, file: File, options: unknown) => Promise<{ error: unknown }>>(async () => ({ error: null }))
+vi.mock('@/lib/supabase/client', () => ({
+    createClient: () => ({ storage: { from: () => ({ upload: storageUpload }) } }),
+}))
 
 const DRAFT_ID = '3f1c2b4a-5d6e-4f70-8a9b-0c1d2e3f4a5b'
 const SAVED_AT = '2026-10-13T12:00:00.000Z'
@@ -31,7 +41,8 @@ function requests() {
     return fetchMock.mock.calls.map(([url, init]) => ({
         url,
         method: init.method,
-        body: JSON.parse(init.body as string),
+        // A DELETE has no body
+        body: init.body === undefined ? undefined : JSON.parse(init.body as string),
     }))
 }
 
@@ -58,6 +69,7 @@ beforeEach(() => {
     vi.useFakeTimers({ shouldAdvanceTime: true })
     vi.stubGlobal('fetch', fetchMock)
     fetchMock.mockClear()
+    storageUpload.mockClear()
     window.history.replaceState(null, '', '/properties/new')
     useNewPropertyStore.getState().reset()
 })
@@ -164,7 +176,7 @@ describe('Location screen', () => {
             digital_address: 'GA-123-4567',
             landmark: '',
         })
-        expect(state.screen).toBe('map')
+        expect(state.screen).toBe('boundary')
     })
 
     test('lets the user pick a region', async () => {
@@ -204,7 +216,7 @@ describe('Autosave', () => {
         expect(requests()).toEqual([{
             url: '/api/property/draft',
             method: 'POST',
-            body: { details: { name: 'East' }, location: {} },
+            body: { details: { name: 'East' }, location: {}, boundary: null, acquisition: null },
         }])
     })
 
@@ -282,9 +294,184 @@ describe('Autosave', () => {
     })
 })
 
+describe('Acquisition screen', () => {
+    const DOCUMENT_ID = '9a8b7c6d-5e4f-4a3b-8c2d-1e0f9a8b7c6d'
+    const DOCUMENT = { id: DOCUMENT_ID, path: `${DRAFT_ID}/${DOCUMENT_ID}/letters.pdf`, file_name: 'Letters.pdf' }
+
+    function startOnAcquisition() {
+        useNewPropertyStore.setState({ screen: 'acquisition', propertyId: DRAFT_ID })
+        renderWithQuery(<Acquisition />)
+    }
+
+    // The document API records the document and says where to upload it; every other call is a draft save
+    function answerDocumentRequests() {
+        fetchMock.mockImplementation(async (url: string, init: RequestInit) => {
+            if (url.endsWith('/documents')) return { ok: true, status: 201, json: async () => DOCUMENT } as never
+            if (url.includes('/documents/')) return { ok: true, status: 204, json: async () => ({}) } as never
+            const body = JSON.parse(init.body as string)
+            return { ok: true, status: 200, json: async () => ({ id: DRAFT_ID, updatedAt: SAVED_AT, ...body }) } as never
+        })
+    }
+
+    function chooseFile(name: string, type: string) {
+        const input = document.querySelector('input[type="file"]') as HTMLInputElement
+        fireEvent.change(input, { target: { files: [new File(['%PDF-1.4'], name, { type })] } })
+    }
+
+    test('asks how the property was acquired before moving on', () => {
+        startOnAcquisition()
+
+        fireEvent.click(continueButton())
+
+        expect(screen.getByText('Choose how you got the property')).toBeDefined()
+        expect(useNewPropertyStore.getState().screen).toBe('acquisition')
+    })
+
+    test("moves on straight away when the user isn't sure", () => {
+        startOnAcquisition()
+
+        fireEvent.click(screen.getByRole('radio', { name: /not sure/i }))
+        fireEvent.click(continueButton())
+
+        expect(useNewPropertyStore.getState().acquisition).toEqual({ method: 'unsure', metadata: {} })
+        expect(useNewPropertyStore.getState().screen).toBe('documents')
+    })
+
+    test('asks who transferred the property, and stores their name and number', () => {
+        startOnAcquisition()
+
+        fireEvent.click(screen.getByRole('radio', { name: /from another owner/i }))
+        fireEvent.click(continueButton())
+
+        expect(errorMessages()).toEqual([
+            'Enter the name of the person who transferred it',
+            'Enter a valid phone number.',
+            'Say whether you have the document showing the transfer',
+        ])
+        expect(document.activeElement).toBe(screen.getByLabelText('Their full name'))
+
+        typeInto('Their full name', '  Kwame Mensah ')
+        typeInto('Their phone number', '024 123 4567')
+        fireEvent.click(screen.getByRole('radio', { name: 'No' }))
+        fireEvent.click(continueButton())
+
+        expect(useNewPropertyStore.getState().acquisition).toEqual({
+            method: 'purchase_from_owner',
+            metadata: { transferred_by: { name: 'Kwame Mensah', phone: '024 123 4567' }, has_document: false },
+        })
+        expect(useNewPropertyStore.getState().screen).toBe('documents')
+    })
+
+    test('asks for the document when the user says they have it', () => {
+        startOnAcquisition()
+
+        fireEvent.click(screen.getByRole('radio', { name: /inherited/i }))
+        fireEvent.click(screen.getByRole('radio', { name: 'Yes' }))
+        fireEvent.click(continueButton())
+
+        expect(errorMessages()).toEqual(["Upload the document, or choose No if you don't have it"])
+    })
+
+    test('uploads a document as soon as it is chosen and keeps a reference to it in the answer', async () => {
+        answerDocumentRequests()
+        startOnAcquisition()
+
+        fireEvent.click(screen.getByRole('radio', { name: /inherited/i }))
+        fireEvent.click(screen.getByRole('radio', { name: 'Yes' }))
+        chooseFile('Letters.pdf', 'application/pdf')
+
+        await screen.findByText('Uploaded')
+        expect(requests()[0]).toEqual({
+            url: `/api/property/draft/${DRAFT_ID}/documents`,
+            method: 'POST',
+            body: { file_name: 'Letters.pdf', file_size_bytes: 8, mime_type: 'application/pdf' },
+        })
+        expect(storageUpload).toHaveBeenCalledWith(DOCUMENT.path, expect.any(File), { contentType: 'application/pdf', upsert: false })
+        expect(useNewPropertyStore.getState().acquisition).toEqual({
+            method: 'inheritance',
+            metadata: { has_document: true, document: DOCUMENT },
+        })
+
+        // The answer with the document is saved like any other change
+        await waitForAutosave()
+        expect(requests().at(-1)?.body.acquisition).toEqual({ method: 'inheritance', metadata: { has_document: true, document: DOCUMENT } })
+    })
+
+    test("removes the record of a document whose file didn't upload, and says so", async () => {
+        answerDocumentRequests()
+        storageUpload.mockResolvedValueOnce({ error: { message: 'network' } })
+        startOnAcquisition()
+
+        fireEvent.click(screen.getByRole('radio', { name: /directly from the original owner/i }))
+        chooseFile('Indenture.pdf', 'application/pdf')
+
+        expect(await screen.findByText("The file didn't upload. Check your connection and try again.")).toBeDefined()
+        expect(requests().map((request) => [request.method, request.url])).toContainEqual(['DELETE', `/api/property/draft/${DRAFT_ID}/documents/${DOCUMENT_ID}`])
+        expect(useNewPropertyStore.getState().acquisition).toEqual({ method: 'direct_purchase', metadata: {} })
+    })
+
+    test("refuses a file the bucket won't take without sending it", async () => {
+        startOnAcquisition()
+
+        fireEvent.click(screen.getByRole('radio', { name: /directly from the original owner/i }))
+        chooseFile('notes.txt', 'text/plain')
+
+        expect(await screen.findByText(/^Upload a PDF, a Word document/)).toBeDefined()
+        expect(fetchMock).not.toHaveBeenCalled()
+    })
+
+    test('removes an uploaded document', async () => {
+        answerDocumentRequests()
+        useNewPropertyStore.getState().setAcquisition({ method: 'direct_purchase', metadata: { document: DOCUMENT } })
+        startOnAcquisition()
+
+        fireEvent.click(screen.getByRole('button', { name: 'Remove Letters.pdf' }))
+
+        await waitFor(() => expect(useNewPropertyStore.getState().acquisition).toEqual({ method: 'direct_purchase', metadata: {} }))
+        expect(requests()[0]).toMatchObject({ method: 'DELETE', url: `/api/property/draft/${DRAFT_ID}/documents/${DOCUMENT_ID}` })
+    })
+
+    test('keeps the answers for each method when the user switches between them', () => {
+        startOnAcquisition()
+
+        fireEvent.click(screen.getByRole('radio', { name: /leased/i }))
+        typeInto('How long is the lease?', '99')
+        fireEvent.click(screen.getByRole('radio', { name: /^other$/i }))
+        fireEvent.click(screen.getByRole('radio', { name: /leased/i }))
+
+        expect(useNewPropertyStore.getState().acquisition).toEqual({ method: 'lease_sublease', metadata: { lease_years: 99 } })
+    })
+})
+
+describe('Failed saves', () => {
+    test('shows that the draft could not be saved, and saves it again on retry', async () => {
+        fetchMock.mockImplementationOnce(async () => ({
+            ok: false,
+            status: 500,
+            json: async () => ({ error: { message: 'Unable to save your draft right now.' } }),
+        }) as never)
+        useNewPropertyStore.getState().setScreen('details')
+        renderWithQuery(
+            <>
+                <ProgressIndicator />
+                <Details />
+            </>,
+        )
+
+        typeInto('Property name', 'House')
+        await waitForAutosave()
+        await waitFor(() => expect(useNewPropertyStore.getState().draftSaveFailed).toBe(true))
+
+        fireEvent.click(screen.getByRole('button', { name: /retry/i }))
+        await waitFor(() => expect(useNewPropertyStore.getState().draftSaveFailed).toBe(false))
+        expect(requests().map((request) => request.body.details)).toEqual([{ name: 'House' }, { name: 'House' }])
+        expect(screen.queryByRole('button', { name: /retry/i })).toBeNull()
+    })
+})
+
 describe('Registration flow', () => {
     test('goes from the start screen through details to location', () => {
-        renderWithQuery(<NewPropertyFlow draft={null} />)
+        renderWithQuery(<NewPropertyFlow draft={null} mapsApiKey="" />)
 
         fireEvent.click(screen.getByRole('button', { name: /get started/i }))
         expect(screen.getByRole('heading', { name: 'Tell us about the property' })).toBeDefined()
@@ -297,7 +484,7 @@ describe('Registration flow', () => {
     })
 
     test('keeps what was typed when going back a step', () => {
-        renderWithQuery(<NewPropertyFlow draft={null} />)
+        renderWithQuery(<NewPropertyFlow draft={null} mapsApiKey="" />)
 
         fireEvent.click(screen.getByRole('button', { name: /get started/i }))
         typeInto('Property name', 'East Legon house')
@@ -316,7 +503,7 @@ describe('Registration flow', () => {
             location: { region: 'Greater Accra', city: 'East Legon' },
         }
 
-        renderWithQuery(<NewPropertyFlow draft={draft} />)
+        renderWithQuery(<NewPropertyFlow draft={draft} mapsApiKey="" />)
 
         const state = useNewPropertyStore.getState()
         expect(state.propertyId).toBe(DRAFT_ID)
@@ -330,7 +517,7 @@ describe('Registration flow', () => {
         store.updateDetails({ name: 'Old draft' })
         store.setScreen('location')
 
-        renderWithQuery(<NewPropertyFlow draft={null} />)
+        renderWithQuery(<NewPropertyFlow draft={null} mapsApiKey="" />)
 
         const state = useNewPropertyStore.getState()
         expect(state.propertyId).toBeUndefined()

@@ -16,5 +16,6 @@ export default async function NewPropertyPage({
     const draft = typeof draftId === "string" ? await getDraft(await createClient(), draftId) : null
     if (typeof draftId === "string" && !draft) notFound()
 
-    return <NewPropertyFlow draft={draft} />
+    // The key is sent to the browser for the map, so restrict it to the app's domains in Google Cloud
+    return <NewPropertyFlow draft={draft} mapsApiKey={process.env.GOOGLE_MAPS_API_KEY ?? ""} />
 }
