@@ -1,5 +1,6 @@
 import { useNewPropertyStore } from "@/stores/new-property-store";
-import { useMutation } from "@tanstack/react-query";
+import { useMutation, useQuery, useQueryClient, type QueryClient } from "@tanstack/react-query";
+import { z } from "zod";
 import { useEffect, useRef } from "react";
 
 import { PROPERTY_DOCUMENTS_BUCKET, documentMimeType } from "@/lib/storage/property-documents";
@@ -7,9 +8,14 @@ import { createClient } from "@/lib/supabase/client";
 import {
     documentReferenceSchema,
     documentUploadSchema,
+    draftDocumentSchema,
     draftSchema,
     savedDraftSchema,
+    type AcquisitionDraft,
     type DocumentReference,
+    type DocumentSlot,
+    type DraftDocument,
+    type PropertyDocumentType,
 } from "@/lib/validators/property";
 
 // How long the user must pause before their changes are saved
@@ -106,17 +112,55 @@ async function errorMessage(response: Response, fallback: string) {
     return data.error?.message ?? fallback
 }
 
+// The documents on a draft are cached under this key, so uploads, changes and removals on any screen show everywhere
+function draftDocumentsKey(propertyId: string | undefined) {
+    return ["draft-documents", propertyId] as const
+}
+
+function updateCachedDocuments(
+    queryClient: QueryClient,
+    propertyId: string | undefined,
+    update: (documents: DraftDocument[]) => DraftDocument[],
+) {
+    queryClient.setQueryData<DraftDocument[]>(draftDocumentsKey(propertyId), (documents) => documents && update(documents))
+}
+
+/** The documents uploaded to the draft so far, oldest first. Empty until the draft has been saved. */
+export function useDraftDocuments() {
+    const propertyId = useNewPropertyStore((state) => state.propertyId)
+
+    return useQuery({
+        queryKey: draftDocumentsKey(propertyId),
+        queryFn: async (): Promise<DraftDocument[]> => {
+            const response = await fetch(`/api/property/draft/${propertyId}/documents`)
+            if (!response.ok) throw new Error(await errorMessage(response, "Unable to load your documents right now."))
+            return z.array(draftDocumentSchema).parse(await response.json())
+        },
+        // A draft that hasn't been saved has no documents
+        enabled: !!propertyId,
+        initialData: propertyId ? undefined : [],
+    })
+}
+
+type UploadDocument = {
+    file: File
+    /** The checklist item the user added the file to */
+    slot: DocumentSlot
+}
+
 /**
  * Uploads a document to the draft as soon as the user picks it, so it is kept even if they leave before finishing.
  * The document is recorded through the API, which says where to put the file, and the file goes straight to storage.
  */
 export function useUploadDocument() {
     const { mutateAsync: saveDraft } = useHandleSaveDraft()
+    const queryClient = useQueryClient()
 
     return useMutation({
-        mutationFn: async (file: File): Promise<DocumentReference> => {
+        mutationFn: async ({ file, slot }: UploadDocument): Promise<DocumentReference> => {
             // The same checks as the bucket, so the user hears about a wrong file before anything is sent
             const upload = documentUploadSchema.safeParse({
+                slot,
                 file_name: file.name,
                 file_size_bytes: file.size,
                 mime_type: documentMimeType(file),
@@ -145,13 +189,70 @@ export function useUploadDocument() {
                 throw new Error("The file didn't upload. Check your connection and try again.")
             }
 
+            // Shown straight away; the list is fetched again in the background to pick up what the server stored
+            updateCachedDocuments(queryClient, propertyId, (documents) => [
+                ...documents,
+                {
+                    ...document,
+                    slot,
+                    declared_type: null,
+                    file_size_bytes: upload.data.file_size_bytes,
+                    mime_type: upload.data.mime_type,
+                    created_at: new Date().toISOString(),
+                },
+            ])
+            void queryClient.invalidateQueries({ queryKey: draftDocumentsKey(propertyId) })
             return document
         },
     })
 }
 
+type SetDeclaredType = {
+    document: DraftDocument
+    declared_type: PropertyDocumentType | null
+}
+
+/** Records what the user says a document is. The choice shows at once and is undone if it can't be saved. */
+export function useSetDeclaredType() {
+    const queryClient = useQueryClient()
+
+    return useMutation({
+        mutationFn: async ({ document, declared_type }: SetDeclaredType) => {
+            const { propertyId } = useNewPropertyStore.getState()
+            const response = await fetch(`/api/property/draft/${propertyId}/documents/${document.id}`, {
+                method: "PATCH",
+                headers: { "Content-Type": "application/json" },
+                body: JSON.stringify({ declared_type }),
+            })
+            if (!response.ok) throw new Error(await errorMessage(response, "Unable to save what this document is right now."))
+            return draftDocumentSchema.parse(await response.json())
+        },
+        onMutate: ({ document, declared_type }) => {
+            const { propertyId } = useNewPropertyStore.getState()
+            updateCachedDocuments(queryClient, propertyId, (documents) =>
+                documents.map((each) => (each.id === document.id ? { ...each, declared_type } : each)),
+            )
+            return { propertyId }
+        },
+        onError: (_error, { document }, context) => {
+            updateCachedDocuments(queryClient, context?.propertyId, (documents) =>
+                documents.map((each) => (each.id === document.id ? { ...each, declared_type: document.declared_type } : each)),
+            )
+        },
+    })
+}
+
+// An answer to the acquisition question that points to a removed document would no longer save, so the link is dropped
+function forgetAcquisitionDocument(documentId: string) {
+    const { acquisition, setAcquisition } = useNewPropertyStore.getState()
+    if (!acquisition || !("document" in acquisition.metadata) || acquisition.metadata.document?.id !== documentId) return
+    setAcquisition({ ...acquisition, metadata: { ...acquisition.metadata, document: undefined } } as AcquisitionDraft)
+}
+
 /** Removes an uploaded document and its file from the draft */
 export function useRemoveDocument() {
+    const queryClient = useQueryClient()
+
     return useMutation({
         mutationFn: async (document: DocumentReference) => {
             const { propertyId } = useNewPropertyStore.getState()
@@ -160,6 +261,9 @@ export function useRemoveDocument() {
             if (!response.ok && response.status !== 404) {
                 throw new Error(await errorMessage(response, "Unable to remove your document right now."))
             }
+
+            forgetAcquisitionDocument(document.id)
+            updateCachedDocuments(queryClient, propertyId, (documents) => documents.filter((each) => each.id !== document.id))
         },
     })
 }

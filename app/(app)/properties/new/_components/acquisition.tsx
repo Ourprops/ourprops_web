@@ -439,7 +439,8 @@ function DocumentField({ label, description, optional, document, error, onChange
         setFailure(null)
         setPending(file.name)
         onUploadingChange(true)
-        upload.mutate(file, {
+        // Every document asked for here shows how the user got the property, so it is listed as an ownership document
+        upload.mutate({ file, slot: "ownership" }, {
             onSuccess: (uploaded) => onChange(uploaded),
             onError: (uploadError) => setFailure(uploadError.message),
             onSettled: () => {

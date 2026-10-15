@@ -1,10 +1,11 @@
 import { afterEach, beforeEach, describe, expect, test, vi } from 'vitest'
-import { act, cleanup, fireEvent, render, renderHook, screen, waitFor } from '@testing-library/react'
+import { act, cleanup, fireEvent, render, renderHook, screen, waitFor, within } from '@testing-library/react'
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query'
 import type { ReactNode } from 'react'
 
 import Acquisition from '../app/(app)/properties/new/_components/acquisition'
 import Details from '../app/(app)/properties/new/_components/details'
+import Documents from '../app/(app)/properties/new/_components/documents'
 import Location from '../app/(app)/properties/new/_components/location'
 import NewPropertyFlow from '../app/(app)/properties/new/_components/new-property-flow'
 import ProgressIndicator from '../app/(app)/properties/new/_components/progress-indicator'
@@ -40,9 +41,9 @@ function renderWithQuery(ui: ReactNode) {
 function requests() {
     return fetchMock.mock.calls.map(([url, init]) => ({
         url,
-        method: init.method,
-        // A DELETE has no body
-        body: init.body === undefined ? undefined : JSON.parse(init.body as string),
+        method: init?.method ?? 'GET',
+        // A GET or DELETE has no body
+        body: init?.body === undefined ? undefined : JSON.parse(init.body as string),
     }))
 }
 
@@ -384,7 +385,7 @@ describe('Acquisition screen', () => {
         expect(requests()[0]).toEqual({
             url: `/api/property/draft/${DRAFT_ID}/documents`,
             method: 'POST',
-            body: { file_name: 'Letters.pdf', file_size_bytes: 8, mime_type: 'application/pdf' },
+            body: { slot: 'ownership', file_name: 'Letters.pdf', file_size_bytes: 8, mime_type: 'application/pdf' },
         })
         expect(storageUpload).toHaveBeenCalledWith(DOCUMENT.path, expect.any(File), { contentType: 'application/pdf', upsert: false })
         expect(useNewPropertyStore.getState().acquisition).toEqual({
@@ -440,6 +441,171 @@ describe('Acquisition screen', () => {
         fireEvent.click(screen.getByRole('radio', { name: /leased/i }))
 
         expect(useNewPropertyStore.getState().acquisition).toEqual({ method: 'lease_sublease', metadata: { lease_years: 99 } })
+    })
+})
+
+describe('Documents screen', () => {
+    const IDS = ['9a8b7c6d-5e4f-4a3b-8c2d-1e0f9a8b7c6d', '1b2c3d4e-5f60-4a7b-8c9d-0e1f2a3b4c5d', '7e6d5c4b-3a29-4180-9f7e-6d5c4b3a2918']
+
+    function listed(index: number, overrides: Record<string, unknown> = {}) {
+        return {
+            id: IDS[index],
+            path: `${DRAFT_ID}/${IDS[index]}/file-${index}.pdf`,
+            file_name: `File ${index}.pdf`,
+            slot: 'ownership',
+            declared_type: null,
+            file_size_bytes: 250_000,
+            mime_type: 'application/pdf',
+            created_at: SAVED_AT,
+            ...overrides,
+        }
+    }
+
+    // Stands in for the document API: lists `documents`, records uploads with the next free id and accepts changes
+    function answerDocumentRequests(documents: unknown[], { failTypeChange = false } = {}) {
+        let uploaded = documents.length
+        // A GET is sent without options, despite what the type says
+        fetchMock.mockImplementation(async (url: string, init: RequestInit) => {
+            const method = init?.method ?? 'GET'
+            if (url.endsWith('/documents') && method === 'GET') return { ok: true, status: 200, json: async () => documents } as never
+            if (url.endsWith('/documents')) {
+                const body = JSON.parse(init.body as string)
+                const id = IDS[uploaded++]
+                return { ok: true, status: 201, json: async () => ({ id, path: `${DRAFT_ID}/${id}/${body.file_name}`, file_name: body.file_name }) } as never
+            }
+            if (method === 'PATCH' && url.includes('/documents/')) {
+                if (failTypeChange) return { ok: false, status: 500, json: async () => ({ error: { message: 'Unable to save what this document is right now.' } }) } as never
+                const body = JSON.parse(init.body as string)
+                return { ok: true, status: 200, json: async () => ({ ...listed(0), ...body }) } as never
+            }
+            if (method === 'DELETE') return { ok: true, status: 204, json: async () => ({}) } as never
+            const body = JSON.parse(init.body as string)
+            return { ok: true, status: 200, json: async () => ({ id: DRAFT_ID, updatedAt: SAVED_AT, ...body }) } as never
+        })
+    }
+
+    function startOnDocuments() {
+        useNewPropertyStore.setState({ screen: 'documents', propertyId: DRAFT_ID })
+        render(
+            <QueryClientProvider client={new QueryClient({ defaultOptions: { queries: { retry: false } } })}>
+                <Documents />
+            </QueryClientProvider>,
+        )
+    }
+
+    function checklistItem(title: string) {
+        return within(screen.getByRole('listitem', { name: new RegExp(`^${title}`) }))
+    }
+
+    function chooseFiles(item: ReturnType<typeof checklistItem>, names: string[]) {
+        const input = item.getByRole('button', { name: /add a file|add another file/i }).parentElement!.querySelector('input[type="file"]')!
+        fireEvent.change(input, { target: { files: names.map((name) => new File(['%PDF-1.4'], name, { type: 'application/pdf' })) } })
+    }
+
+    async function chooseType(fileName: string, type: string) {
+        fireEvent.click(screen.getByLabelText(`What is it? (${fileName})`))
+        const option = await screen.findByRole('option', { name: type })
+        // Base UI only accepts a mouse click that started on the option, as a real click does
+        fireEvent.pointerDown(option, { pointerType: 'mouse' })
+        fireEvent.click(option)
+    }
+
+    test('shows the three checklist items, with the documents already uploaded under each', async () => {
+        answerDocumentRequests([listed(0), listed(1, { slot: 'site_plan', file_name: 'Plan.pdf', declared_type: 'cadastral_plan' })])
+        startOnDocuments()
+
+        expect(await checklistItem('Ownership document').findByText('File 0.pdf')).toBeDefined()
+        expect(checklistItem('Site plan or survey plan').getByText('Plan.pdf')).toBeDefined()
+        expect(checklistItem('Other supporting documents').queryAllByRole('listitem')).toEqual([])
+        expect(screen.getByLabelText('What is it? (File 0.pdf)').textContent).toContain("I'm not sure")
+        expect(screen.getByLabelText('What is it? (Plan.pdf)').textContent).toContain('Cadastral plan')
+        expect(screen.getByRole('heading', { name: 'Site plan or survey plan (added)' })).toBeDefined()
+        expect(screen.getByRole('heading', { name: 'Other supporting documents (not added yet)' })).toBeDefined()
+    })
+
+    test('uploads several files to a checklist item at once', async () => {
+        answerDocumentRequests([])
+        startOnDocuments()
+        await screen.findByRole('button', { name: /continue without documents/i })
+
+        chooseFiles(checklistItem('Site plan or survey plan'), ['Plan.pdf', 'Survey.pdf'])
+
+        expect(screen.getByRole('button', { name: 'Uploading…' }).hasAttribute('disabled')).toBe(true)
+        await waitFor(() => expect(checklistItem('Site plan or survey plan').getAllByText(/^(Plan|Survey)\.pdf$/)).toHaveLength(2))
+        expect(screen.queryByText('Uploading…')).toBeNull()
+        const uploads = requests().filter((request) => request.method === 'POST')
+        expect(uploads.map((request) => request.body)).toEqual([
+            { slot: 'site_plan', file_name: 'Plan.pdf', file_size_bytes: 8, mime_type: 'application/pdf' },
+            { slot: 'site_plan', file_name: 'Survey.pdf', file_size_bytes: 8, mime_type: 'application/pdf' },
+        ])
+        expect(storageUpload).toHaveBeenCalledTimes(2)
+    })
+
+    test("shows a file that didn't upload under its checklist item, and lets the user dismiss it", async () => {
+        answerDocumentRequests([])
+        storageUpload.mockResolvedValueOnce({ error: { message: 'network' } })
+        startOnDocuments()
+        await screen.findByRole('button', { name: /continue without documents/i })
+
+        chooseFiles(checklistItem('Ownership document'), ['Indenture.pdf'])
+
+        expect(await checklistItem('Ownership document').findByText("The file didn't upload. Check your connection and try again.")).toBeDefined()
+        expect(continueButton().hasAttribute('disabled')).toBe(false)
+        fireEvent.click(screen.getByRole('button', { name: 'Dismiss Indenture.pdf' }))
+        expect(screen.queryByText('Indenture.pdf')).toBeNull()
+    })
+
+    test('lets the user say what a document is, or that they are not sure', async () => {
+        answerDocumentRequests([listed(0)])
+        startOnDocuments()
+        await screen.findByText('File 0.pdf')
+
+        await chooseType('File 0.pdf', 'Indenture')
+
+        await waitFor(() => expect(screen.getByLabelText('What is it? (File 0.pdf)').textContent).toContain('Indenture'))
+        expect(requests().at(-1)).toEqual({ url: `/api/property/draft/${DRAFT_ID}/documents/${IDS[0]}`, method: 'PATCH', body: { declared_type: 'indenture' } })
+
+        await chooseType('File 0.pdf', "I'm not sure")
+
+        await waitFor(() => expect(requests().at(-1)?.body).toEqual({ declared_type: null }))
+    })
+
+    test("puts the answer back when it can't be saved", async () => {
+        answerDocumentRequests([listed(0)], { failTypeChange: true })
+        startOnDocuments()
+        await screen.findByText('File 0.pdf')
+
+        await chooseType('File 0.pdf', 'Site plan')
+
+        expect(await screen.findByText('Unable to save what this document is right now.')).toBeDefined()
+        expect(screen.getByLabelText('What is it? (File 0.pdf)').textContent).toContain("I'm not sure")
+    })
+
+    test('removes a document, and drops it from the acquisition answer that pointed to it', async () => {
+        const document = listed(0)
+        answerDocumentRequests([document])
+        useNewPropertyStore.getState().setAcquisition({
+            method: 'direct_purchase',
+            metadata: { document: { id: document.id, path: document.path, file_name: document.file_name } },
+        })
+        startOnDocuments()
+
+        expect(await screen.findByText(/Added with your answer on how you got the property/)).toBeDefined()
+        fireEvent.click(screen.getByRole('button', { name: 'Remove File 0.pdf' }))
+
+        await waitFor(() => expect(screen.queryByText('File 0.pdf')).toBeNull())
+        expect(useNewPropertyStore.getState().acquisition).toEqual({ method: 'direct_purchase', metadata: {} })
+        await waitForAutosave()
+        expect(requests().at(-1)).toMatchObject({ method: 'PATCH', url: `/api/property/draft/${DRAFT_ID}`, body: { acquisition: { method: 'direct_purchase', metadata: {} } } })
+    })
+
+    test('lets the user continue without documents', async () => {
+        answerDocumentRequests([])
+        startOnDocuments()
+
+        fireEvent.click(await screen.findByRole('button', { name: /continue without documents/i }))
+
+        expect(useNewPropertyStore.getState().screen).toBe('review')
     })
 })
 
