@@ -298,6 +298,14 @@ export type Draft = z.infer<typeof draftSchema>
 
 export const propertyIdSchema = z.uuid()
 
+// What the user confirms before submitting. The server records this wording, not what the browser sends, as what they agreed to.
+export const SUBMISSION_DECLARATION = "I confirm that the information I have provided is accurate to the best of my knowledge."
+
+// The body sent to submit a draft
+export const submitSchema = z.strictObject({
+  confirmed: z.literal(true, { error: "Confirm that your information is accurate before submitting." }),
+})
+
 // A draft as stored on the server, returned after each save and used to resume registration
 export const savedDraftSchema = draftSchema.extend({
   id: propertyIdSchema,

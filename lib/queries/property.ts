@@ -267,3 +267,31 @@ export function useRemoveDocument() {
         },
     })
 }
+
+/**
+ * Sends the draft for review, then shows the confirmation.
+ * It shares the draft saves' scope, so a save still running when the user submits finishes first.
+ */
+export function useSubmitDraft() {
+    return useMutation({
+        scope: { id: "save-draft" },
+        mutationFn: async () => {
+            const { propertyId } = useNewPropertyStore.getState()
+            if (!propertyId) throw new Error("Your draft hasn't saved yet. Try again in a moment.")
+
+            const response = await fetch(`/api/property/draft/${propertyId}/submit`, {
+                method: "POST",
+                headers: { "Content-Type": "application/json" },
+                // The review screen only submits once the user has ticked the declaration
+                body: JSON.stringify({ confirmed: true }),
+            })
+            if (!response.ok) throw new Error(await errorMessage(response, "Unable to submit your property right now."))
+            return z.object({ slug: z.string() }).parse(await response.json())
+        },
+        onSuccess: () => {
+            // The submitted property is no longer a draft, so a refresh shouldn't try to resume it
+            if (window.location.pathname === NEW_PROPERTY_PATH) window.history.replaceState(null, "", NEW_PROPERTY_PATH)
+            useNewPropertyStore.getState().setScreen("confirmation")
+        },
+    })
+}

@@ -4,11 +4,13 @@ import { QueryClient, QueryClientProvider } from '@tanstack/react-query'
 import type { ReactNode } from 'react'
 
 import Acquisition from '../app/(app)/properties/new/_components/acquisition'
+import Confirmation from '../app/(app)/properties/new/_components/confirmation'
 import Details from '../app/(app)/properties/new/_components/details'
 import Documents from '../app/(app)/properties/new/_components/documents'
 import Location from '../app/(app)/properties/new/_components/location'
 import NewPropertyFlow from '../app/(app)/properties/new/_components/new-property-flow'
 import ProgressIndicator from '../app/(app)/properties/new/_components/progress-indicator'
+import Review from '../app/(app)/properties/new/_components/review'
 import { useHandleSaveDraft } from '../lib/queries/property'
 import type { SavedDraft } from '../lib/validators/property'
 import { useNewPropertyStore } from '../stores/new-property-store'
@@ -606,6 +608,227 @@ describe('Documents screen', () => {
         fireEvent.click(await screen.findByRole('button', { name: /continue without documents/i }))
 
         expect(useNewPropertyStore.getState().screen).toBe('review')
+    })
+})
+
+describe('Review screen', () => {
+    const DOCUMENT_ID = '9a8b7c6d-5e4f-4a3b-8c2d-1e0f9a8b7c6d'
+    const INDENTURE = {
+        id: DOCUMENT_ID,
+        path: `${DRAFT_ID}/${DOCUMENT_ID}/indenture.pdf`,
+        file_name: 'Indenture.pdf',
+        slot: 'ownership',
+        declared_type: 'indenture',
+        file_size_bytes: 250_000,
+        mime_type: 'application/pdf',
+        created_at: SAVED_AT,
+    }
+
+    // A draft with every screen answered, apart from what each test leaves out
+    function fillDraft() {
+        useNewPropertyStore.setState({
+            screen: 'review',
+            propertyId: DRAFT_ID,
+            details: { name: 'East Legon house', type: 'residential' },
+            location: { region: 'Greater Accra', municipality: 'Ayawaso West', city: 'East Legon', digital_address: 'GA-123-4567' },
+            boundary: {
+                polygon: [
+                    { latitude: 5.6, longitude: -0.2 },
+                    { latitude: 5.6, longitude: -0.199 },
+                    { latitude: 5.601, longitude: -0.199 },
+                ],
+                source: 'manual_draw',
+            },
+            acquisition: { method: 'unsure', metadata: {} },
+        })
+    }
+
+    // Stands in for the API: lists `documents` and answers a submit with `submitResponse`
+    function answerRequests(documents: unknown[], submitResponse = { ok: true, status: 200, body: { slug: 'east-legon-house-3f1c2b4a' } as unknown }) {
+        fetchMock.mockImplementation(async (url: string, init: RequestInit) => {
+            if (url.endsWith('/documents')) return { ok: true, status: 200, json: async () => documents } as never
+            if (url.endsWith('/submit')) return { ...submitResponse, json: async () => submitResponse.body } as never
+            const body = JSON.parse(init.body as string)
+            return { ok: true, status: 200, json: async () => ({ id: DRAFT_ID, updatedAt: SAVED_AT, ...body }) } as never
+        })
+    }
+
+    // The whole flow, so the edit links can open other screens. The draft matches the store, so the flow keeps it as it is.
+    function renderReview() {
+        const { details, location } = useNewPropertyStore.getState()
+        render(
+            <QueryClientProvider client={new QueryClient({ defaultOptions: { queries: { retry: false } } })}>
+                <NewPropertyFlow draft={{ id: DRAFT_ID, updatedAt: SAVED_AT, details, location }} mapsApiKey="" />
+            </QueryClientProvider>,
+        )
+    }
+
+    function reviewSection(title: string) {
+        return within(screen.getByRole('region', { name: title }))
+    }
+
+    test('shows every answer, grouped by the screen it came from', async () => {
+        fillDraft()
+        answerRequests([INDENTURE])
+        render(<QueryClientProvider client={new QueryClient()}><Review /></QueryClientProvider>)
+
+        expect(await reviewSection('Documents').findByText('Indenture.pdf')).toBeDefined()
+        expect(reviewSection('Documents').getByText('Indenture')).toBeDefined()
+        expect(reviewSection('Property details').getByText('East Legon house')).toBeDefined()
+        expect(reviewSection('Property details').getByText('Residential')).toBeDefined()
+        expect(reviewSection('Location').getByText('GA-123-4567')).toBeDefined()
+        expect(reviewSection('Location').getAllByText('Not given')).toHaveLength(2)
+        expect(reviewSection('Boundary').getByText(/m² \(/)).toBeDefined()
+        expect(reviewSection('How you got it').getByText(/You're not sure/)).toBeDefined()
+    })
+
+    test("says clearly what's missing, and still lets the user submit", async () => {
+        fillDraft()
+        useNewPropertyStore.setState({ boundary: null })
+        answerRequests([INDENTURE])
+        renderReview()
+
+        expect(await screen.findByRole('heading', { name: '3 things are missing' })).toBeDefined()
+        expect(screen.getByRole('button', { name: 'No boundary or pin on the map yet' })).toBeDefined()
+        expect(screen.getByRole('button', { name: 'No site plan or survey plan yet' })).toBeDefined()
+        expect(screen.getByRole('button', { name: 'No other supporting documents yet' })).toBeDefined()
+        expect(reviewSection('Boundary').getByText('No boundary or pin yet')).toBeDefined()
+        expect(screen.getByRole('button', { name: /submit for review/i }).hasAttribute('disabled')).toBe(false)
+    })
+
+    test("points out a document the user said they have but didn't upload", async () => {
+        fillDraft()
+        useNewPropertyStore.setState({ acquisition: { method: 'inheritance', metadata: { has_document: true } } })
+        answerRequests([INDENTURE])
+        renderReview()
+
+        expect(await screen.findByRole('button', { name: /said you have a document/ })).toBeDefined()
+        expect(reviewSection('How you got it').getByText('Not uploaded yet')).toBeDefined()
+    })
+
+    test('opens a section to edit it, and comes back to review when the user continues', async () => {
+        fillDraft()
+        answerRequests([INDENTURE])
+        renderReview()
+
+        fireEvent.click(screen.getByRole('button', { name: 'Edit property details' }))
+        expect(screen.getByRole('heading', { name: 'Tell us about the property' })).toBeDefined()
+        typeInto('Property name', 'East Legon villa')
+        fireEvent.click(continueButton())
+
+        expect(screen.getByRole('heading', { name: 'Check your answers' })).toBeDefined()
+        expect(reviewSection('Property details').getByText('East Legon villa')).toBeDefined()
+    })
+
+    test('opens the screen for something missing, and comes back to review when the user goes back', async () => {
+        fillDraft()
+        answerRequests([INDENTURE])
+        renderReview()
+
+        fireEvent.click(await screen.findByRole('button', { name: 'No site plan or survey plan yet' }))
+        expect(screen.getByRole('heading', { name: 'Add your documents' })).toBeDefined()
+        act(() => useNewPropertyStore.getState().handleBack())
+
+        expect(screen.getByRole('heading', { name: 'Check your answers' })).toBeDefined()
+    })
+
+    test('asks the user to confirm their information is accurate before submitting', async () => {
+        fillDraft()
+        answerRequests([INDENTURE])
+        render(<QueryClientProvider client={new QueryClient()}><Review /></QueryClientProvider>)
+
+        expect(screen.getByText('I confirm that the information I have provided is accurate to the best of my knowledge.')).toBeDefined()
+        fireEvent.click(screen.getByRole('button', { name: /submit for review/i }))
+
+        expect(errorMessages()).toEqual(['Tick the box to confirm your information is accurate'])
+        expect(document.activeElement).toBe(screen.getByRole('checkbox', { name: 'I confirm' }))
+        expect(requests().some((request) => request.url.endsWith('/submit'))).toBe(false)
+    })
+
+    test('submits the draft once the user confirms, and moves on to the confirmation', async () => {
+        fillDraft()
+        answerRequests([INDENTURE])
+        render(<QueryClientProvider client={new QueryClient()}><Review /></QueryClientProvider>)
+
+        fireEvent.click(screen.getByRole('checkbox', { name: 'I confirm' }))
+        fireEvent.click(screen.getByRole('button', { name: /submit for review/i }))
+
+        await waitFor(() => expect(useNewPropertyStore.getState().screen).toBe('confirmation'))
+        expect(requests()).toContainEqual({ url: `/api/property/draft/${DRAFT_ID}/submit`, method: 'POST', body: { confirmed: true } })
+    })
+
+    test("says why when the submit doesn't go through, and stays on review", async () => {
+        fillDraft()
+        answerRequests([INDENTURE], { ok: false, status: 500, body: { error: { message: 'Unable to submit your property right now.' } } })
+        render(<QueryClientProvider client={new QueryClient()}><Review /></QueryClientProvider>)
+
+        fireEvent.click(screen.getByRole('checkbox', { name: 'I confirm' }))
+        fireEvent.click(screen.getByRole('button', { name: /submit for review/i }))
+
+        expect(await screen.findByText('Unable to submit your property right now.')).toBeDefined()
+        expect(useNewPropertyStore.getState().screen).toBe('review')
+    })
+
+    test("waits for an answer the property can't be submitted without", () => {
+        fillDraft()
+        useNewPropertyStore.setState({ acquisition: null })
+        answerRequests([INDENTURE])
+        render(<QueryClientProvider client={new QueryClient()}><Review /></QueryClientProvider>)
+
+        expect(screen.getByText('Add how you got the property before you submit.')).toBeDefined()
+        expect(screen.getByRole('button', { name: /submit for review/i }).hasAttribute('disabled')).toBe(true)
+    })
+})
+
+describe('Confirmation screen', () => {
+    function showConfirmation(documents: unknown[]) {
+        useNewPropertyStore.setState({
+            screen: 'confirmation',
+            propertyId: DRAFT_ID,
+            details: { name: 'East Legon house', type: 'residential' },
+            location: { region: 'Greater Accra', city: 'East Legon' },
+            boundary: null,
+            acquisition: { method: 'unsure', metadata: {} },
+        })
+        // Only the documents are fetched; anything else is a draft save, answered as usual
+        fetchMock.mockImplementation(async (url: string, init: RequestInit) => {
+            if (url.endsWith('/documents')) return { ok: true, status: 200, json: async () => documents } as never
+            const body = JSON.parse(init.body as string)
+            return { ok: true, status: 200, json: async () => ({ id: DRAFT_ID, updatedAt: SAVED_AT, ...body }) } as never
+        })
+        render(
+            <QueryClientProvider client={new QueryClient({ defaultOptions: { queries: { retry: false } } })}>
+                <Confirmation />
+            </QueryClientProvider>,
+        )
+    }
+
+    test('says the property was sent for review and what happens next', () => {
+        showConfirmation([])
+
+        expect(screen.getByRole('heading', { name: 'Property submitted' })).toBeDefined()
+        expect(screen.getByText('East Legon house')).toBeDefined()
+        expect(screen.getAllByRole('listitem').map((item) => item.querySelector('p')?.textContent)).toContain('A reviewer checks your property')
+        expect(screen.getByText('Go to your dashboard').closest('a')?.getAttribute('href')).toBe('/dashboard')
+    })
+
+    test('lists what the user submitted without, so they can have it ready', async () => {
+        showConfirmation([])
+
+        expect(await screen.findByRole('heading', { name: 'Have these ready' })).toBeDefined()
+        expect(screen.getByText('No boundary or pin on the map yet')).toBeDefined()
+        expect(screen.getByText('No ownership document yet')).toBeDefined()
+    })
+
+    test('starts a new registration', () => {
+        showConfirmation([])
+
+        fireEvent.click(screen.getByRole('button', { name: 'Register another property' }))
+
+        const state = useNewPropertyStore.getState()
+        expect(state.screen).toBe('start')
+        expect(state.propertyId).toBeUndefined()
+        expect(state.details).toEqual({})
     })
 })
 
