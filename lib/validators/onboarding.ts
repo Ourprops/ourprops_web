@@ -8,12 +8,14 @@ export const ONBOARDING_ROLE_LABELS: Record<(typeof ONBOARDING_ROLES)[number], s
   developer: "Developer",
 }
 
+export const phoneNumberSchema = z
+  .string()
+  .trim()
+  .regex(/^\+?[0-9\s\-()]{7,20}$/, "Enter a valid phone number.")
+
 export const onboardingSchema = z.object({
   role: z.enum(ONBOARDING_ROLES, "Select a role."),
-  phoneNumber: z
-    .string()
-    .trim()
-    .regex(/^\+?[0-9\s\-()]{7,20}$/, "Enter a valid phone number."),
+  phoneNumber: phoneNumberSchema,
 })
 
 export type OnboardingInput = z.infer<typeof onboardingSchema>

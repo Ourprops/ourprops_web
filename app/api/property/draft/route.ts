@@ -1,6 +1,6 @@
 import { NextRequest } from "next/server"
 
-import { createDraft } from "@/lib/supabase/property-drafts"
+import { createDraft, InvalidDraftError } from "@/lib/supabase/property-drafts"
 
 import { errorResponse, readDraftRequest } from "./request"
 
@@ -13,6 +13,7 @@ export async function POST(request: NextRequest): Promise<Response> {
         const saved = await createDraft(result.supabase, result.user.id, result.draft)
         return Response.json(saved, { status: 201 })
     } catch (error) {
+        if (error instanceof InvalidDraftError) return errorResponse(error.message, 400)
         console.error("Error creating property draft:", error)
         return errorResponse("Unable to save your draft right now.", 500)
     }

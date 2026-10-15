@@ -248,6 +248,17 @@ Row Level Security is mandatory on application tables and Storage objects. UI ro
 
 The public Passport should use an intentionally narrow anonymous-read surface. Do not make a base property table publicly selectable merely to serve a Passport. All service-role calls, signed URL generation, state transitions, reviewer actions, and token validation occur on the server or in tightly scoped backend functions.
 
+### Known risks
+
+Risks accepted for now, each with what would close it. Remove an entry once it is resolved.
+
+**Uploaded document contents are not checked (added 2026-10-14).** The `property-documents` bucket takes PDFs, Word files (DOC, DOCX, ODT) and images (JPEG, PNG, WebP, HEIC, TIFF), up to 20 MB each. Storage decides whether to accept a file by the type the browser declares; nothing looks inside the file. A harmful file renamed to `.pdf` or `.docx` is therefore accepted, and old-style `.doc` files can contain macros even though macro-enabled `.docm` files are refused.
+
+- *Who is exposed:* reviewers and administrators who download and open uploaded documents. Owners only open their own files.
+- *Until it is fixed:* open Word files in a previewer or convert them to PDF rather than opening them in Word with macros enabled, and do not open documents on machines that hold service-role keys.
+- *To close it:* scan each file after upload (for example a storage-triggered edge function or a malware-scanning service) and check its first bytes match its declared type, holding a document back from reviewers until it passes. Converting Word files to PDF on upload would also remove the macro risk.
+- *Where the accepted types are set:* `lib/storage/property-documents.ts` and `supabase/migrations/20261014160000_property_documents_word_files.sql`.
+
 ## 14. Auditability and notifications
 
 `audit_logs` captures the actor, associated property, action name, metadata, and timestamp. Material actions include property creation and submission, status transitions, document upload and review, checkpoint changes, overlap resolution, data-room decisions, and document access. Audit events should be append-only in normal operation and must avoid storing secrets or raw private document contents in metadata.

@@ -20,26 +20,32 @@ const ROW = {
     address: null,
     digital_address: 'GA-123-4567',
     landmark: null,
+    acquisition_method: null as string | null,
+    acquisition_metadata: null as unknown,
     updated_at: '2026-10-13T12:00:00.000000+00:00',
+    property_boundaries: null as { boundary_geojson: unknown; source: string } | null,
 }
 
 // Records what each query was asked to do and resolves with `result`
 const query = {
     calls: [] as { method: string; args: unknown[] }[],
     result: { data: ROW as unknown, error: null as unknown },
+    rpcResult: { error: null as unknown },
+    // Results for a particular table, such as property_documents, when it should differ from `result`
+    tableResults: {} as Record<string, { data: unknown; error: unknown }>,
 }
 let user: { id: string } | null = { id: USER_ID }
 
-function builder() {
+function builder(table: string) {
     const chain: Record<string, unknown> = {}
-    for (const method of ['insert', 'update', 'select', 'eq']) {
+    for (const method of ['insert', 'update', 'delete', 'select', 'eq']) {
         chain[method] = (...args: unknown[]) => {
             query.calls.push({ method, args })
             return chain
         }
     }
-    chain.single = async () => query.result
-    chain.maybeSingle = async () => query.result
+    chain.single = async () => query.tableResults[table] ?? query.result
+    chain.maybeSingle = async () => query.tableResults[table] ?? query.result
     return chain
 }
 
@@ -47,7 +53,11 @@ const supabase = {
     auth: { getUser: async () => ({ data: { user } }) },
     from: (table: string) => {
         query.calls.push({ method: 'from', args: [table] })
-        return builder()
+        return builder(table)
+    },
+    rpc: async (...args: unknown[]) => {
+        query.calls.push({ method: 'rpc', args })
+        return query.rpcResult
     },
 }
 
@@ -88,11 +98,15 @@ const SAVED_DRAFT = {
         digital_address: 'GA-123-4567',
         landmark: undefined,
     },
+    boundary: null,
+    acquisition: null,
 }
 
 beforeEach(() => {
     query.calls = []
     query.result = { data: ROW, error: null }
+    query.rpcResult = { error: null }
+    query.tableResults = {}
     user = { id: USER_ID }
     vi.spyOn(console, 'error').mockImplementation(() => {})
 })
@@ -209,6 +223,121 @@ describe('PATCH /api/property/draft/[id]', () => {
     })
 })
 
+// Four corners of a plot in East Legon, in drawing order
+const CORNERS = [
+    { latitude: 5.635, longitude: -0.157 },
+    { latitude: 5.635, longitude: -0.156 },
+    { latitude: 5.636, longitude: -0.156 },
+    { latitude: 5.636, longitude: -0.157 },
+]
+
+// The same plot as GeoJSON, which closes the ring and puts longitude first
+const POLYGON_GEOJSON = {
+    type: 'Polygon',
+    coordinates: [[[-0.157, 5.635], [-0.156, 5.635], [-0.156, 5.636], [-0.157, 5.636], [-0.157, 5.635]]],
+}
+
+describe('saving the boundary', () => {
+    test('saves a drawn boundary as a closed GeoJSON polygon', async () => {
+        // The draft is read back after the boundary is saved, so it includes the boundary
+        query.result = { data: { ...ROW, property_boundaries: { boundary_geojson: POLYGON_GEOJSON, source: 'manual_draw' } }, error: null }
+
+        const response = await patch(DRAFT_ID, { ...VALID_BODY, boundary: { polygon: CORNERS, source: 'manual_draw' } })
+
+        expect(response.status).toBe(200)
+        expect((await response.json()).boundary).toEqual({ polygon: CORNERS, source: 'manual_draw' })
+        expect(callsTo('rpc')).toEqual([['save_draft_boundary', { draft_id: DRAFT_ID, boundary: POLYGON_GEOJSON, source: 'manual_draw' }]])
+    })
+
+    test('saves a pin as a GeoJSON point', async () => {
+        await patch(DRAFT_ID, { ...VALID_BODY, boundary: { pin: { latitude: 5.6037, longitude: -0.187 }, source: 'manual_draw' } })
+
+        expect(callsTo('rpc')).toEqual([['save_draft_boundary', { draft_id: DRAFT_ID, boundary: { type: 'Point', coordinates: [-0.187, 5.6037] }, source: 'manual_draw' }]])
+    })
+
+    test('removes the boundary when it is cleared', async () => {
+        await patch(DRAFT_ID, { ...VALID_BODY, boundary: null })
+
+        expect(callsTo('rpc')).toEqual([['save_draft_boundary', { draft_id: DRAFT_ID, boundary: null, source: 'manual_draw' }]])
+    })
+
+    test('saves the boundary once a new draft exists', async () => {
+        await POST(request({ ...VALID_BODY, boundary: { polygon: CORNERS, source: 'manual_draw' } }))
+
+        expect(callsTo('rpc')).toEqual([['save_draft_boundary', { draft_id: DRAFT_ID, boundary: POLYGON_GEOJSON, source: 'manual_draw' }]])
+    })
+
+    test('records a boundary uploaded as a GeoJSON file', async () => {
+        await patch(DRAFT_ID, { ...VALID_BODY, boundary: { polygon: CORNERS, source: 'geojson_import' } })
+
+        expect(callsTo('rpc')).toEqual([['save_draft_boundary', { draft_id: DRAFT_ID, boundary: POLYGON_GEOJSON, source: 'geojson_import' }]])
+    })
+
+    test("doesn't touch boundaries when a new draft has none", async () => {
+        const response = await POST(request({ ...VALID_BODY, boundary: null }))
+
+        expect(response.status).toBe(201)
+        expect(callsTo('rpc')).toEqual([])
+    })
+
+    test('removes a new draft whose boundary fails to save, so the next save does not leave a duplicate', async () => {
+        query.rpcResult = { error: { message: 'function save_draft_boundary does not exist' } }
+
+        const response = await POST(request({ ...VALID_BODY, boundary: { polygon: CORNERS, source: 'manual_draw' } }))
+
+        expect(response.status).toBe(500)
+        expect(callsTo('delete')).toEqual([[]])
+        expect(callsTo('eq')).toEqual([['id', DRAFT_ID], ['status', 'draft']])
+    })
+
+    test('leaves the saved boundary alone when the draft does not mention it', async () => {
+        await patch(DRAFT_ID, VALID_BODY)
+
+        expect(callsTo('rpc')).toEqual([])
+    })
+
+    test("returns 404 when the database says the draft isn't the user's, without updating it", async () => {
+        query.rpcResult = { error: { code: 'P0002', message: 'Draft not found.' } }
+
+        const response = await patch(DRAFT_ID, { ...VALID_BODY, boundary: { polygon: CORNERS, source: 'manual_draw' } })
+
+        expect(response.status).toBe(404)
+        expect(callsTo('update')).toEqual([])
+    })
+
+    test('saves a change to only the boundary, reading the draft back instead of sending an empty update', async () => {
+        const response = await patch(DRAFT_ID, { details: {}, location: {}, boundary: { polygon: CORNERS, source: 'manual_draw' } })
+
+        expect(response.status).toBe(200)
+        expect(callsTo('rpc')).toHaveLength(1)
+        expect(callsTo('update')).toEqual([])
+        expect(callsTo('eq')).toEqual([['id', DRAFT_ID], ['status', 'draft']])
+    })
+
+    test.each([
+        ['a boundary that crosses itself', { polygon: [CORNERS[0], CORNERS[2], CORNERS[1], CORNERS[3]], source: 'manual_draw' }],
+        ['a boundary with two corners', { polygon: CORNERS.slice(0, 2), source: 'manual_draw' }],
+        ['both a boundary and a pin', { polygon: CORNERS, pin: CORNERS[0], source: 'manual_draw' }],
+        ['a latitude off the map', { pin: { latitude: 95, longitude: 0 }, source: 'manual_draw' }],
+        ['a boundary with no source', { polygon: CORNERS }],
+        ['a source only reviewers set', { polygon: CORNERS, source: 'ground_survey' }],
+    ])('returns 400 for %s', async (_, boundary) => {
+        const response = await patch(DRAFT_ID, { ...VALID_BODY, boundary })
+
+        expect(response.status).toBe(400)
+        expect(callsTo('update')).toEqual([])
+        expect(callsTo('rpc')).toEqual([])
+    })
+
+    test('returns 500 when the database rejects the boundary', async () => {
+        query.rpcResult = { error: { message: "The boundary can't cross over itself." } }
+
+        const response = await patch(DRAFT_ID, { ...VALID_BODY, boundary: { polygon: CORNERS, source: 'manual_draw' } })
+
+        expect(response.status).toBe(500)
+    })
+})
+
 describe('getDraft', () => {
     test('maps a saved row back to form fields', async () => {
         expect(await getDraft(supabase as never, DRAFT_ID)).toEqual(SAVED_DRAFT)
@@ -223,8 +352,101 @@ describe('getDraft', () => {
         expect(draft?.location.region).toBeUndefined()
     })
 
+    test('maps a saved boundary or pin back to corners', async () => {
+        query.result = { data: { ...ROW, property_boundaries: { boundary_geojson: POLYGON_GEOJSON, source: 'geojson_import' } }, error: null }
+        expect((await getDraft(supabase as never, DRAFT_ID))?.boundary).toEqual({ polygon: CORNERS, source: 'geojson_import' })
+
+        const point = { type: 'Point', coordinates: [-0.187, 5.6037] }
+        query.result = { data: { ...ROW, property_boundaries: { boundary_geojson: point, source: 'manual_draw' } }, error: null }
+        expect((await getDraft(supabase as never, DRAFT_ID))?.boundary).toEqual({ pin: { latitude: 5.6037, longitude: -0.187 }, source: 'manual_draw' })
+    })
+
     test('returns null for an id that is not a UUID', async () => {
         expect(await getDraft(supabase as never, 'nope')).toBeNull()
         expect(callsTo('from')).toEqual([])
+    })
+})
+
+describe('saving the acquisition answer', () => {
+    const DOCUMENT_ID = '9a8b7c6d-5e4f-4a3b-8c2d-1e0f9a8b7c6d'
+    const DOCUMENT = { id: DOCUMENT_ID, path: `${DRAFT_ID}/${DOCUMENT_ID}/deed.pdf`, file_name: 'Deed.pdf' }
+    const PURCHASE = {
+        method: 'purchase_from_owner',
+        metadata: { transferred_by: { name: ' Kwame Mensah ', phone: '024 123 4567' }, has_document: true, document: DOCUMENT },
+    }
+
+    test('saves the method and its answers as columns', async () => {
+        const response = await patch(DRAFT_ID, { ...VALID_BODY, acquisition: PURCHASE })
+
+        expect(response.status).toBe(200)
+        expect(callsTo('update')[0][0]).toMatchObject({
+            acquisition_method: 'purchase_from_owner',
+            acquisition_metadata: {
+                transferred_by: { name: 'Kwame Mensah', phone: '024 123 4567' },
+                has_document: true,
+                document: DOCUMENT,
+            },
+        })
+    })
+
+    test('checks an uploaded document belongs to this draft', async () => {
+        await patch(DRAFT_ID, { ...VALID_BODY, acquisition: PURCHASE })
+
+        expect(callsTo('from')).toContainEqual(['property_documents'])
+        expect(callsTo('eq')).toEqual(expect.arrayContaining([['id', DOCUMENT_ID], ['property_id', DRAFT_ID], ['file_path', DOCUMENT.path]]))
+    })
+
+    test("returns 400 for a document that isn't this draft's", async () => {
+        query.tableResults.property_documents = { data: null, error: null }
+
+        const response = await patch(DRAFT_ID, { ...VALID_BODY, acquisition: PURCHASE })
+
+        expect(response.status).toBe(400)
+        expect((await response.json()).error.message).toMatch(/upload it again/i)
+        expect(callsTo('update')).toEqual([])
+    })
+
+    test('returns 400 for a document on a draft that is only being created', async () => {
+        const response = await POST(request({ ...VALID_BODY, acquisition: PURCHASE }))
+
+        expect(response.status).toBe(400)
+        expect(callsTo('insert')).toEqual([])
+    })
+
+    test('saves a half-finished answer', async () => {
+        const response = await patch(DRAFT_ID, {
+            ...VALID_BODY,
+            acquisition: { method: 'purchase_from_owner', metadata: { transferred_by: { phone: '024' } } },
+        })
+
+        expect(response.status).toBe(200)
+    })
+
+    test('clears the answer when it is null', async () => {
+        await patch(DRAFT_ID, { ...VALID_BODY, acquisition: null })
+
+        expect(callsTo('update')[0][0]).toMatchObject({ acquisition_method: null, acquisition_metadata: null })
+    })
+
+    test.each([
+        ['an unknown method', { method: 'gift', metadata: {} }],
+        ["follow-ups from another method", { method: 'unsure', metadata: { note: 'hi' } }],
+        ['a document with no path', { method: 'direct_purchase', metadata: { document: { id: DOCUMENT_ID, file_name: 'a.pdf' } } }],
+    ])('returns 400 for %s', async (_, acquisition) => {
+        const response = await patch(DRAFT_ID, { ...VALID_BODY, acquisition })
+
+        expect(response.status).toBe(400)
+    })
+
+    test('reads the answer back', async () => {
+        query.result = { data: { ...ROW, acquisition_method: 'lease_sublease', acquisition_metadata: { lease_years: 99 } }, error: null }
+
+        expect((await getDraft(supabase as never, DRAFT_ID))?.acquisition).toEqual({ method: 'lease_sublease', metadata: { lease_years: 99 } })
+    })
+
+    test('keeps the method when its saved answers no longer fit, so only the follow-ups are asked again', async () => {
+        query.result = { data: { ...ROW, acquisition_method: 'lease_sublease', acquisition_metadata: { lease_years: 'long' } }, error: null }
+
+        expect((await getDraft(supabase as never, DRAFT_ID))?.acquisition).toEqual({ method: 'lease_sublease', metadata: {} })
     })
 })
