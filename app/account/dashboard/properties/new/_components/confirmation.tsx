@@ -10,7 +10,7 @@ import { useNewPropertyStore } from "@/stores/new-property-store"
 import { findGaps } from "./review"
 
 // Where the user goes once they are done
-const DASHBOARD_HREF = "/dashboard"
+const DASHBOARD_HREF = "/account/dashboard"
 
 const NEXT_STEPS = [
     {
@@ -22,8 +22,8 @@ const NEXT_STEPS = [
         description: "For example, a clearer copy of a document or the boundary of the land.",
     },
     {
-        title: "Your Property Passport is ready",
-        description: "Once the property is verified, it gets a Property Passport you can share.",
+        title: "Your property is verified",
+        description: "Once every check is done, your property gets a page you can share.",
     },
 ]
 

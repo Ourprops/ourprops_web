@@ -3,14 +3,14 @@ import { act, cleanup, fireEvent, render, renderHook, screen, waitFor, within } 
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query'
 import type { ReactNode } from 'react'
 
-import Acquisition from '../app/(app)/properties/new/_components/acquisition'
-import Confirmation from '../app/(app)/properties/new/_components/confirmation'
-import Details from '../app/(app)/properties/new/_components/details'
-import Documents from '../app/(app)/properties/new/_components/documents'
-import Location from '../app/(app)/properties/new/_components/location'
-import NewPropertyFlow from '../app/(app)/properties/new/_components/new-property-flow'
-import ProgressIndicator from '../app/(app)/properties/new/_components/progress-indicator'
-import Review from '../app/(app)/properties/new/_components/review'
+import Acquisition from '../app/account/dashboard/properties/new/_components/acquisition'
+import Confirmation from '../app/account/dashboard/properties/new/_components/confirmation'
+import Details from '../app/account/dashboard/properties/new/_components/details'
+import Documents from '../app/account/dashboard/properties/new/_components/documents'
+import Location from '../app/account/dashboard/properties/new/_components/location'
+import NewPropertyFlow from '../app/account/dashboard/properties/new/_components/new-property-flow'
+import ProgressIndicator from '../app/account/dashboard/properties/new/_components/progress-indicator'
+import Review from '../app/account/dashboard/properties/new/_components/review'
 import { useHandleSaveDraft } from '../lib/queries/property'
 import type { SavedDraft } from '../lib/validators/property'
 import { useNewPropertyStore } from '../stores/new-property-store'
@@ -809,7 +809,7 @@ describe('Confirmation screen', () => {
         expect(screen.getByRole('heading', { name: 'Property submitted' })).toBeDefined()
         expect(screen.getByText('East Legon house')).toBeDefined()
         expect(screen.getAllByRole('listitem').map((item) => item.querySelector('p')?.textContent)).toContain('A reviewer checks your property')
-        expect(screen.getByText('Go to your dashboard').closest('a')?.getAttribute('href')).toBe('/dashboard')
+        expect(screen.getByText('Go to your dashboard').closest('a')?.getAttribute('href')).toBe('/account/dashboard')
     })
 
     test('lists what the user submitted without, so they can have it ready', async () => {

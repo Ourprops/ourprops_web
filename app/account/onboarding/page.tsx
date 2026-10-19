@@ -18,10 +18,10 @@ type FormErrors = {
 };
 
 // Where users land once onboarding is done
-const AFTER_ONBOARDING_PATH = "/dashboard";
+const AFTER_ONBOARDING_PATH = "/account/dashboard";
 
 // Access is enforced by the proxy: signed-out users are sent to /login and
-// users who have finished onboarding are sent to /dashboard before this renders.
+// users who have finished onboarding are sent to /account/dashboard before this renders.
 export default function OnboardingPage() {
     const { data: profile, isPending, isError } = useMyProfile();
 
