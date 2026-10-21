@@ -40,12 +40,11 @@ export async function updateSession(request: NextRequest) {
     const userId = data?.claims?.sub
     
     const { pathname } = request.nextUrl
-    const isLogin = pathname === '/login'
-    const isOnboarding = pathname === '/onboarding' || pathname.startsWith('/onboarding/')
+    const isLogin = pathname === '/account/login'
+    const isOnboarding = pathname === '/account/onboarding' || pathname.startsWith('/account/onboarding/')
     // Signed-in pages that also need onboarding finished
     const isAppPage =
-        pathname === '/account/dashboard' || pathname.startsWith('/account/dashboard/') ||
-        pathname === '/properties' || pathname.startsWith('/properties/')
+        pathname === '/account/dashboard' || pathname.startsWith('/account/dashboard')
 
     // Redirect while keeping any refreshed auth cookies set above
     function redirectTo(path: string) {
@@ -59,7 +58,7 @@ export async function updateSession(request: NextRequest) {
 
     if (!userId) {
         if (isOnboarding || isAppPage) {
-            return redirectTo('/login')
+            return redirectTo('/account/login')
         }
         return supabaseResponse
     }
@@ -79,7 +78,7 @@ export async function updateSession(request: NextRequest) {
         // Clear the stale session so they can log in again.
         if (!profile && !profileError) {
             await supabase.auth.signOut({ scope: 'local' })
-            return redirectTo('/login')
+            return redirectTo('/account/login')
         }
 
         const onboardingComplete = profile?.onboarding_complete === true
@@ -88,7 +87,7 @@ export async function updateSession(request: NextRequest) {
             return redirectTo('/account/dashboard')
         }
         if (isAppPage && !onboardingComplete) {
-            return redirectTo('/onboarding')
+            return redirectTo('/account/onboarding')
         }
     }
 
