@@ -176,6 +176,7 @@ While a property is suspended, its public property page stays up and says "This 
 - every other checkpoint is `verified` or `waived`;
 - no document is still `unreviewed`;
 - no document request is still open.
+- no overlap flag is still detected or investigating
 
 Ownership is the one check that can't be waived: it is what makes a property worth showing as verified. An admin waives any other checkpoint through `update_checkpoint`, with a public note saying why. The public property page shows a waived checkpoint as "Waived", never as "Checked".
 
