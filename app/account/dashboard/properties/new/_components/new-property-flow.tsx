@@ -7,8 +7,11 @@ import { useNewPropertyStore } from "@/stores/new-property-store"
 
 import Acquisition from "./acquisition"
 import Boundary from "./boundary"
+import Confirmation from "./confirmation"
 import Details from "./details"
+import Documents from "./documents"
 import Location from "./location"
+import Review from "./review"
 import StartScreen from "./start-screen"
 
 type NewPropertyFlowProps = {
@@ -39,6 +42,9 @@ export default function NewPropertyFlow({ draft, mapsApiKey }: NewPropertyFlowPr
             {screen === "location" && <Location />}
             {screen === "boundary" && <Boundary mapsApiKey={mapsApiKey} />}
             {screen === "acquisition" && <Acquisition />}
+            {screen === "documents" && <Documents />}
+            {screen === "review" && <Review />}
+            {screen === "confirmation" && <Confirmation />}
         </main>
     )
 }

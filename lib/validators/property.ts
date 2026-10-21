@@ -221,14 +221,68 @@ export const acquisitionDraftSchema = z
 
 export type AcquisitionDraft = z.infer<typeof acquisitionDraftSchema>
 
+// The three things the documents screen asks for. A slot only hints at what a document is: users can put a document in
+// the wrong one, and a reviewer sets its type whichever slot it is in.
+export const documentSlotSchema = z.enum(["ownership", "site_plan", "supporting"])
+
+export type DocumentSlot = z.infer<typeof documentSlotSchema>
+
+// What a user may say a document is. A reviewer sets the final type, which may also be 'other'.
+// Keep in step with property_documents_declared_type_check in the migrations.
+export const propertyDocumentTypeSchema = z.enum([
+  "land_title_certificate",
+  "indenture",
+  "deed_of_conveyance",
+  "deed_of_assignment",
+  "lease_agreement",
+  "sublease_agreement",
+  "sale_and_purchase_agreement",
+  "allocation_letter",
+  "site_plan",
+  "cadastral_plan",
+  "previous_owner_acquisition_document",
+  "consent_to_assign",
+  "head_lease",
+  "grant_of_probate",
+  "letters_of_administration",
+  "will",
+  "power_of_attorney",
+  "official_land_search_report",
+  "ground_rent_receipts",
+  "property_rate_receipts",
+  "utility_bills",
+  "subdivision_approval",
+  "court_order",
+  "grantor_authority_documents",
+])
+
+export type PropertyDocumentType = z.infer<typeof propertyDocumentTypeSchema>
+
 // The body sent to record a document before its file is uploaded
 export const documentUploadSchema = z.strictObject({
+  slot: documentSlotSchema,
   file_name: z.string().trim().min(1, "The file needs a name").max(255, "The file name is too long"),
   file_size_bytes: z.number().int().positive("The file is empty").max(MAX_DOCUMENT_BYTES, "The file is larger than 20 MB"),
   mime_type: z.enum(DOCUMENT_MIME_TYPES, { error: `Upload ${ACCEPTED_DOCUMENTS}` }),
 })
 
 export type DocumentUpload = z.infer<typeof documentUploadSchema>
+
+// The body sent when the user says what a document is; null means they don't know
+export const declaredTypeUpdateSchema = z.strictObject({
+  declared_type: propertyDocumentTypeSchema.nullable(),
+})
+
+// A document uploaded to a draft, as listed on the documents screen
+export const draftDocumentSchema = documentReferenceSchema.extend({
+  slot: documentSlotSchema,
+  declared_type: propertyDocumentTypeSchema.nullable(),
+  file_size_bytes: z.number(),
+  mime_type: z.string(),
+  created_at: z.string(),
+})
+
+export type DraftDocument = z.infer<typeof draftDocumentSchema>
 
 // The body sent when saving a draft. The draft's id goes in the URL, not here.
 export const draftSchema = z.strictObject({
@@ -243,6 +297,14 @@ export const draftSchema = z.strictObject({
 export type Draft = z.infer<typeof draftSchema>
 
 export const propertyIdSchema = z.uuid()
+
+// What the user confirms before submitting. The server records this wording, not what the browser sends, as what they agreed to.
+export const SUBMISSION_DECLARATION = "I confirm that the information I have provided is accurate to the best of my knowledge."
+
+// The body sent to submit a draft
+export const submitSchema = z.strictObject({
+  confirmed: z.literal(true, { error: "Confirm that your information is accurate before submitting." }),
+})
 
 // A draft as stored on the server, returned after each save and used to resume registration
 export const savedDraftSchema = draftSchema.extend({

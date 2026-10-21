@@ -44,7 +44,7 @@ export async function updateSession(request: NextRequest) {
     const isOnboarding = pathname === '/onboarding' || pathname.startsWith('/onboarding/')
     // Signed-in pages that also need onboarding finished
     const isAppPage =
-        pathname === '/dashboard' || pathname.startsWith('/dashboard/') ||
+        pathname === '/account/dashboard' || pathname.startsWith('/account/dashboard/') ||
         pathname === '/properties' || pathname.startsWith('/properties/')
 
     // Redirect while keeping any refreshed auth cookies set above
@@ -65,7 +65,7 @@ export async function updateSession(request: NextRequest) {
     }
 
     if (isLogin) {
-        return redirectTo('/dashboard')
+        return redirectTo('/account/dashboard')
     }
 
     if (isOnboarding || isAppPage) {
@@ -85,7 +85,7 @@ export async function updateSession(request: NextRequest) {
         const onboardingComplete = profile?.onboarding_complete === true
 
         if (isOnboarding && onboardingComplete) {
-            return redirectTo('/dashboard')
+            return redirectTo('/account/dashboard')
         }
         if (isAppPage && !onboardingComplete) {
             return redirectTo('/onboarding')

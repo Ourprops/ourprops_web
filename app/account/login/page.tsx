@@ -139,7 +139,7 @@ export default function LoginPage() {
             { email: email.trim(), password },
             {
                 // The proxy sends users who haven't finished onboarding on to /onboarding
-                onSuccess: () => router.replace("/dashboard"),
+                onSuccess: () => router.replace("/account/dashboard"),
                 onError: (error) => setErrors({ form: formatAuthError(error).message }),
             }
         );

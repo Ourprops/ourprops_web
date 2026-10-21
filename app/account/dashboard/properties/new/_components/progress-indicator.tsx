@@ -13,7 +13,7 @@ import { useNewPropertyStore, type Screen } from "@/stores/new-property-store"
 import ExitAlert from "./exit-alert"
 
 // Where the user goes when they leave the flow
-const EXIT_HREF = "/dashboard"
+const EXIT_HREF = "/account/dashboard"
 
 type Step = {
     title: string

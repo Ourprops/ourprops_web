@@ -9,6 +9,7 @@ import {
     propertyIdSchema,
     propertyTypeSchema,
     regionSchema,
+    SUBMISSION_DECLARATION,
     type AcquisitionDraft,
     type BoundaryDraft,
     type Draft,
@@ -218,4 +219,22 @@ export async function updateDraft(supabase: SupabaseClient, id: string, draft: D
 
     if (error) throw error
     return data ? rowToSavedDraft(data) : null
+}
+
+// Raised by submit_property when a field the database requires is missing
+const DRAFT_INCOMPLETE = "23514"
+
+/**
+ * Sends the draft for review once the user has confirmed their answers are accurate, and returns the slug it is given.
+ * The declaration they confirmed is recorded with the submission.
+ * Returns null when there is no draft with this id that the user can submit, such as one already submitted.
+ */
+export async function submitDraft(supabase: SupabaseClient, id: string): Promise<{ slug: string } | null> {
+    if (!propertyIdSchema.safeParse(id).success) return null
+
+    const { data, error } = await supabase.rpc("submit_property", { draft_id: id, declaration: SUBMISSION_DECLARATION })
+    if (error?.code === DRAFT_NOT_FOUND) return null
+    if (error?.code === DRAFT_INCOMPLETE) throw new InvalidDraftError(error.message)
+    if (error) throw error
+    return { slug: data as string }
 }

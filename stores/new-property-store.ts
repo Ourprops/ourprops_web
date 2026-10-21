@@ -18,6 +18,8 @@ export type NewPropertyStoreState = {
     draftSavedAt: Date | null;
     /** Whether the last save failed, so the user can see their changes aren't saved yet */
     draftSaveFailed: boolean;
+    /** Whether the user opened this screen from review to change it, so Continue and Back return there */
+    editingFromReview: boolean;
     details: DetailsDraft;
     location: LocationDraft;
     /** The boundary or pin marked on the map, or null when there is none */
@@ -34,6 +36,8 @@ export type NewPropertyStoreActions = {
     setDraftSaveFailed: (failed: boolean) => void;
     handleNext: () => void;
     handleBack: () => void;
+    /** Opens a screen to change it, returning to review when the user continues or goes back */
+    editFromReview: (screen: Screen) => void;
     reset: () => void;
     /** Resumes a draft saved earlier, starting from the first step */
     loadDraft: (draft: SavedDraft) => void;
@@ -55,34 +59,39 @@ export const useNewPropertyStore = create<NewPropertyStore>((set) => ({
     savingDraft: false,
     draftSavedAt: null,
     draftSaveFailed: false,
+    editingFromReview: false,
     // Parse so a bad value (for example from a URL or saved draft) fails loudly instead of leaving the flow on no screen
     setScreen: (screen: Screen) => set({ screen: screenSchema.parse(screen) }),
     setPropertyId: (propertyId: string) => set({ propertyId }),
     setSavingDraft: (saving: boolean) => set({ savingDraft: saving }),
     setDraftSavedAt: (savedAt: Date) => set({ draftSavedAt: savedAt }),
     setDraftSaveFailed: (failed: boolean) => set({ draftSaveFailed: failed }),
-    reset: () => set({ propertyId: undefined, screen: 'start', savingDraft: false, draftSavedAt: null, draftSaveFailed: false, details: {}, location: {}, boundary: null, acquisition: null }),
+    reset: () => set({ propertyId: undefined, screen: 'start', savingDraft: false, draftSavedAt: null, draftSaveFailed: false, editingFromReview: false, details: {}, location: {}, boundary: null, acquisition: null }),
     loadDraft: (draft: SavedDraft) => set({
         propertyId: draft.id,
         screen: 'details',
         savingDraft: false,
         draftSavedAt: new Date(draft.updatedAt),
         draftSaveFailed: false,
+        editingFromReview: false,
         details: draft.details,
         location: draft.location,
         boundary: draft.boundary ?? null,
         acquisition: draft.acquisition ?? null,
     }),
     handleNext: () => set((state: NewPropertyStore) => {
+        if (state.editingFromReview) return { screen: 'review', editingFromReview: false };
         const currentIndex = SCREENS.indexOf(state.screen);
         if (currentIndex === SCREENS.length - 1) return state;
         return { ...state, screen: SCREENS[currentIndex + 1] };
     }),
     handleBack: () => set((state: NewPropertyStore) => {
+        if (state.editingFromReview) return { screen: 'review', editingFromReview: false };
         const currentIndex = SCREENS.indexOf(state.screen);
         if (currentIndex === 0) return state;
         return { ...state, screen: SCREENS[currentIndex - 1] };
     }),
+    editFromReview: (screen: Screen) => set({ screen: screenSchema.parse(screen), editingFromReview: true }),
     details: {},
     updateDetails: (details: DetailsDraft) => set((state) => ({ details: { ...state.details, ...details } })),
     location: {},

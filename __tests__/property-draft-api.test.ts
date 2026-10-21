@@ -3,6 +3,7 @@ import type { NextRequest } from 'next/server'
 
 import { POST } from '../app/api/property/draft/route'
 import { PATCH } from '../app/api/property/draft/[id]/route'
+import { POST as SUBMIT } from '../app/api/property/draft/[id]/submit/route'
 import { getDraft } from '../lib/supabase/property-drafts'
 
 const DRAFT_ID = '3f1c2b4a-5d6e-4f70-8a9b-0c1d2e3f4a5b'
@@ -30,7 +31,7 @@ const ROW = {
 const query = {
     calls: [] as { method: string; args: unknown[] }[],
     result: { data: ROW as unknown, error: null as unknown },
-    rpcResult: { error: null as unknown },
+    rpcResult: { data: null as unknown, error: null as unknown },
     // Results for a particular table, such as property_documents, when it should differ from `result`
     tableResults: {} as Record<string, { data: unknown; error: unknown }>,
 }
@@ -105,7 +106,7 @@ const SAVED_DRAFT = {
 beforeEach(() => {
     query.calls = []
     query.result = { data: ROW, error: null }
-    query.rpcResult = { error: null }
+    query.rpcResult = { data: null, error: null }
     query.tableResults = {}
     user = { id: USER_ID }
     vi.spyOn(console, 'error').mockImplementation(() => {})
@@ -281,7 +282,7 @@ describe('saving the boundary', () => {
     })
 
     test('removes a new draft whose boundary fails to save, so the next save does not leave a duplicate', async () => {
-        query.rpcResult = { error: { message: 'function save_draft_boundary does not exist' } }
+        query.rpcResult = { data: null, error: { message: 'function save_draft_boundary does not exist' } }
 
         const response = await POST(request({ ...VALID_BODY, boundary: { polygon: CORNERS, source: 'manual_draw' } }))
 
@@ -297,7 +298,7 @@ describe('saving the boundary', () => {
     })
 
     test("returns 404 when the database says the draft isn't the user's, without updating it", async () => {
-        query.rpcResult = { error: { code: 'P0002', message: 'Draft not found.' } }
+        query.rpcResult = { data: null, error: { code: 'P0002', message: 'Draft not found.' } }
 
         const response = await patch(DRAFT_ID, { ...VALID_BODY, boundary: { polygon: CORNERS, source: 'manual_draw' } })
 
@@ -330,7 +331,7 @@ describe('saving the boundary', () => {
     })
 
     test('returns 500 when the database rejects the boundary', async () => {
-        query.rpcResult = { error: { message: "The boundary can't cross over itself." } }
+        query.rpcResult = { data: null, error: { message: "The boundary can't cross over itself." } }
 
         const response = await patch(DRAFT_ID, { ...VALID_BODY, boundary: { polygon: CORNERS, source: 'manual_draw' } })
 
@@ -448,5 +449,74 @@ describe('saving the acquisition answer', () => {
         query.result = { data: { ...ROW, acquisition_method: 'lease_sublease', acquisition_metadata: { lease_years: 'long' } }, error: null }
 
         expect((await getDraft(supabase as never, DRAFT_ID))?.acquisition).toEqual({ method: 'lease_sublease', metadata: {} })
+    })
+})
+
+describe('POST /api/property/draft/[id]/submit', () => {
+    function submit(id = DRAFT_ID, body: unknown = { confirmed: true }) {
+        const request = new Request(`http://localhost/api/property/draft/${id}/submit`, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify(body),
+        }) as unknown as NextRequest
+        return SUBMIT(request, { params: Promise.resolve({ id }) })
+    }
+
+    test('sends the draft for review with the declaration the user confirmed, and returns its slug', async () => {
+        query.rpcResult = { data: 'east-legon-house-3f1c2b4a', error: null }
+
+        const response = await submit()
+
+        expect(response.status).toBe(200)
+        expect(await response.json()).toEqual({ slug: 'east-legon-house-3f1c2b4a' })
+        expect(callsTo('rpc')).toEqual([[
+            'submit_property',
+            { draft_id: DRAFT_ID, declaration: 'I confirm that the information I have provided is accurate to the best of my knowledge.' },
+        ]])
+    })
+
+    test.each([
+        ['the declaration unticked', { confirmed: false }],
+        ['no declaration', {}],
+        ['wording of its own', { confirmed: true, declaration: 'Anything' }],
+    ])('returns 400 for %s, without calling the database', async (_, body) => {
+        const response = await submit(DRAFT_ID, body)
+
+        expect(response.status).toBe(400)
+        expect(callsTo('rpc')).toEqual([])
+    })
+
+    test("returns 404 when there is no draft the user can submit, such as one that's already submitted", async () => {
+        query.rpcResult = { data: null, error: { code: 'P0002', message: 'Draft not found.' } }
+
+        expect((await submit()).status).toBe(404)
+    })
+
+    test('returns 400 with the reason when a required answer is missing', async () => {
+        const message = "Add the property's name, type, region, city and how you got it before submitting."
+        query.rpcResult = { data: null, error: { code: '23514', message } }
+
+        const response = await submit()
+
+        expect(response.status).toBe(400)
+        expect((await response.json()).error.message).toBe(message)
+    })
+
+    test('returns 404 for an id that is not a UUID, without calling the database', async () => {
+        expect((await submit('nope')).status).toBe(404)
+        expect(callsTo('rpc')).toEqual([])
+    })
+
+    test('returns 401 when nobody is signed in', async () => {
+        user = null
+
+        expect((await submit()).status).toBe(401)
+    })
+
+    test('returns 500 when the database fails', async () => {
+        vi.spyOn(console, 'error').mockImplementation(() => {})
+        query.rpcResult = { data: null, error: { message: 'timeout' } }
+
+        expect((await submit()).status).toBe(500)
     })
 })

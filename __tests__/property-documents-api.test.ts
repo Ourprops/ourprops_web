@@ -1,8 +1,8 @@
 import { afterEach, beforeEach, describe, expect, test, vi } from 'vitest'
 import type { NextRequest } from 'next/server'
 
-import { POST } from '../app/api/property/draft/[id]/documents/route'
-import { DELETE } from '../app/api/property/draft/[id]/documents/[documentId]/route'
+import { GET, POST } from '../app/api/property/draft/[id]/documents/route'
+import { DELETE, PATCH } from '../app/api/property/draft/[id]/documents/[documentId]/route'
 
 const DRAFT_ID = '3f1c2b4a-5d6e-4f70-8a9b-0c1d2e3f4a5b'
 const DOCUMENT_ID = '9a8b7c6d-5e4f-4a3b-8c2d-1e0f9a8b7c6d'
@@ -12,14 +12,16 @@ const USER_ID = '11111111-1111-4111-8111-111111111111'
 const query = {
     calls: [] as { method: string; args: unknown[] }[],
     insertResult: { error: null as unknown },
-    deleteResult: { data: { file_path: `${DRAFT_ID}/${DOCUMENT_ID}/deed.pdf` } as unknown, error: null as unknown },
+    // What a delete or update returns for the one row it matched
+    rowResult: { data: { file_path: `${DRAFT_ID}/${DOCUMENT_ID}/deed.pdf` } as unknown, error: null as unknown },
+    listResult: { data: [] as unknown, error: null as unknown },
     removeResult: { error: null as unknown },
 }
 let user: { id: string } | null = { id: USER_ID }
 
 function builder() {
     const chain: Record<string, unknown> = {}
-    for (const method of ['delete', 'select', 'eq']) {
+    for (const method of ['delete', 'update', 'select', 'eq']) {
         chain[method] = (...args: unknown[]) => {
             query.calls.push({ method, args })
             return chain
@@ -29,7 +31,11 @@ function builder() {
         query.calls.push({ method: 'insert', args })
         return query.insertResult
     }
-    chain.maybeSingle = async () => query.deleteResult
+    chain.order = async (...args: unknown[]) => {
+        query.calls.push({ method: 'order', args })
+        return query.listResult
+    }
+    chain.maybeSingle = async () => query.rowResult
     return chain
 }
 
@@ -66,17 +72,32 @@ function upload(body: unknown, id = DRAFT_ID) {
     return POST(request, { params: Promise.resolve({ id }) })
 }
 
+function list(id = DRAFT_ID) {
+    const request = new Request(`http://localhost/api/property/draft/${id}/documents`) as unknown as NextRequest
+    return GET(request, { params: Promise.resolve({ id }) })
+}
+
+function setType(body: unknown, documentId = DOCUMENT_ID, id = DRAFT_ID) {
+    const request = new Request(`http://localhost/api/property/draft/${id}/documents/${documentId}`, {
+        method: 'PATCH',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(body),
+    }) as unknown as NextRequest
+    return PATCH(request, { params: Promise.resolve({ id, documentId }) })
+}
+
 function remove(documentId = DOCUMENT_ID, id = DRAFT_ID) {
     const request = new Request(`http://localhost/api/property/draft/${id}/documents/${documentId}`, { method: 'DELETE' }) as unknown as NextRequest
     return DELETE(request, { params: Promise.resolve({ id, documentId }) })
 }
 
-const PDF = { file_name: 'Deed of assignment.pdf', file_size_bytes: 120_000, mime_type: 'application/pdf' }
+const PDF = { slot: 'ownership', file_name: 'Deed of assignment.pdf', file_size_bytes: 120_000, mime_type: 'application/pdf' }
 
 beforeEach(() => {
     query.calls = []
     query.insertResult = { error: null }
-    query.deleteResult = { data: { file_path: `${DRAFT_ID}/${DOCUMENT_ID}/deed.pdf` }, error: null }
+    query.rowResult = { data: { file_path: `${DRAFT_ID}/${DOCUMENT_ID}/deed.pdf` }, error: null }
+    query.listResult = { data: [], error: null }
     query.removeResult = { error: null }
     user = { id: USER_ID }
     vi.spyOn(console, 'error').mockImplementation(() => {})
@@ -87,7 +108,7 @@ afterEach(() => {
 })
 
 describe('POST /api/property/draft/[id]/documents', () => {
-    test('records an unclassified document and says where to upload its file', async () => {
+    test('records the document under its checklist item, unclassified, and says where to upload its file', async () => {
         const response = await upload(PDF)
 
         expect(response.status).toBe(201)
@@ -102,7 +123,7 @@ describe('POST /api/property/draft/[id]/documents', () => {
             id: document.id,
             property_id: DRAFT_ID,
             uploaded_by: USER_ID,
-            document_type: 'other',
+            slot: 'ownership',
             file_path: document.path,
             file_name: 'Deed of assignment.pdf',
             file_size_bytes: 120_000,
@@ -127,6 +148,8 @@ describe('POST /api/property/draft/[id]/documents', () => {
         ['a file over 20 MB', { ...PDF, file_size_bytes: 21 * 1024 * 1024 }, /20 MB/],
         ['an empty file', { ...PDF, file_size_bytes: 0 }, /empty/],
         ['a document type, which only reviewers set', { ...PDF, document_type: 'indenture' }, /./],
+        ['no checklist item', { ...PDF, slot: undefined }, /./],
+        ['an unknown checklist item', { ...PDF, slot: 'photos' }, /./],
     ])('returns 400 for %s', async (_, body, message) => {
         const response = await upload(body)
 
@@ -148,6 +171,112 @@ describe('POST /api/property/draft/[id]/documents', () => {
     })
 })
 
+// A row as Postgres returns it
+const ROW = {
+    id: DOCUMENT_ID,
+    file_path: `${DRAFT_ID}/${DOCUMENT_ID}/deed.pdf`,
+    file_name: 'Deed.pdf',
+    slot: 'site_plan',
+    declared_type: null,
+    file_size_bytes: 120_000,
+    mime_type: 'application/pdf',
+    created_at: '2026-10-15T09:00:00+00:00',
+}
+
+const LISTED = {
+    id: DOCUMENT_ID,
+    path: ROW.file_path,
+    file_name: 'Deed.pdf',
+    slot: 'site_plan',
+    declared_type: null,
+    file_size_bytes: 120_000,
+    mime_type: 'application/pdf',
+    created_at: ROW.created_at,
+}
+
+describe('GET /api/property/draft/[id]/documents', () => {
+    test("lists the draft's documents, oldest first", async () => {
+        query.listResult = { data: [ROW, { ...ROW, declared_type: 'cadastral_plan' }], error: null }
+
+        const response = await list()
+
+        expect(response.status).toBe(200)
+        expect(await response.json()).toEqual([LISTED, { ...LISTED, declared_type: 'cadastral_plan' }])
+        expect(callsTo('eq')).toEqual([['property_id', DRAFT_ID]])
+        expect(callsTo('order')).toEqual([['created_at', { ascending: true }]])
+    })
+
+    test('shows a value it no longer knows as supporting and unclassified, rather than dropping the document', async () => {
+        query.listResult = { data: [{ ...ROW, slot: 'old', declared_type: 'old' }], error: null }
+
+        expect(await (await list()).json()).toEqual([{ ...LISTED, slot: 'supporting', declared_type: null }])
+    })
+
+    test('returns 404 for a draft id that is not a UUID, without querying', async () => {
+        expect((await list('nope')).status).toBe(404)
+        expect(callsTo('from')).toEqual([])
+    })
+
+    test('returns 401 when nobody is signed in', async () => {
+        user = null
+
+        expect((await list()).status).toBe(401)
+    })
+
+    test('returns 500 when the query fails', async () => {
+        query.listResult = { data: null, error: { message: 'timeout' } }
+
+        expect((await list()).status).toBe(500)
+    })
+})
+
+describe('PATCH /api/property/draft/[id]/documents/[documentId]', () => {
+    test('records what the user says the document is', async () => {
+        query.rowResult = { data: { ...ROW, declared_type: 'site_plan' }, error: null }
+
+        const response = await setType({ declared_type: 'site_plan' })
+
+        expect(response.status).toBe(200)
+        expect(await response.json()).toEqual({ ...LISTED, declared_type: 'site_plan' })
+        expect(callsTo('update')).toEqual([[{ declared_type: 'site_plan' }]])
+        expect(callsTo('eq')).toEqual([['id', DOCUMENT_ID], ['property_id', DRAFT_ID]])
+    })
+
+    test("clears the answer when the user isn't sure", async () => {
+        query.rowResult = { data: ROW, error: null }
+
+        expect((await setType({ declared_type: null })).status).toBe(200)
+        expect(callsTo('update')).toEqual([[{ declared_type: null }]])
+    })
+
+    test.each([
+        ['an unknown type', { declared_type: 'title' }],
+        ["'other', which only reviewers choose", { declared_type: 'other' }],
+        ['the final type, which only reviewers set', { declared_type: null, document_type: 'indenture' }],
+        ['a different checklist item', { declared_type: null, slot: 'ownership' }],
+    ])('returns 400 for %s', async (_, body) => {
+        expect((await setType(body)).status).toBe(400)
+        expect(callsTo('update')).toEqual([])
+    })
+
+    test("returns 404 when there is no such document the user can change, such as one that's been reviewed", async () => {
+        query.rowResult = { data: null, error: null }
+
+        expect((await setType({ declared_type: 'indenture' })).status).toBe(404)
+    })
+
+    test('returns 404 for ids that are not UUIDs, without querying', async () => {
+        expect((await setType({ declared_type: 'indenture' }, 'nope')).status).toBe(404)
+        expect(callsTo('from')).toEqual([])
+    })
+
+    test('returns 401 when nobody is signed in', async () => {
+        user = null
+
+        expect((await setType({ declared_type: 'indenture' })).status).toBe(401)
+    })
+})
+
 describe('DELETE /api/property/draft/[id]/documents/[documentId]', () => {
     test('removes the record, then its file', async () => {
         const response = await remove()
@@ -159,7 +288,7 @@ describe('DELETE /api/property/draft/[id]/documents/[documentId]', () => {
     })
 
     test("returns 404 when there is no such document the user can remove, and leaves files alone", async () => {
-        query.deleteResult = { data: null, error: null }
+        query.rowResult = { data: null, error: null }
 
         expect((await remove()).status).toBe(404)
         expect(callsTo('remove')).toEqual([])
