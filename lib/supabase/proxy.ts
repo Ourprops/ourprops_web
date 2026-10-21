@@ -41,10 +41,14 @@ export async function updateSession(request: NextRequest) {
     
     const { pathname } = request.nextUrl
     const isLogin = pathname === '/account/login'
+    // Where users set up an authenticator app, and enter its code after their password
+    const isSecurity = pathname === '/account/security'
     const isOnboarding = pathname === '/account/onboarding' || pathname.startsWith('/account/onboarding/')
     // Signed-in pages that also need onboarding finished
     const isAppPage =
-        pathname === '/account/dashboard' || pathname.startsWith('/account/dashboard')
+        pathname === '/account/dashboard' || pathname.startsWith('/account/dashboard/')
+    // Only a convenience: the database refuses non-admins and admins without a second factor (staff_role())
+    const isAdminPage = pathname === '/admin' || pathname.startsWith('/admin/')
 
     // Redirect while keeping any refreshed auth cookies set above
     function redirectTo(path: string) {
@@ -57,20 +61,30 @@ export async function updateSession(request: NextRequest) {
     }
 
     if (!userId) {
-        if (isOnboarding || isAppPage) {
+        if (isOnboarding || isAppPage || isAdminPage || isSecurity) {
             return redirectTo('/account/login')
         }
         return supabaseResponse
     }
 
+    // Read from the session cookie, without a network call. Users with an authenticator app sign in
+    // at aal1 and reach aal2 by entering its code on /account/security.
+    const { data: assurance } = await supabase.auth.mfa.getAuthenticatorAssuranceLevel()
+    const enteredCode = assurance?.currentLevel === 'aal2'
+    const needsCode = assurance?.currentLevel === 'aal1' && assurance.nextLevel === 'aal2'
+
     if (isLogin) {
-        return redirectTo('/account/dashboard')
+        return redirectTo(needsCode ? '/account/security' : '/account/dashboard')
     }
 
-    if (isOnboarding || isAppPage) {
+    if (needsCode && (isOnboarding || isAppPage || isAdminPage)) {
+        return redirectTo('/account/security')
+    }
+
+    if (isOnboarding || isAppPage || isAdminPage) {
         const { data: profile, error: profileError } = await supabase
             .from('profiles')
-            .select('onboarding_complete')
+            .select('onboarding_complete, role')
             .eq('id', userId)
             .maybeSingle()
 
@@ -79,6 +93,17 @@ export async function updateSession(request: NextRequest) {
         if (!profile && !profileError) {
             await supabase.auth.signOut({ scope: 'local' })
             return redirectTo('/account/login')
+        }
+
+        if (isAdminPage) {
+            if (profile?.role !== 'admin') {
+                return redirectTo('/account/dashboard')
+            }
+            // An admin without a second factor sets one up first
+            if (!enteredCode) {
+                return redirectTo('/account/security')
+            }
+            return supabaseResponse
         }
 
         const onboardingComplete = profile?.onboarding_complete === true

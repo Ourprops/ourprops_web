@@ -3,15 +3,19 @@
 begin;
 create extension if not exists pgtap with schema extensions;
 
-select plan(6);
+select plan(8);
 
--- an owner and an admin. the role is set here, as superuser, because users can't make themselves admins.
+-- an owner and an admin, each with a verified authenticator app.
+-- the role is set here, as superuser, because users can't make themselves admins.
 insert into auth.users (id, email) values
   ('11111111-1111-1111-1111-111111111111', 'ama@example.test'),
   ('22222222-2222-2222-2222-222222222222', 'kofi@example.test');
 insert into public.profiles (id, full_name, role) values
   ('11111111-1111-1111-1111-111111111111', 'Ama Mensah', 'owner'),
   ('22222222-2222-2222-2222-222222222222', 'Kofi Boateng', 'admin');
+insert into auth.mfa_factors (id, user_id, friendly_name, factor_type, status, created_at, updated_at) values
+  ('aaaaaaaa-aaaa-aaaa-aaaa-aaaaaaaaaaaa', '11111111-1111-1111-1111-111111111111', 'Phone', 'totp', 'verified', now(), now()),
+  ('bbbbbbbb-bbbb-bbbb-bbbb-bbbbbbbbbbbb', '22222222-2222-2222-2222-222222222222', 'Phone', 'totp', 'verified', now(), now());
 
 set local role authenticated;
 
@@ -30,6 +34,18 @@ select is(public.staff_role(), null, 'a session without an aal claim has no staf
 -- Kofi signed in with a second factor
 select set_config('request.jwt.claims', '{"sub": "22222222-2222-2222-2222-222222222222", "role": "authenticated", "aal": "aal2"}', true);
 select is(public.staff_role(), 'admin', 'an admin signed in with a second factor is an admin');
+
+-- Kofi's factor is only half set up: he scanned the QR code but never entered a code
+reset role;
+update auth.mfa_factors set status = 'unverified' where id = 'bbbbbbbb-bbbb-bbbb-bbbb-bbbbbbbbbbbb';
+set local role authenticated;
+select is(public.staff_role(), null, 'an admin whose only factor is unverified has no staff role');
+
+-- Kofi's factor is removed while his aal2 token is still valid
+reset role;
+delete from auth.mfa_factors where id = 'bbbbbbbb-bbbb-bbbb-bbbb-bbbbbbbbbbbb';
+set local role authenticated;
+select is(public.staff_role(), null, 'an admin loses the staff role as soon as their factor is removed, before the token expires');
 
 -- signed out
 set local role anon;

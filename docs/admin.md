@@ -63,12 +63,11 @@ What this means for the console:
 **Recommended: an `/admin` route group in this app.**
 
 ```text
-app/(admin)/admin/
+app/admin/
 ├── layout.tsx                  # requireAdmin() on the server; noindex
 ├── page.tsx                    # Review queue
-├── mfa/page.tsx                # Second-factor challenge for admins signed in without one
 └── properties/[id]/page.tsx    # One property: answers, map, documents, checkpoints, history
-app/(app)/account/security/     # Set up a second factor (any signed-in user)
+app/account/security/           # Set up a second factor, and enter its code after the password (any signed-in user)
 app/api/admin/...               # Route handlers, as the rest of the app uses
 lib/admin/                      # Queries and actions for the console
 lib/auth/staff.ts               # requireAdmin(), staffRole()
@@ -92,7 +91,7 @@ The alternatives considered:
 The architecture states that "UI route guards do not replace RLS". The console follows that with three layers:
 
 1. **`proxy.ts`** redirects signed-out users and non-admins away from `/admin`. This layer is only for usability.
-2. **`app/(admin)/admin/layout.tsx`** calls `requireAdmin()` on the server before rendering anything. Non-admins get not found, so the console's existence isn't advertised. An admin signed in without a second factor is sent to `/admin/mfa`.
+2. **`app/admin/layout.tsx`** calls `requireAdmin()` on the server before rendering anything. Non-admins get not found, so the console's existence isn't advertised. An admin signed in without a second factor is sent to `/account/security`. That page is outside `/admin`, so the layout can't redirect to itself.
 3. **The database** enforces everything: read policies for admins, and functions for every change.
 
 ### Why admins don't use the service role
@@ -109,7 +108,7 @@ When admins use their own session, `auth.uid()` identifies the admin in every po
 A helper the policies and functions share:
 
 ```sql
--- the signed-in user's staff role, if they signed in with a second factor.
+-- the signed-in user's staff role, if they signed in with a second factor that still exists.
 -- V1 recognises admins only; partner_verifier is added here when assignments exist.
 create function public.staff_role() returns text
 language sql stable security definer set search_path = ''
@@ -118,20 +117,27 @@ as $$
   where id = (select auth.uid())
     and role = 'admin'
     and (select auth.jwt() ->> 'aal') = 'aal2'
+    and exists (
+      select 1 from auth.mfa_factors
+      where mfa_factors.user_id = profiles.id
+        and mfa_factors.status = 'verified'
+    )
 $$;
 ```
 
-- **Reads:** add `select` policies such as `using (public.staff_role() = 'admin')` on `properties`, `property_boundaries`, `property_documents`, `property_checkpoints`, `property_overlap_flags` and `audit_logs`, plus a storage policy on `property-documents` that lets admins read only files that are safe to view (section 7). Admins open documents through short-lived signed URLs created with their own session.
+The token says `aal2` until it expires, even after its factor is removed. The `auth.mfa_factors` check means removing an admin's factors ends their access straight away.
+
+- **Reads:** add `select` policies such as `using ((select public.staff_role()) = 'admin')` on `properties`, `property_boundaries`, `property_documents`, `property_checkpoints`, `property_overlap_flags` and `audit_logs`, plus a storage policy on `property-documents` that lets admins read only files that are safe to view (section 7). Admins open documents through short-lived signed URLs created with their own session.
 - **Writes:** grant no `insert` or `update` privileges on these tables. Every change is a `security definer` function, following the pattern already used by `save_draft_boundary` and `submit_property`: check the role, lock the row, validate the transition, apply it, and write `audit_logs` (and a `notifications` row where relevant) in one transaction.
 
-The extra lookup in `staff_role()` costs one primary-key read per check. If that ever matters, the role can be added to the JWT with a Supabase custom access token hook.
+Each call to `staff_role()` costs two indexed reads (`profiles` and `auth.mfa_factors`). Always write it as `(select public.staff_role())` in a policy. Bare, Postgres calls it once for every row the policy checks whenever the policy also tests a column, as in "staff, or the row's owner". Wrapped, it runs once per query. Locally, a 10,000-row check took 175 ms bare and 1.4 ms wrapped. If the remaining once-per-query cost ever matters, the role can be added to the JWT with a Supabase custom access token hook.
 
 ### Multi-factor authentication for admins
 
 Admins can open every owner's ownership documents, so every admin must use a second factor (TOTP through Supabase Auth). Because `staff_role()` checks `aal2`, a stolen password reaches nothing, even if someone calls the API directly.
 
 - **Set up the factor before the role.** A new admin creates an ordinary account and enrols TOTP at `/account/security` first. The script that grants `admin` refuses unless the account already has a verified factor in `auth.mfa_factors`. Otherwise there is a window where the account is an admin with only a password, and whoever has that password could enrol their own factor.
-- **Signing in.** After the password step the session is `aal1`. The admin layout sends the admin to `/admin/mfa` to enter a code, which raises the session to `aal2`.
+- **Signing in.** Admins sign in at `/account/login` like everyone else. After the password step the session is `aal1`, and `proxy.ts` sends anyone with a verified factor to `/account/security` to enter a code, which raises the session to `aal2`. Admins then go to `/admin`. This applies to owners who turned on TOTP too; otherwise turning it on would protect nothing.
 - **Lost devices.** Supabase has no backup codes. Each admin enrols two factors, for example a phone app and a password manager. If both are lost, an engineer removes the factors and the role through the reviewed script; the person re-enrols before the role is granted again.
 
 ### Should owners have to use MFA?
@@ -294,7 +300,7 @@ Self-hosted Gotenberg on a container service that scales to zero (Google Cloud R
 
 1. **Review queue.** Properties in `submitted`, `under_review` and `action_required`, oldest first, with what's missing (no boundary, empty checklist items), the number of open overlap flags and who is reviewing each.
 2. **Property review page.** The owner's answers, as on their review screen, with fields changed since the last request highlighted; the map with the boundary and any overlapping boundaries; documents with slot, owner's type, final type and status; the six checkpoints; overlap flags; open document requests; the history from `audit_logs`; and the actions in section 5. The approve button lists whatever is still blocking approval.
-3. **Second-factor screens.** `/account/security` to set up TOTP (any user) and `/admin/mfa` to enter a code.
+3. **Second-factor screen.** `/account/security` to set up TOTP and to enter a code after the password (any user).
 
 On the owner's side, `/account/identity` collects the optional identity document, the dashboard recommends it until it is saved, and `action_required` needs the admin's message, editable answers and an upload control only for each requested document.
 
@@ -302,7 +308,7 @@ Later: partner verifiers, admin management, data-room requests, checking identit
 
 ## 9. Build order
 
-1. **Foundation.** `staff_role()` (admin only, with the `aal2` check); admin read grants and policies on tables (the old blanket grants are already revoked); the `/admin` gate in `proxy.ts` and the layout; `/account/security` and `/admin/mfa`; and the script that grants the first admin only after a factor is verified.
+1. **Foundation.** `staff_role()` (admin only, with the `aal2` check); admin read grants and policies on tables (the old blanket grants are already revoked); the `/admin` gate in `proxy.ts` and the layout; `/account/security`; and the script that grants the first admin only after a factor is verified.
 2. **Document safety.** Type check, isolated conversion to PDF, `preview_path` and `preview_status`, and the admin storage policy that allows only viewable files (section 7).
 3. **Read-only console.** Queue and property page, with documents opened through signed URLs.
 4. **Review actions.** `start_review`, `review_document`, `update_checkpoint`, `resolve_overlap`, `approve_property` (with its conditions), `suspend_property`, `reopen_review` and `review_identity_document`, each with tests.
