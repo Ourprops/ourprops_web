@@ -1,8 +1,8 @@
 import { expect, test } from 'vitest'
 import { render, screen } from '@testing-library/react'
-import Hero from '../app/(marketing)/_components/hero'
 import { HOME_DEFAULTS } from '../lib/content/defaults'
 import { withFallback } from '../lib/content/merge'
+import Hero from '@/app/(public)/_components/hero'
 
 test('Hero renders the headline', () => {
     render(<Hero content={HOME_DEFAULTS.hero} />)
