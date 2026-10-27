@@ -2,7 +2,7 @@
 
 This document proposes how to build the internal console that administrators use to review submitted properties. It builds on `docs/architecture.md`, which remains the source for the domain model and authorization principles. Where this document decides something the architecture leaves open, it says so.
 
-Written 2026-10-15 against the local database at migration `20261015140000_submit_property.sql`. Updated 2026-10-17 with the V1 decisions (section 10). Updated 2026-10-22 with a proposal for stricter verification rules (section 11), which is not yet decided. Updated 2026-10-27 to keep V1 simple: identity is required before a property goes active, identity documents are deleted once verified, admins set the ownership classification, and properties are expired by hand (decisions 10 to 14). Most of section 11 is now rejected for V1.
+Written 2026-10-15 against the local database at migration `20261015140000_submit_property.sql`. Updated 2026-10-17 with the V1 decisions (section 10). Updated 2026-10-22 with a proposal for stricter verification rules (section 11), which is not yet decided. Updated 2026-10-27 to keep V1 simple: identity is required before a property goes active, identity documents are deleted once verified, admins set the ownership classification, and properties are expired by hand (decisions 10 to 14); then with how a duplicate identity number is settled and that owners register themselves (decisions 15 and 16). Most of section 11 is now rejected for V1.
 
 ## 1. Recommendation in brief
 
@@ -270,6 +270,8 @@ An owner can submit properties without verifying their identity, but no property
 - **Deleted once verified.** In the same transaction that marks a document `verified`, `review_identity_document` deletes the photo from the `identity-documents` bucket, clears `file_path` and replaces `document_number` with a keyed fingerprint (`document_number_hmac`). What stays is the document type, issuing country, expiry date, who verified it and when. A rejected document's photo is deleted when the owner replaces it.
 - **Why a keyed fingerprint, not the number.** The fingerprint lets the unique check still stop one card verifying two accounts, without holding the number. It must be keyed (HMAC with a secret kept in Supabase Vault, never in the table or the code): a Ghana Card number has few enough possible values that a plain hash can be reversed by trying them all. `save_identity_document` computes the fingerprint of a new number to check it against verified ones. If the key changes, existing fingerprints stop matching and can't be recomputed, because the numbers are gone, so treat the key as permanent and back it up.
 - **What this costs us.** Once the photo is gone, a disputed claim can't be settled by looking at the document again; the record shows only that an admin verified it, when, and their internal notes. We accept that for holding less national ID data.
+- **A number already on another account.** The unique check refuses it, and can't tell a typing mistake, someone using another person's card, or one person with an old account from each other. So `save_identity_document` tells the owner "This number is already linked to another account. Contact us." and nothing more: it must not reveal which account. Once the person proves the document is theirs (for example, on a video call holding it, as the earlier photo may already be deleted), an admin runs `release_identity_document(profile_id, reason)` on the other account. It deletes that account's document and photo and writes the audit log. If the released document was verified, that account's `identity_verified` checkpoints go back to `unverified`, and its active properties move to `under_review` through the same path as `reopen_review`, because they were approved on an identity that turned out not to be theirs. The owner can then save their document as normal.
+- **Individual owners register themselves.** The account, the identity check and the property all belong to the owner, who can do it from abroad with a passport. A relative or lawyer can help them, but not register in their place: the identity check would then confirm the wrong person, `submitted_by` would name someone who doesn't own the land, and a power of attorney can be revoked or end on the owner's death without us knowing. A power of attorney that matters to how the owner got the property is uploaded as a supporting document.
 - **Company and family land:** the document identifies the person acting for the owner. Admins ask for proof of their authority (a board resolution, or a letter from the family head) through a document request.
 - **Handling:** this is national ID data. It is never logged (the audit log records only the document type and country), never shown on the public property page, and viewed under the same rules as other documents (section 7).
 
@@ -327,14 +329,14 @@ Self-hosted Gotenberg on a container service that scales to zero (Google Cloud R
 
 On the owner's side, `/account/identity` collects the identity document, the dashboard reminds the owner from sign-up until it is saved, and `action_required` needs the admin's message, editable answers and an upload control only for each requested document.
 
-Later: partner verifiers, admin management, data-room requests, checking identity documents with the National Identification Authority or an identity provider, and reporting.
+Later: partner verifiers, admin management, registering on someone else's behalf with a power of attorney, data-room requests, checking identity documents with the National Identification Authority or an identity provider, and reporting.
 
 ## 9. Build order
 
 1. **Foundation.** `staff_role()` (admin only, with the `aal2` check); admin read grants and policies on tables (the old blanket grants are already revoked); the `/admin` gate in `proxy.ts` and the layout; `/account/security`; and the script that grants the first admin only after a factor is verified.
 2. **Document safety.** Type check, isolated conversion to PDF, `preview_path` and `preview_status`, and the admin storage policy that allows only viewable files (section 7).
 3. **Read-only console.** Queue and property page, with documents opened through signed URLs.
-4. **Review actions.** `start_review`, `classify_property`, `review_document`, `update_checkpoint`, `resolve_overlap`, `approve_property` (with its conditions), `suspend_property`, `reopen_review` and `review_identity_document` (including deleting the photo), each with tests.
+4. **Review actions.** `start_review`, `classify_property`, `review_document`, `update_checkpoint`, `resolve_overlap`, `approve_property` (with its conditions), `suspend_property`, `reopen_review`, `review_identity_document` (including deleting the photo) and `release_identity_document`, each with tests.
 5. **Requesting changes.** `property_document_requests`, `request_changes` (with the identity request), owner editing and request-only uploads in `action_required`, and `resubmit_property` with checkpoint resets.
 6. **Identity documents.** The `identity_documents` migration is written (tests in `supabase/tests/identity_documents.test.sql`), but it keeps the number and the photo. A follow-up migration adds `document_number_hmac` with the Vault key, moves the unique check onto it, and lets `file_path` and `document_number` be cleared once verified. Then `/account/identity` and the dashboard card.
 
@@ -343,7 +345,7 @@ Later: partner verifiers, admin management, data-room requests, checking identit
 - **Each function:** test as an owner, a partner verifier (who must get nothing in V1), an admin without MFA, and an admin with MFA. Also test the invalid transitions (for example approving a draft). These are the RLS tests `docs/architecture.md` asks for.
 - **Approval:** one test per condition in section 5, each showing that approval is refused when only that condition fails; approval succeeds with waived checkpoints but not with a waived `ownership_claim_verified`.
 - **Owner changes:** an upload with no open request is refused; an upload into a request fulfils it; resubmitting with an open request is refused; a boundary change resets exactly the three boundary checkpoints.
-- **Identity documents:** an expired document, a file in another user's folder, a number already on another account and a change to a verified document are each refused; a user can't mark their own document verified or see anyone else's; document numbers never reach the audit log. Verifying a document deletes its photo and number and keeps a fingerprint, and a second account saving the same number is still refused afterwards.
+- **Identity documents:** an expired document, a file in another user's folder, a number already on another account and a change to a verified document are each refused; a user can't mark their own document verified or see anyone else's; document numbers never reach the audit log. Verifying a document deletes its photo and number and keeps a fingerprint, and a second account saving the same number is still refused afterwards. The refusal doesn't say which account holds the number. `release_identity_document` is admin-only, needs a reason, writes the audit log, lets the other owner save the number afterwards and, when the released document was verified, sends that account's active properties back to review.
 - **Identity and classification at approval:** approval is refused when the owner's identity isn't verified (and `identity_verified` can't be waived), and when the ownership type or structure isn't set. `resubmit_property` is refused when identity was asked for and no document is saved.
 - **Documents:** an admin can't create a signed URL for an original Word file, only for its converted PDF.
 - **How to run them:** SQL tests that run inside a transaction and roll back work against the local database. Route handlers keep the mocked-client tests the app already uses (`__tests__/property-*-api.test.ts`).
@@ -369,11 +371,8 @@ Decided 2026-10-27, to keep V1 simple:
 12. **Ownership classification:** the admin sets `ownership_type` and `ownership_structure` with `classify_property`; owners never choose them; approval needs both (section 5).
 13. **Expiry:** by hand only, as a suspension with the "Verification expired" reason, when a property draws a lot of views and requests. No timers, reminders or `reverification_pending` status (section 5).
 14. **No occupancy check, and admins only:** `occupancy_check` and partner verifiers acting as agents (section 11) are not part of V1.
-
-Still open:
-
-1. How does an admin settle a document number that someone else has already linked to their account?
-2. Can a diaspora owner register through someone in Ghana acting with power of attorney in V1, with the power of attorney sent as a document, or only themselves?
+15. **A number already on another account:** the owner is asked to contact us. Once they prove the document is theirs, an admin removes it from the other account with `release_identity_document`, which is audited. If that document was verified, the other account loses its verified identity and its active properties go back to review (section 5).
+16. **Owners register themselves:** an individual owner registers from their own account, from abroad if need be, using a passport. Registering on someone else's behalf with a power of attorney is not in V1; a power of attorney can still be uploaded as a supporting document (section 5).
 
 ## 11. Proposal: stricter verification rules (for review)
 
