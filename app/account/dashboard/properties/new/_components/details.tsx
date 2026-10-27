@@ -33,6 +33,7 @@ export default function Details() {
     const description = useNewPropertyStore((state) => state.details.description ?? "")
     const updateDetails = useNewPropertyStore((state) => state.updateDetails)
     const handleNext = useNewPropertyStore((state) => state.handleNext)
+    // const handleBack = useNewPropertyStore((state) => state.handleBack)
 
     // Errors only show after the first attempt to continue, then update as the user fixes them
     const [submitted, setSubmitted] = useState(false)
@@ -140,7 +141,16 @@ export default function Details() {
                     </Field>
                 </FieldGroup>
 
-                <div className="mt-10 flex justify-end">
+                <div className="mt-10 flex flex-col-reverse gap-3 sm:flex-row sm:justify-between">
+                    {/* <Button
+                        type="button"
+                        variant="ghost"
+                        onClick={handleBack}
+                        className="pressable h-12 w-full rounded-lg px-6 text-[15px] text-primary hover:bg-card sm:w-auto"
+                    >
+                        <ArrowLeft size={16} aria-hidden />
+                        Back
+                    </Button> */}
                     <Button
                         type="submit"
                         className="pressable h-12 w-full rounded-lg bg-secondary px-8 text-[15px] text-secondary-foreground hover:bg-secondary/90 sm:w-auto"

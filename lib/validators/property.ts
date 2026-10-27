@@ -1,6 +1,8 @@
 import { z } from "zod"
 
+import { DIGITAL_ADDRESS_PATTERN, POSTCODE_LETTER_BY_REGION } from "@/lib/digital-address"
 import { isSimplePolygon } from "@/lib/geo"
+import { isAssemblyInRegion } from "@/lib/ghana-districts"
 import { ACCEPTED_DOCUMENTS, DOCUMENT_MIME_TYPES, MAX_DOCUMENT_BYTES } from "@/lib/storage/property-documents"
 import { phoneNumberSchema } from "@/lib/validators/onboarding"
 
@@ -40,17 +42,36 @@ export const detailsSchema = z.object({
 
 export type Details = z.infer<typeof detailsSchema>
 
-export const locationSchema = z.object({
+// The fields without the cross-field check, so the draft schema can extend them (Zod can't make a refined object partial)
+const locationFieldsSchema = z.object({
   // Empty counts as not given; lowercase input such as ga-123-4567 is accepted
   digital_address: z.union([
     z.literal("").transform(() => undefined),
-    z.string().trim().toUpperCase().regex(/^[A-Z]{2}-\d{3}-\d{4}$/, "Digital address must be in the format XX-000-0000"),
+    z.string().trim().toUpperCase().regex(DIGITAL_ADDRESS_PATTERN, "Enter the digital address like GA-183-4290 or GA-0183-4290"),
   ]).optional(),
   address: z.string().trim().optional(),
   city: z.string().trim().min(1, "City is required"),
-  municipality: z.string().trim().min(1, "Municipality is required"),
+  municipality: z.string().trim().min(1, "Choose a municipality or district"),
   region: regionSchema,
   landmark: z.string().trim().optional(),
+})
+
+export const locationSchema = locationFieldsSchema.superRefine((location, ctx) => {
+  // The list only offers the region's assemblies, but a draft saved before the region changed could hold another region's.
+  // Checked in the browser only: the draft API and submit_property don't run this schema.
+  if (location.municipality && !isAssemblyInRegion(location.region, location.municipality)) {
+    ctx.addIssue({ code: "custom", path: ["municipality"], message: "Choose a municipality or district in this region" })
+  }
+
+  // The first letter is the region's. Only checked once the format is right, so the field shows one error at a time
+  const letter = POSTCODE_LETTER_BY_REGION[location.region]
+  if (location.digital_address && DIGITAL_ADDRESS_PATTERN.test(location.digital_address) && location.digital_address[0] !== letter) {
+    ctx.addIssue({
+      code: "custom",
+      path: ["digital_address"],
+      message: `Digital addresses in ${location.region} start with ${letter}`,
+    })
+  }
 })
 
 export type Location = z.infer<typeof locationSchema>
@@ -64,7 +85,7 @@ export const detailsDraftSchema = detailsSchema
 
 export type DetailsDraft = z.infer<typeof detailsDraftSchema>
 
-export const locationDraftSchema = locationSchema
+export const locationDraftSchema = locationFieldsSchema
   // Drafts are saved as the user types, so the digital address isn't format-checked until they continue
   .extend({ city: z.string().trim(), municipality: z.string().trim(), digital_address: z.string().trim() })
   .partial()

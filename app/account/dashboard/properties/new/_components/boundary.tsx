@@ -9,18 +9,19 @@ import {
     useMap,
     useMapsLibrary,
 } from "@vis.gl/react-google-maps"
-import { ArrowRight, FileUp, Hand, MapPin, PenLine, RotateCcw, Trash2, Undo2 } from "lucide-react"
-import { useCallback, useEffect, useRef, useState, type ChangeEvent } from "react"
+import { ArrowRight, Hand, Map as MapIcon, MapPin, PenLine, RotateCcw, Trash2, Undo2 } from "lucide-react"
+import { useCallback, useEffect, useRef, useState } from "react"
 import type { TerraDraw } from "terra-draw"
 
 import { Button } from "@/components/ui/button"
 import { boundaryToGeoJSON, fromPosition, polygonArea, ringToCorners, toAcres, toPlots } from "@/lib/geo"
-import { MAX_GEOJSON_BYTES, parseBoundaryGeoJSON } from "@/lib/geojson-import"
-import { useHandleSaveDraft } from "@/lib/queries/property"
+import { useDraftDocuments, useHandleSaveDraft } from "@/lib/queries/property"
 import { cn } from "@/lib/utils"
 import { boundarySchema, type Boundary as BoundaryValue, type BoundaryDraft } from "@/lib/validators/property"
 import { useNewPropertyStore } from "@/stores/new-property-store"
 
+import BackButton from "./back-button"
+import { SlotItem, useLinkedDocumentId, useSlotUploads } from "./documents"
 import PlaceSearch from "./place-search"
 import { useTerraDraw } from "./use-terra-draw"
 
@@ -39,6 +40,15 @@ const METHODS: { value: Method; title: string; description: string; icon: typeof
     { value: "polygon", title: "Draw the boundary", description: "Tap each corner of the property", icon: PenLine },
     { value: "pin", title: "Drop a pin", description: "If you're not sure where the edges are", icon: MapPin },
 ]
+
+// The site plan checklist item, worded for this screen: optional, and why it helps with the map
+const SITE_PLAN_OPTION = {
+    value: "site_plan",
+    icon: MapIcon,
+    title: "Have a site plan? Upload it (optional)",
+    description:
+        "The plan your surveyor drew, ideally with the Lands Commission barcode. A reviewer checks it against what you mark on the map. A PDF or photo, up to 20 MB.",
+} as const
 
 type BoundaryProps = {
     /** Browser key for the Maps JavaScript API; the map is replaced by a message when it is missing */
@@ -59,10 +69,9 @@ export default function Boundary({ mapsApiKey }: BoundaryProps) {
     const [submitted, setSubmitted] = useState(false)
     // Switching method keeps what was marked with the other one, so switching back restores it
     const kept = useRef<Partial<Record<Method, BoundaryValue>>>(boundary ? { [method]: boundary } : {})
-    // Counts uploads, so the map shows and zooms to each uploaded boundary
-    const [uploads, setUploads] = useState(0)
-    const [upload, setUpload] = useState<{ message: string; failed: boolean } | null>(null)
-    const fileInput = useRef<HTMLInputElement>(null)
+    const documents = useDraftDocuments()
+    const sitePlans = useSlotUploads()
+    const linkedDocumentId = useLinkedDocumentId()
 
     // Saved straight away rather than after a pause, as this only runs once the user finishes a change on the map
     const mark = useCallback(
@@ -79,41 +88,6 @@ export default function Boundary({ mapsApiKey }: BoundaryProps) {
         setMethod(next)
         setDrawing(false)
         mark(kept.current[next] ?? null)
-    }
-
-    async function handleUpload(event: ChangeEvent<HTMLInputElement>) {
-        const file = event.target.files?.[0]
-        // Clear the input so choosing the same file again, after fixing it, still uploads it
-        event.target.value = ""
-        if (!file) return
-
-        if (file.size > MAX_GEOJSON_BYTES) {
-            setUpload({ message: "This file is too large. A boundary file should be under 5 MB.", failed: true })
-            return
-        }
-
-        const result = parseBoundaryGeoJSON(await file.text())
-        if (!result.ok) {
-            setUpload({ message: result.error, failed: true })
-            return
-        }
-
-        // A file with a point is shown as a pin, and one with a polygon as a boundary that can be adjusted
-        const next = result.boundary
-        const nextMethod: Method = "pin" in next ? "pin" : "polygon"
-        if (boundary && nextMethod !== method) kept.current[method] = boundary
-        kept.current[nextMethod] = next
-        setMethod(nextMethod)
-        setDrawing(false)
-        mark(next)
-        setUploads((count) => count + 1)
-        setUpload({
-            message:
-                nextMethod === "pin"
-                    ? `Added the pin from ${file.name}. Drag it if it needs moving.`
-                    : `Added the boundary from ${file.name}. Drag a corner if it needs adjusting.`,
-            failed: false,
-        })
     }
 
     function handleMark(next: BoundaryDraft) {
@@ -171,39 +145,22 @@ export default function Boundary({ mapsApiKey }: BoundaryProps) {
                 ))}
             </div>
 
-            <div className="mt-4 flex flex-wrap items-center gap-x-2 gap-y-1 text-sm text-muted-foreground">
-                <span>Have a GeoJSON file from a surveyor or mapping app?</span>
-                <input
-                    ref={fileInput}
-                    type="file"
-                    accept=".geojson,.json,application/geo+json,application/json"
-                    onChange={handleUpload}
-                    className="sr-only"
-                    tabIndex={-1}
-                    aria-hidden
+            {/* The same checklist item as on the documents screen, so a plan added here shows there too */}
+            <ul className="mt-4">
+                <SlotItem
+                    option={SITE_PLAN_OPTION}
+                    loading={documents.isPending}
+                    documents={documents.data?.filter((document) => document.slot === "site_plan") ?? []}
+                    uploads={sitePlans.uploads}
+                    linkedDocumentId={linkedDocumentId}
+                    onAdd={(files) => sitePlans.addFiles("site_plan", files)}
+                    onDismissUpload={sitePlans.dismissUpload}
                 />
-                <Button
-                    type="button"
-                    variant="link"
-                    onClick={() => fileInput.current?.click()}
-                    className="h-auto gap-1.5 p-0 text-sm font-semibold"
-                >
-                    <FileUp size={15} aria-hidden />
-                    Upload it instead
-                </Button>
-            </div>
-            {upload && (
-                <p
-                    role={upload.failed ? "alert" : "status"}
-                    className={cn("mt-2 text-sm", upload.failed ? "font-medium text-destructive" : "text-copy")}
-                >
-                    {upload.message}
-                </p>
-            )}
+            </ul>
 
             {mapsApiKey ? (
                 <APIProvider apiKey={mapsApiKey} region="GH" language="en">
-                    <BoundaryMap method={method} uploads={uploads} onMark={handleMark} onDrawingChange={setDrawing} />
+                    <BoundaryMap method={method} onMark={handleMark} onDrawingChange={setDrawing} />
                 </APIProvider>
             ) : (
                 <MapUnavailable />
@@ -218,11 +175,15 @@ export default function Boundary({ mapsApiKey }: BoundaryProps) {
             )}
 
             <div className="mt-10 flex flex-col-reverse gap-3 sm:flex-row sm:justify-end">
+                {/* All three wait for a site plan that is still uploading, so a failed upload isn't lost when the screen changes.
+                    Back sits on its own on the left on wider screens, and last in the stack on phones */}
+                <BackButton disabled={sitePlans.uploading} className="sm:mr-auto" />
                 {!boundary && (
                     <Button
                         type="button"
                         variant="ghost"
                         onClick={handleNext}
+                        disabled={sitePlans.uploading}
                         className="pressable h-12 w-full rounded-lg px-6 text-[15px] text-primary hover:bg-card sm:w-auto"
                     >
                         Skip for now
@@ -231,10 +192,11 @@ export default function Boundary({ mapsApiKey }: BoundaryProps) {
                 <Button
                     type="button"
                     onClick={handleContinue}
+                    disabled={sitePlans.uploading}
                     className="pressable h-12 w-full rounded-lg bg-secondary px-8 text-[15px] text-secondary-foreground hover:bg-secondary/90 sm:w-auto"
                 >
-                    Continue
-                    <ArrowRight size={16} aria-hidden />
+                    {sitePlans.uploading ? "Uploading…" : "Continue"}
+                    {!sitePlans.uploading && <ArrowRight size={16} aria-hidden />}
                 </Button>
             </div>
         </section>
@@ -243,14 +205,12 @@ export default function Boundary({ mapsApiKey }: BoundaryProps) {
 
 type BoundaryMapProps = {
     method: Method
-    /** Goes up with each uploaded file, so the uploaded boundary is shown and zoomed to */
-    uploads: number
     /** Called when the user finishes a change on the map, with what is now marked */
     onMark: (boundary: BoundaryDraft) => void
     onDrawingChange: (drawing: boolean) => void
 }
 
-function BoundaryMap({ method, uploads, onMark, onDrawingChange }: BoundaryMapProps) {
+function BoundaryMap({ method, onMark, onDrawingChange }: BoundaryMapProps) {
     const status = useApiLoadingStatus()
     const map = useMap()
     const geocoding = useMapsLibrary("geocoding")
@@ -290,12 +250,7 @@ function BoundaryMap({ method, uploads, onMark, onDrawingChange }: BoundaryMapPr
     // Changing mode drops a part-drawn boundary, which updates `drawing` through the change event below
     useEffect(() => {
         if (draw) showBoundary(draw)
-    }, [draw, showBoundary, uploads])
-
-    useEffect(() => {
-        const { boundary } = useNewPropertyStore.getState()
-        if (map && uploads && boundary) fitToBoundary(map, boundary)
-    }, [map, uploads])
+    }, [draw, showBoundary])
 
     useEffect(() => {
         onDrawingChange(drawing)

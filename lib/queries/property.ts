@@ -22,7 +22,7 @@ import {
 const AUTOSAVE_DELAY_MS = 1000
 
 // The registration page; the draft's id is added to its URL so a refresh or shared link resumes the draft
-const NEW_PROPERTY_PATH = "/properties/new"
+const NEW_PROPERTY_PATH = "/account/dashboard/properties/new"
 
 // Saves whatever the user has entered so far. Drafts can be incomplete, so only their shape is checked.
 export function useHandleSaveDraft() {

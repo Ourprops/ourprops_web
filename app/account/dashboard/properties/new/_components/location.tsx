@@ -6,11 +6,24 @@ import { z } from "zod"
 
 import { Button } from "@/components/ui/button"
 import { Field, FieldDescription, FieldError, FieldGroup, FieldLabel } from "@/components/ui/field"
+import {
+    Combobox,
+    ComboboxContent,
+    ComboboxEmpty,
+    ComboboxInput,
+    ComboboxItem,
+    ComboboxList,
+} from "@/components/ui/combobox"
 import { Input } from "@/components/ui/input"
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
+import { POSTCODE_LETTER_BY_REGION } from "@/lib/digital-address"
+import { ASSEMBLIES_BY_REGION, type Assembly } from "@/lib/ghana-districts"
 import { useAutosaveDraft } from "@/lib/queries/property"
 import { locationSchema, regionSchema, type Location as LocationValues, type Region } from "@/lib/validators/property"
 import { useNewPropertyStore } from "@/stores/new-property-store"
+
+import BackButton from "./back-button"
+import DigitalAddressInput from "./digital-address-input"
 
 type FieldErrors = Partial<Record<keyof LocationValues, string[]>>
 
@@ -34,6 +47,12 @@ export default function Location() {
     const landmark = useNewPropertyStore((state) => state.location.landmark ?? "")
     const updateLocation = useNewPropertyStore((state) => state.updateLocation)
     const handleNext = useNewPropertyStore((state) => state.handleNext)
+
+    // The combobox works with the assembly objects; the store keeps just the name.
+    // A name not in the region's list (such as one typed before this was a list) shows as empty and fails the region check.
+    const assemblies = region ? ASSEMBLIES_BY_REGION[region] : []
+    const selectedAssembly = assemblies.find((assembly) => assembly.name === municipality) ?? null
+    const regionLetter = region ? POSTCODE_LETTER_BY_REGION[region] : undefined
 
     // Errors only show after the first attempt to continue, then update as the user fixes them
     const [submitted, setSubmitted] = useState(false)
@@ -73,7 +92,11 @@ export default function Location() {
                         <FieldLabel htmlFor={FIELD_IDS.region}>Region</FieldLabel>
                         <Select
                             value={region ?? null}
-                            onValueChange={(value) => updateLocation({ region: (value as Region | null) ?? undefined })}
+                            onValueChange={(value) => {
+                                const next = (value as Region | null) ?? undefined
+                                // The chosen assembly belongs to the old region, so clear it; "" (not undefined) so the saved draft clears too
+                                updateLocation(next === region ? { region: next } : { region: next, municipality: "" })
+                            }}
                         >
                             <SelectTrigger
                                 id={FIELD_IDS.region}
@@ -95,16 +118,39 @@ export default function Location() {
 
                     <Field data-invalid={!!errors.municipality}>
                         <FieldLabel htmlFor={FIELD_IDS.municipality}>Municipality or district</FieldLabel>
-                        <Input
-                            id={FIELD_IDS.municipality}
-                            name="municipality"
-                            value={municipality}
-                            onChange={(event) => updateLocation({ municipality: event.target.value })}
-                            placeholder="For example, Ayawaso West"
-                            autoComplete="off"
-                            aria-invalid={!!errors.municipality}
-                            className="h-11 bg-card"
-                        />
+                        <Combobox
+                            items={assemblies}
+                            value={selectedAssembly}
+                            onValueChange={(assembly) => updateLocation({ municipality: assembly?.name ?? "" })}
+                            itemToStringLabel={(assembly) => assembly.name}
+                            disabled={!region}
+                        >
+                            <ComboboxInput
+                                id={FIELD_IDS.municipality}
+                                placeholder={region ? "Search municipalities and districts" : "Choose a region first"}
+                                disabled={!region}
+                                aria-invalid={!!errors.municipality}
+                                aria-describedby={region ? undefined : "property-municipality-description"}
+                                className="h-11 w-full bg-card"
+                            />
+                            <ComboboxContent>
+                                <ComboboxEmpty>No municipality or district by that name in {region}</ComboboxEmpty>
+                                <ComboboxList>
+                                    {(assembly: Assembly) => (
+                                        <ComboboxItem key={assembly.name} value={assembly}>
+                                            {/* The space keeps screen readers from running the two words together */}
+                                            {assembly.name}{" "}
+                                            <span className="text-muted-foreground">{assembly.category}</span>
+                                        </ComboboxItem>
+                                    )}
+                                </ComboboxList>
+                            </ComboboxContent>
+                        </Combobox>
+                        {!region && (
+                            <FieldDescription id="property-municipality-description">
+                                The list shows the assemblies in the region you choose.
+                            </FieldDescription>
+                        )}
                         <FieldError errors={errors.municipality?.map((message) => ({ message }))} />
                     </Field>
 
@@ -142,20 +188,17 @@ export default function Location() {
                         <FieldLabel htmlFor={FIELD_IDS.digital_address}>
                             Digital address <span className="font-normal text-muted-foreground">(optional)</span>
                         </FieldLabel>
-                        <Input
+                        <DigitalAddressInput
                             id={FIELD_IDS.digital_address}
-                            name="digital_address"
                             value={digitalAddress}
-                            onChange={(event) => updateLocation({ digital_address: event.target.value })}
-                            placeholder="For example, GA-123-4567"
-                            autoComplete="off"
-                            autoCapitalize="characters"
-                            aria-invalid={!!errors.digital_address}
-                            aria-describedby="property-digital-address-description"
-                            className="h-11 bg-card uppercase placeholder:normal-case"
+                            onChange={(value) => updateLocation({ digital_address: value })}
+                            regionLetter={regionLetter}
+                            invalid={!!errors.digital_address}
+                            describedBy="property-digital-address-description"
                         />
                         <FieldDescription id="property-digital-address-description">
-                            The property&apos;s GhanaPost GPS address, if it has one.
+                            Find it in the GhanaPost GPS app or on the plate on the building.
+                            {regionLetter && ` Addresses in ${region} start with ${regionLetter}.`}
                         </FieldDescription>
                         <FieldError errors={errors.digital_address?.map((message) => ({ message }))} />
                     </Field>
@@ -176,7 +219,8 @@ export default function Location() {
                     </Field>
                 </FieldGroup>
 
-                <div className="mt-10 flex justify-end">
+                <div className="mt-10 flex flex-col-reverse gap-3 sm:flex-row sm:justify-between">
+                    <BackButton />
                     <Button
                         type="submit"
                         className="pressable h-12 w-full rounded-lg bg-secondary px-8 text-[15px] text-secondary-foreground hover:bg-secondary/90 sm:w-auto"
