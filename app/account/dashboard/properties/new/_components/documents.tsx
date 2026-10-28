@@ -34,6 +34,8 @@ import {
 } from "@/lib/validators/property"
 import { useNewPropertyStore } from "@/stores/new-property-store"
 
+import BackButton from "./back-button"
+
 const NOT_SURE = "I'm not sure"
 
 // What the type picker shows for each value, so the chosen type reads as its name rather than its key
@@ -56,20 +58,11 @@ type Upload = {
     error?: string
 }
 
-export default function Documents() {
-    const handleNext = useNewPropertyStore((state) => state.handleNext)
-    const acquisition = useNewPropertyStore((state) => state.acquisition)
-    const documents = useDraftDocuments()
+/** The files being uploaded from a screen, and those that failed, for showing under the checklist item they were added to */
+export function useSlotUploads() {
     const { mutateAsync: upload } = useUploadDocument()
     const [uploads, setUploads] = useState<Upload[]>([])
     const nextKey = useRef(0)
-
-    // Removing the document the acquisition answer points to changes that answer, so it is saved like any other change
-    useAutosaveDraft([acquisition])
-
-    const linkedDocumentId = acquisition && "document" in acquisition.metadata ? acquisition.metadata.document?.id : undefined
-    // Continue waits for uploads, so every file the user chose is on the draft before they move on
-    const uploading = uploads.some((each) => !each.error)
 
     function addFiles(slot: DocumentSlot, files: File[]) {
         for (const file of files) {
@@ -87,6 +80,26 @@ export default function Documents() {
     function dismissUpload(key: number) {
         setUploads((current) => current.filter((each) => each.key !== key))
     }
+
+    // A screen waits for these before moving on, so every file the user chose is on the draft first
+    return { uploads, uploading: uploads.some((each) => !each.error), addFiles, dismissUpload }
+}
+
+/** The document the user gave when answering how they got the property, which the checklist marks as linked */
+export function useLinkedDocumentId() {
+    const acquisition = useNewPropertyStore((state) => state.acquisition)
+    return acquisition && "document" in acquisition.metadata ? acquisition.metadata.document?.id : undefined
+}
+
+export default function Documents() {
+    const handleNext = useNewPropertyStore((state) => state.handleNext)
+    const acquisition = useNewPropertyStore((state) => state.acquisition)
+    const documents = useDraftDocuments()
+    const { uploads, uploading, addFiles, dismissUpload } = useSlotUploads()
+    const linkedDocumentId = useLinkedDocumentId()
+
+    // Removing the document the acquisition answer points to changes that answer, so it is saved like any other change
+    useAutosaveDraft([acquisition])
 
     function handleSubmit(event: SubmitEvent<HTMLFormElement>) {
         event.preventDefault()
@@ -131,7 +144,8 @@ export default function Documents() {
 
                 <p className="mt-3 text-xs text-muted-foreground">A PDF, Word document or photo, up to 20 MB each.</p>
 
-                <div className="mt-10 flex justify-end">
+                <div className="mt-10 flex flex-col-reverse gap-3 sm:flex-row sm:justify-between">
+                    <BackButton disabled={uploading} />
                     <Button
                         type="submit"
                         disabled={uploading}
@@ -157,7 +171,7 @@ type SlotItemProps = {
 }
 
 // One item on the checklist, with the files added to it and a button to add more
-function SlotItem({ option, loading, documents, uploads, linkedDocumentId, onAdd, onDismissUpload }: SlotItemProps) {
+export function SlotItem({ option, loading, documents, uploads, linkedDocumentId, onAdd, onDismissUpload }: SlotItemProps) {
     const input = useRef<HTMLInputElement>(null)
     const titleId = `documents-${option.value}-title`
     const done = documents.length > 0

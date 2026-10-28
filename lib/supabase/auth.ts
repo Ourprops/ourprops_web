@@ -65,6 +65,36 @@ export function formatAuthError(error: unknown): AuthError {
         const err = error as { message: string; status?: number; code?: string }
         const message = err.message || ''
 
+        // Second-factor errors, matched by code because their messages change between versions
+        if (err.code === 'mfa_verification_failed') {
+            return {
+                message: "That code didn't work. Enter the newest code from your app, and check the time on your phone is set automatically.",
+                status: err.status,
+                code: err.code,
+            }
+        }
+        if (err.code === 'mfa_challenge_expired') {
+            return {
+                message: 'That code took too long. Enter the newest code from your app.',
+                status: err.status,
+                code: err.code,
+            }
+        }
+        if (err.code === 'mfa_factor_name_conflict') {
+            return {
+                message: 'You already have an app with that name. Choose another name.',
+                status: err.status,
+                code: err.code,
+            }
+        }
+        if (err.code === 'insufficient_aal') {
+            return {
+                message: 'Enter a code from your authenticator app first.',
+                status: err.status,
+                code: err.code,
+            }
+        }
+
         // Map specific Supabase error messages to user-friendly messages
         if (message.includes('Invalid login credentials')) {
             return {
