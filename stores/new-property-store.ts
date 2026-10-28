@@ -20,6 +20,8 @@ export type NewPropertyStoreState = {
     draftSaveFailed: boolean;
     /** Whether the user opened this screen from review to change it, so Continue and Back return there */
     editingFromReview: boolean;
+    /** Set while the draft is being deleted, so no save can run after it and bring the draft back */
+    discarding: boolean;
     details: DetailsDraft;
     location: LocationDraft;
     /** The boundary or pin marked on the map, or null when there is none */
@@ -34,6 +36,7 @@ export type NewPropertyStoreActions = {
     setSavingDraft: (saving: boolean) => void;
     setDraftSavedAt: (savedAt: Date) => void;
     setDraftSaveFailed: (failed: boolean) => void;
+    setDiscarding: (discarding: boolean) => void;
     handleNext: () => void;
     handleBack: () => void;
     /** Opens a screen to change it, returning to review when the user continues or goes back */
@@ -60,13 +63,15 @@ export const useNewPropertyStore = create<NewPropertyStore>((set) => ({
     draftSavedAt: null,
     draftSaveFailed: false,
     editingFromReview: false,
+    discarding: false,
     // Parse so a bad value (for example from a URL or saved draft) fails loudly instead of leaving the flow on no screen
     setScreen: (screen: Screen) => set({ screen: screenSchema.parse(screen) }),
     setPropertyId: (propertyId: string) => set({ propertyId }),
     setSavingDraft: (saving: boolean) => set({ savingDraft: saving }),
     setDraftSavedAt: (savedAt: Date) => set({ draftSavedAt: savedAt }),
     setDraftSaveFailed: (failed: boolean) => set({ draftSaveFailed: failed }),
-    reset: () => set({ propertyId: undefined, screen: 'start', savingDraft: false, draftSavedAt: null, draftSaveFailed: false, editingFromReview: false, details: {}, location: {}, boundary: null, acquisition: null }),
+    setDiscarding: (discarding: boolean) => set({ discarding }),
+    reset: () => set({ propertyId: undefined, screen: 'start', savingDraft: false, draftSavedAt: null, draftSaveFailed: false, editingFromReview: false, discarding: false, details: {}, location: {}, boundary: null, acquisition: null }),
     loadDraft: (draft: SavedDraft) => set({
         propertyId: draft.id,
         screen: 'details',
@@ -74,6 +79,7 @@ export const useNewPropertyStore = create<NewPropertyStore>((set) => ({
         draftSavedAt: new Date(draft.updatedAt),
         draftSaveFailed: false,
         editingFromReview: false,
+        discarding: false,
         details: draft.details,
         location: draft.location,
         boundary: draft.boundary ?? null,

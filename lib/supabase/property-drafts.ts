@@ -1,6 +1,7 @@
 import type { SupabaseClient } from "@supabase/supabase-js"
 
 import { boundaryToGeoJSON, ringToCorners } from "@/lib/geo"
+import { PROPERTY_DOCUMENTS_BUCKET } from "@/lib/storage/property-documents"
 import {
     acquisitionDraftSchema,
     acquisitionMethodSchema,
@@ -237,4 +238,63 @@ export async function submitDraft(supabase: SupabaseClient, id: string): Promise
     if (error?.code === DRAFT_INCOMPLETE) throw new InvalidDraftError(error.message)
     if (error) throw error
     return { slug: data as string }
+}
+
+/**
+ * Deletes a draft, with every file uploaded to it. Returns false when there is no draft with this id the user can delete.
+ * Only drafts are ever deleted: submitted properties are kept, and withdrawn instead (docs/admin.md, decision 17).
+ * Row level security and the storage policies enforce that too.
+ */
+export async function deleteDraft(supabase: SupabaseClient, id: string): Promise<boolean> {
+    if (!propertyIdSchema.safeParse(id).success) return false
+
+    // Check first, so nothing is touched for a property that isn't the user's draft
+    const { data: draft, error } = await supabase
+        .from("properties")
+        .select("id")
+        .eq("id", id)
+        .eq("status", "draft")
+        .maybeSingle<{ id: string }>()
+    if (error) throw error
+    if (!draft) return false
+
+    // The files go before the row: the storage policy only lets the user remove files while their draft exists,
+    // so deleting the row first would leave them behind for good. If removing them fails, the draft is kept and
+    // the user can try again.
+    const paths = await draftFilePaths(supabase, id)
+    if (paths.length > 0) {
+        const { error: storageError } = await supabase.storage.from(PROPERTY_DOCUMENTS_BUCKET).remove(paths)
+        if (storageError) throw storageError
+    }
+
+    // Its boundary, document records and other rows that belong to it are deleted with it (on delete cascade)
+    const { data: deleted, error: deleteError } = await supabase
+        .from("properties")
+        .delete()
+        .eq("id", id)
+        .eq("status", "draft")
+        .select("id")
+        .maybeSingle<{ id: string }>()
+    if (deleteError) throw deleteError
+    return deleted !== null
+}
+
+// Every file in the draft's folder. Listed from storage rather than read from the document records, so a file whose
+// record is already gone (such as one whose removal failed earlier) is found too.
+async function draftFilePaths(supabase: SupabaseClient, id: string): Promise<string[]> {
+    const bucket = supabase.storage.from(PROPERTY_DOCUMENTS_BUCKET)
+    // Paths are lowercase (propertyDocumentPath), and each file sits at <property id>/<document id>/<file name>
+    const folder = id.toLowerCase()
+
+    const { data: documentFolders, error } = await bucket.list(folder, { limit: 1000 })
+    if (error) throw error
+
+    const files = await Promise.all(
+        documentFolders.map(async (documentFolder) => {
+            const { data, error: listError } = await bucket.list(`${folder}/${documentFolder.name}`, { limit: 1000 })
+            if (listError) throw listError
+            return data.map((file) => `${folder}/${documentFolder.name}/${file.name}`)
+        })
+    )
+    return files.flat()
 }

@@ -2,7 +2,7 @@ import { afterEach, beforeEach, describe, expect, test, vi } from 'vitest'
 import type { NextRequest } from 'next/server'
 
 import { POST } from '../app/api/property/draft/route'
-import { PATCH } from '../app/api/property/draft/[id]/route'
+import { DELETE, PATCH } from '../app/api/property/draft/[id]/route'
 import { POST as SUBMIT } from '../app/api/property/draft/[id]/submit/route'
 import { getDraft } from '../lib/supabase/property-drafts'
 
@@ -50,8 +50,26 @@ function builder(table: string) {
     return chain
 }
 
+// The files in the documents bucket, by folder, and whether removing them fails
+const storage = {
+    folders: {} as Record<string, string[]>,
+    removeError: null as unknown,
+}
+
 const supabase = {
     auth: { getUser: async () => ({ data: { user } }) },
+    storage: {
+        from: (bucket: string) => ({
+            list: async (path: string) => {
+                query.calls.push({ method: 'list', args: [bucket, path] })
+                return { data: (storage.folders[path] ?? []).map((name) => ({ name })), error: null }
+            },
+            remove: async (paths: string[]) => {
+                query.calls.push({ method: 'remove', args: [bucket, paths] })
+                return { data: null, error: storage.removeError }
+            },
+        }),
+    },
     from: (table: string) => {
         query.calls.push({ method: 'from', args: [table] })
         return builder(table)
@@ -108,6 +126,8 @@ beforeEach(() => {
     query.result = { data: ROW, error: null }
     query.rpcResult = { data: null, error: null }
     query.tableResults = {}
+    storage.folders = {}
+    storage.removeError = null
     user = { id: USER_ID }
     vi.spyOn(console, 'error').mockImplementation(() => {})
 })
@@ -518,5 +538,80 @@ describe('POST /api/property/draft/[id]/submit', () => {
         query.rpcResult = { data: null, error: { message: 'timeout' } }
 
         expect((await submit()).status).toBe(500)
+    })
+})
+
+describe('DELETE /api/property/draft/[id]', () => {
+    const DOCUMENT_ID = 'aaaaaaaa-1111-4111-8111-111111111111'
+    const LEFTOVER_ID = 'bbbbbbbb-2222-4222-8222-222222222222'
+
+    function remove(id: string) {
+        return DELETE(request(undefined), { params: Promise.resolve({ id }) })
+    }
+
+    test('removes every file in the draft\'s folder, then the draft', async () => {
+        storage.folders = {
+            [DRAFT_ID]: [DOCUMENT_ID, LEFTOVER_ID],
+            [`${DRAFT_ID}/${DOCUMENT_ID}`]: ['indenture.pdf'],
+            // A file whose record was already removed is found by listing the folder
+            [`${DRAFT_ID}/${LEFTOVER_ID}`]: ['old-site-plan.jpg'],
+        }
+
+        const response = await remove(DRAFT_ID)
+
+        expect(response.status).toBe(204)
+        expect(callsTo('remove')).toEqual([
+            ['property-documents', [`${DRAFT_ID}/${DOCUMENT_ID}/indenture.pdf`, `${DRAFT_ID}/${LEFTOVER_ID}/old-site-plan.jpg`]],
+        ])
+        // The storage policy only allows removing files while the draft exists, so the files must go first
+        const order = query.calls.map((call) => call.method)
+        expect(order.indexOf('remove')).toBeLessThan(order.indexOf('delete'))
+        // Only ever a draft
+        expect(callsTo('eq')).toContainEqual(['status', 'draft'])
+    })
+
+    test('deletes a draft with no files without calling storage to remove anything', async () => {
+        const response = await remove(DRAFT_ID)
+
+        expect(response.status).toBe(204)
+        expect(callsTo('remove')).toEqual([])
+        expect(callsTo('delete')).toHaveLength(1)
+    })
+
+    test("touches nothing when the property isn't the user's draft, such as one already submitted", async () => {
+        query.result = { data: null, error: null }
+
+        const response = await remove(DRAFT_ID)
+
+        expect(response.status).toBe(404)
+        expect(callsTo('list')).toEqual([])
+        expect(callsTo('remove')).toEqual([])
+        expect(callsTo('delete')).toEqual([])
+    })
+
+    test("keeps the draft when its files can't be removed, so the user can try again", async () => {
+        storage.folders = { [DRAFT_ID]: [DOCUMENT_ID], [`${DRAFT_ID}/${DOCUMENT_ID}`]: ['indenture.pdf'] }
+        storage.removeError = new Error('storage unavailable')
+
+        const response = await remove(DRAFT_ID)
+
+        expect(response.status).toBe(500)
+        expect(callsTo('delete')).toEqual([])
+    })
+
+    test('refuses a signed-out user', async () => {
+        user = null
+
+        const response = await remove(DRAFT_ID)
+
+        expect(response.status).toBe(401)
+        expect(query.calls).toEqual([])
+    })
+
+    test("doesn't query for an id that isn't a draft id", async () => {
+        const response = await remove('not-an-id')
+
+        expect(response.status).toBe(404)
+        expect(query.calls).toEqual([])
     })
 })
