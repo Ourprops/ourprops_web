@@ -1056,6 +1056,28 @@ describe('Review screen', () => {
         expect(requests()).toContainEqual({ url: `/api/property/draft/${DRAFT_ID}/submit`, method: 'POST', body: { confirmed: true } })
     })
 
+    test('covers the screen while submitting, and uncovers it if the submit fails', async () => {
+        fillDraft()
+        answerRequests([INDENTURE])
+        // Holds the submit open until the test answers it
+        let answerSubmit: (response: unknown) => void = () => {}
+        const answerOthers = fetchMock.getMockImplementation()!
+        fetchMock.mockImplementation((url: string, init: RequestInit) =>
+            url.endsWith('/submit') ? new Promise((resolve) => (answerSubmit = resolve)) as never : answerOthers(url, init),
+        )
+        render(<QueryClientProvider client={new QueryClient()}><Review /></QueryClientProvider>)
+
+        fireEvent.click(screen.getByRole('checkbox', { name: 'I confirm' }))
+        fireEvent.click(screen.getByRole('button', { name: /submit for review/i }))
+
+        expect(await screen.findByText('Submitting your property…')).toBeDefined()
+
+        answerSubmit({ ok: false, status: 500, json: async () => ({ error: { message: 'Unable to submit your property right now.' } }) })
+
+        expect(await screen.findByText('Unable to submit your property right now.')).toBeDefined()
+        expect(screen.queryByText('Submitting your property…')).toBeNull()
+    })
+
     test("says why when the submit doesn't go through, and stays on review", async () => {
         fillDraft()
         answerRequests([INDENTURE], { ok: false, status: 500, body: { error: { message: 'Unable to submit your property right now.' } } })

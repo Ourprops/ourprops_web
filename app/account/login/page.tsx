@@ -4,6 +4,7 @@ import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { type FormEvent, useState } from "react";
 import { z } from "zod";
+import BrandLoader from "@/components/brand-loader";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { formatAuthError } from "@/lib/supabase/auth";
@@ -74,6 +75,8 @@ function toFormErrors(
 export default function LoginPage() {
     const [mode, setMode] = useState<AuthMode>("login");
     const [signupSuccess, setSignupSuccess] = useState(false);
+    // Set once sign-in succeeds; covers the screen until the next page arrives
+    const [signedIn, setSignedIn] = useState(false);
     const router = useRouter();
     const signInMutation = useSignIn();
     const signUpMutation = useSignUp();
@@ -140,7 +143,10 @@ export default function LoginPage() {
             {
                 // The proxy sends users with an authenticator app on to /account/security for its code,
                 // and users who haven't finished onboarding on to /account/onboarding
-                onSuccess: () => router.replace("/account/dashboard"),
+                onSuccess: () => {
+                    setSignedIn(true);
+                    router.replace("/account/dashboard");
+                },
                 onError: (error) => setErrors({ form: formatAuthError(error).message }),
             }
         );
@@ -484,6 +490,7 @@ export default function LoginPage() {
                     </div>
                 )}
             </section>
+            {signedIn && <BrandLoader overlay message="Signing you in" />}
         </AuthShell>
     );
 }
