@@ -1,6 +1,5 @@
 "use client";
 
-import Image from "next/image";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { type FormEvent, useState } from "react";
@@ -10,6 +9,7 @@ import { Input } from "@/components/ui/input";
 import { formatAuthError } from "@/lib/supabase/auth";
 import { useSignIn, useSignUp } from "@/lib/queries/auth";
 import { signUpSchema as baseSignUpSchema } from "@/lib/validators/signup";
+import AuthShell from "../_components/auth-shell";
 
 type AuthMode = "login" | "signup";
 
@@ -177,30 +177,19 @@ export default function LoginPage() {
             : "Log in";
 
     return (
-        <main className="min-h-screen bg-[#F7F9FB] text-[#102A43] flex items-center justify-center px-4 py-8">
-            <section className="w-full max-w-115 rounded-2xl border border-[#D9E2EC] bg-white p-5 sm:p-8 shadow-[0_10px_24px_rgba(16,42,67,0.08)]">
-                <div className="mb-4 flex justify-center">
-                    <Image
-                        src="/logo.svg"
-                        alt="OurProps"
-                        width={180}
-                        height={40}
-                        priority
-                        className="h-auto w-auto"
-                    />
-                </div>
-
+        <AuthShell>
+            <section>
                 {!signupSuccess ? (
                     <>
-                        <header className="mb-6 text-center">
-                            <h1 className="text-2xl font-semibold text-[#003366]">Welcome to OurProps</h1>
-                            <p className="mt-2 text-sm sm:text-base text-[#334E68]">
+                        <header className="mb-8">
+                            <h1 className="text-2xl font-semibold tracking-tight text-foreground">Welcome to OurProps</h1>
+                            <p className="mt-2 text-[15px] leading-relaxed text-copy">
                                 Manage your property information in one clear, organized place.
                             </p>
                         </header>
 
                         <div
-                            className="mb-6 grid grid-cols-2 gap-2 rounded-xl border border-[#D9E2EC] bg-[#F7F9FB] p-1"
+                            className="mb-6 grid grid-cols-2 gap-1 rounded-lg border border-border bg-muted p-1"
                             role="tablist"
                             aria-label="Authentication tabs"
                         >
@@ -209,10 +198,10 @@ export default function LoginPage() {
                                 role="tab"
                                 aria-selected={mode === "login"}
                                 variant="ghost"
-                                className={`h-9 rounded-lg px-3 py-2 text-sm font-semibold transition ${
+                                className={`h-9 rounded-md px-3 py-2 text-sm font-semibold transition ${
                                     mode === "login"
-                                        ? "bg-white text-[#003366] shadow-sm"
-                                        : "text-[#486581] hover:text-[#003366]"
+                                        ? "bg-card text-primary shadow-xs"
+                                        : "text-copy hover:text-primary"
                                 }`}
                                 onClick={() => switchMode("login")}
                             >
@@ -223,10 +212,10 @@ export default function LoginPage() {
                                 role="tab"
                                 aria-selected={mode === "signup"}
                                 variant="ghost"
-                                className={`h-9 rounded-lg px-3 py-2 text-sm font-semibold transition ${
+                                className={`h-9 rounded-md px-3 py-2 text-sm font-semibold transition ${
                                     mode === "signup"
-                                        ? "bg-white text-[#003366] shadow-sm"
-                                        : "text-[#486581] hover:text-[#003366]"
+                                        ? "bg-card text-primary shadow-xs"
+                                        : "text-copy hover:text-primary"
                                 }`}
                                 onClick={() => switchMode("signup")}
                             >
@@ -237,7 +226,7 @@ export default function LoginPage() {
                         {mode === "login" ? (
                             <form className="space-y-4" onSubmit={handleLogin} noValidate>
                                 <div>
-                                    <label htmlFor="email" className="mb-1.5 block text-sm font-medium text-[#102A43]">
+                                    <label htmlFor="email" className="mb-1.5 block text-sm font-medium text-foreground">
                                         Email
                                     </label>
                                     <Input
@@ -248,11 +237,11 @@ export default function LoginPage() {
                                         onChange={(event) => setEmail(event.target.value)}
                                         aria-invalid={Boolean(errors.email)}
                                         aria-describedby={errors.email ? "email-error" : undefined}
-                                        className="h-11 rounded-lg border-[#D9E2EC] bg-white px-3 text-sm text-[#102A43] placeholder:text-[#7B8794] focus-visible:border-[#003366] focus-visible:ring-2 focus-visible:ring-[#003366]/30"
+                                        className="h-11 bg-card px-3"
                                         placeholder="you@example.com"
                                     />
                                     {errors.email ? (
-                                        <p id="email-error" className="mt-1.5 text-sm text-[#C0392B]">
+                                        <p id="email-error" className="mt-1.5 text-sm text-destructive">
                                             {errors.email}
                                         </p>
                                     ) : null}
@@ -260,12 +249,12 @@ export default function LoginPage() {
 
                                 <div>
                                     <div className="mb-1.5 flex items-center justify-between">
-                                        <label htmlFor="password" className="block text-sm font-medium text-[#102A43]">
+                                        <label htmlFor="password" className="block text-sm font-medium text-foreground">
                                             Password
                                         </label>
                                         <Link
                                             href="#"
-                                            className="text-sm font-medium text-[#003366] hover:underline focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#003366]"
+                                            className="rounded-sm text-sm font-medium text-primary hover:underline focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
                                         >
                                             Forgot password?
                                         </Link>
@@ -279,7 +268,7 @@ export default function LoginPage() {
                                             onChange={(event) => setPassword(event.target.value)}
                                             aria-invalid={Boolean(errors.password)}
                                             aria-describedby={errors.password ? "password-error" : undefined}
-                                            className="h-11 rounded-lg border-[#D9E2EC] bg-white px-3 pr-16 text-sm text-[#102A43] placeholder:text-[#7B8794] focus-visible:border-[#003366] focus-visible:ring-2 focus-visible:ring-[#003366]/30"
+                                            className="h-11 bg-card px-3 pr-16"
                                             placeholder="Enter your password"
                                         />
                                         <Button
@@ -287,25 +276,25 @@ export default function LoginPage() {
                                             variant="ghost"
                                             size="sm"
                                             onClick={() => setShowPassword((prev) => !prev)}
-                                            className="absolute inset-y-0 right-2 my-auto h-8 px-2 text-sm font-medium text-[#003366] hover:bg-[#F0F4F8]"
+                                            className="absolute inset-y-0 right-2 my-auto h-8 px-2 text-sm font-medium text-primary hover:bg-muted"
                                             aria-label={showPassword ? "Hide password" : "Show password"}
                                         >
                                             {showPassword ? "Hide" : "Show"}
                                         </Button>
                                     </div>
                                     {errors.password ? (
-                                        <p id="password-error" className="mt-1.5 text-sm text-[#C0392B]">
+                                        <p id="password-error" className="mt-1.5 text-sm text-destructive">
                                             {errors.password}
                                         </p>
                                     ) : null}
                                 </div>
 
-                                {errors.form ? <p className="text-sm text-[#C0392B]">{errors.form}</p> : null}
+                                {errors.form ? <p className="text-sm text-destructive">{errors.form}</p> : null}
 
                                 <Button
                                     type="submit"
                                     disabled={isLoading}
-                                    className="h-11 w-full bg-[#FF6B35] text-sm font-semibold text-white hover:bg-[#E55D2B] focus-visible:border-[#003366] focus-visible:ring-2 focus-visible:ring-[#003366]/40"
+                                    className="pressable h-11 w-full bg-secondary text-[15px] font-semibold text-secondary-foreground hover:bg-secondary/90"
                                 >
                                     {isLoading ? (
                                         <span
@@ -316,13 +305,13 @@ export default function LoginPage() {
                                     {buttonText}
                                 </Button>
 
-                                <p className="text-center text-sm text-[#486581]">
+                                <p className="text-center text-sm text-copy">
                                     Don&apos;t have an account?{" "}
                                     <Button
                                         type="button"
                                         variant="link"
                                         onClick={() => switchMode("signup")}
-                                        className="h-auto p-0 font-semibold text-[#003366]"
+                                        className="h-auto p-0 font-semibold text-primary"
                                     >
                                         Sign up
                                     </Button>
@@ -331,7 +320,7 @@ export default function LoginPage() {
                         ) : (
                             <form className="space-y-4" onSubmit={handleSignUp} noValidate>
                                 <div>
-                                    <label htmlFor="full-name" className="mb-1.5 block text-sm font-medium text-[#102A43]">
+                                    <label htmlFor="full-name" className="mb-1.5 block text-sm font-medium text-foreground">
                                         Full name
                                     </label>
                                     <Input
@@ -342,18 +331,18 @@ export default function LoginPage() {
                                         onChange={(event) => setFullName(event.target.value)}
                                         aria-invalid={Boolean(errors.fullName)}
                                         aria-describedby={errors.fullName ? "full-name-error" : undefined}
-                                        className="h-11 rounded-lg border-[#D9E2EC] bg-white px-3 text-sm text-[#102A43] placeholder:text-[#7B8794] focus-visible:border-[#003366] focus-visible:ring-2 focus-visible:ring-[#003366]/30"
+                                        className="h-11 bg-card px-3"
                                         placeholder="Your full name"
                                     />
                                     {errors.fullName ? (
-                                        <p id="full-name-error" className="mt-1.5 text-sm text-[#C0392B]">
+                                        <p id="full-name-error" className="mt-1.5 text-sm text-destructive">
                                             {errors.fullName}
                                         </p>
                                     ) : null}
                                 </div>
 
                                 <div>
-                                    <label htmlFor="email" className="mb-1.5 block text-sm font-medium text-[#102A43]">
+                                    <label htmlFor="email" className="mb-1.5 block text-sm font-medium text-foreground">
                                         Email
                                     </label>
                                     <Input
@@ -364,18 +353,18 @@ export default function LoginPage() {
                                         onChange={(event) => setEmail(event.target.value)}
                                         aria-invalid={Boolean(errors.email)}
                                         aria-describedby={errors.email ? "email-error" : undefined}
-                                        className="h-11 rounded-lg border-[#D9E2EC] bg-white px-3 text-sm text-[#102A43] placeholder:text-[#7B8794] focus-visible:border-[#003366] focus-visible:ring-2 focus-visible:ring-[#003366]/30"
+                                        className="h-11 bg-card px-3"
                                         placeholder="you@example.com"
                                     />
                                     {errors.email ? (
-                                        <p id="email-error" className="mt-1.5 text-sm text-[#C0392B]">
+                                        <p id="email-error" className="mt-1.5 text-sm text-destructive">
                                             {errors.email}
                                         </p>
                                     ) : null}
                                 </div>
 
                                 <div>
-                                    <label htmlFor="password" className="mb-1.5 block text-sm font-medium text-[#102A43]">
+                                    <label htmlFor="password" className="mb-1.5 block text-sm font-medium text-foreground">
                                         Password
                                     </label>
                                     <div className="relative">
@@ -387,7 +376,7 @@ export default function LoginPage() {
                                             onChange={(event) => setPassword(event.target.value)}
                                             aria-invalid={Boolean(errors.password)}
                                             aria-describedby={errors.password ? "password-error" : undefined}
-                                            className="h-11 rounded-lg border-[#D9E2EC] bg-white px-3 pr-16 text-sm text-[#102A43] placeholder:text-[#7B8794] focus-visible:border-[#003366] focus-visible:ring-2 focus-visible:ring-[#003366]/30"
+                                            className="h-11 bg-card px-3 pr-16"
                                             placeholder="Create a password"
                                         />
                                         <Button
@@ -395,21 +384,21 @@ export default function LoginPage() {
                                             variant="ghost"
                                             size="sm"
                                             onClick={() => setShowPassword((prev) => !prev)}
-                                            className="absolute inset-y-0 right-2 my-auto h-8 px-2 text-sm font-medium text-[#003366] hover:bg-[#F0F4F8]"
+                                            className="absolute inset-y-0 right-2 my-auto h-8 px-2 text-sm font-medium text-primary hover:bg-muted"
                                             aria-label={showPassword ? "Hide password" : "Show password"}
                                         >
                                             {showPassword ? "Hide" : "Show"}
                                         </Button>
                                     </div>
                                     {errors.password ? (
-                                        <p id="password-error" className="mt-1.5 text-sm text-[#C0392B]">
+                                        <p id="password-error" className="mt-1.5 text-sm text-destructive">
                                             {errors.password}
                                         </p>
                                     ) : null}
                                 </div>
 
                                 <div>
-                                    <label htmlFor="confirm-password" className="mb-1.5 block text-sm font-medium text-[#102A43]">
+                                    <label htmlFor="confirm-password" className="mb-1.5 block text-sm font-medium text-foreground">
                                         Confirm password
                                     </label>
                                     <div className="relative">
@@ -421,7 +410,7 @@ export default function LoginPage() {
                                             onChange={(event) => setConfirmPassword(event.target.value)}
                                             aria-invalid={Boolean(errors.confirmPassword)}
                                             aria-describedby={errors.confirmPassword ? "confirm-password-error" : undefined}
-                                            className="h-11 rounded-lg border-[#D9E2EC] bg-white px-3 pr-16 text-sm text-[#102A43] placeholder:text-[#7B8794] focus-visible:border-[#003366] focus-visible:ring-2 focus-visible:ring-[#003366]/30"
+                                            className="h-11 bg-card px-3 pr-16"
                                             placeholder="Confirm your password"
                                         />
                                         <Button
@@ -429,25 +418,25 @@ export default function LoginPage() {
                                             variant="ghost"
                                             size="sm"
                                             onClick={() => setShowConfirmPassword((prev) => !prev)}
-                                            className="absolute inset-y-0 right-2 my-auto h-8 px-2 text-sm font-medium text-[#003366] hover:bg-[#F0F4F8]"
+                                            className="absolute inset-y-0 right-2 my-auto h-8 px-2 text-sm font-medium text-primary hover:bg-muted"
                                             aria-label={showConfirmPassword ? "Hide password" : "Show password"}
                                         >
                                             {showConfirmPassword ? "Hide" : "Show"}
                                         </Button>
                                     </div>
                                     {errors.confirmPassword ? (
-                                        <p id="confirm-password-error" className="mt-1.5 text-sm text-[#C0392B]">
+                                        <p id="confirm-password-error" className="mt-1.5 text-sm text-destructive">
                                             {errors.confirmPassword}
                                         </p>
                                     ) : null}
                                 </div>
 
-                                {errors.form ? <p className="text-sm text-[#C0392B]">{errors.form}</p> : null}
+                                {errors.form ? <p className="text-sm text-destructive">{errors.form}</p> : null}
 
                                 <Button
                                     type="submit"
                                     disabled={isLoading}
-                                    className="h-11 w-full bg-[#FF6B35] text-sm font-semibold text-white hover:bg-[#E55D2B] focus-visible:border-[#003366] focus-visible:ring-2 focus-visible:ring-[#003366]/40"
+                                    className="pressable h-11 w-full bg-secondary text-[15px] font-semibold text-secondary-foreground hover:bg-secondary/90"
                                 >
                                     {isLoading ? (
                                         <span
@@ -458,17 +447,17 @@ export default function LoginPage() {
                                     {buttonText}
                                 </Button>
 
-                                <p className="text-xs text-[#486581]">
+                                <p className="text-xs leading-relaxed text-copy">
                                     By creating an account, you agree to our Terms and Privacy Policy.
                                 </p>
 
-                                <p className="text-center text-sm text-[#486581]">
+                                <p className="text-center text-sm text-copy">
                                     Already have an account?{" "}
                                     <Button
                                         type="button"
                                         variant="link"
                                         onClick={() => switchMode("login")}
-                                        className="h-auto p-0 font-semibold text-[#003366]"
+                                        className="h-auto p-0 font-semibold text-primary"
                                     >
                                         Log in
                                     </Button>
@@ -477,9 +466,9 @@ export default function LoginPage() {
                         )}
                     </>
                 ) : (
-                    <div className="space-y-4 py-4 text-center">
-                        <h2 className="text-2xl font-semibold text-[#003366]">Check your email</h2>
-                        <p className="text-sm sm:text-base text-[#334E68]">
+                    <div className="space-y-4 py-4">
+                        <h2 className="text-2xl font-semibold tracking-tight text-foreground">Check your email</h2>
+                        <p className="text-[15px] leading-relaxed text-copy">
                             {`We've sent a confirmation link to ${email}. Confirm your email to continue.`}
                         </p>
                         <Button
@@ -488,13 +477,13 @@ export default function LoginPage() {
                                 setSignupSuccess(false);
                                 switchMode("login");
                             }}
-                            className="h-11 bg-[#FF6B35] px-4 text-sm font-semibold text-white hover:bg-[#E55D2B] focus-visible:border-[#003366] focus-visible:ring-2 focus-visible:ring-[#003366]/40"
+                            className="pressable h-11 bg-secondary px-5 text-[15px] font-semibold text-secondary-foreground hover:bg-secondary/90"
                         >
                             Back to login
                         </Button>
                     </div>
                 )}
             </section>
-        </main>
+        </AuthShell>
     );
 }

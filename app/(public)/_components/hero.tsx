@@ -7,7 +7,9 @@ import {
     BoundaryMap,
     DocumentRow,
     InfoRow,
+    PlanFrame,
     PropertyHeader,
+    RecordSheet,
     SAMPLE_PROPERTY,
 } from "./property-record"
 
@@ -27,14 +29,8 @@ function GhanaFlag() {
 
 export default function Hero({ content }: { content: HomeContent["hero"] }) {
     return (
-        <section className="relative overflow-hidden">
-            {/* Soft brand-blue wash behind the hero; purely decorative */}
-            <div
-                className="pointer-events-none absolute inset-x-0 top-0 -z-10 h-[640px] bg-[radial-gradient(60%_60%_at_70%_0%,rgba(0,51,102,0.08),transparent)]"
-                aria-hidden
-            />
-
-            <div className="mx-auto grid w-full max-w-310 grid-cols-1 items-center gap-12 px-5 pb-20 pt-12 md:px-8 md:pt-20 lg:grid-cols-12 lg:gap-16 lg:pb-28">
+        <section className="relative overflow-hidden border-b border-border">
+            <div className="mx-auto grid w-full max-w-310 grid-cols-1 items-center gap-14 px-5 pb-20 pt-14 md:px-8 md:pt-20 lg:grid-cols-12 lg:gap-16 lg:pb-24">
                 <div className="flex flex-col items-start lg:col-span-6">
                     <p className="text-eyebrow text-secondary">{content.eyebrow}</p>
 
@@ -61,7 +57,7 @@ export default function Hero({ content }: { content: HomeContent["hero"] }) {
                         </Button>
                     </div>
 
-                    <ul className="mt-10 flex flex-wrap items-center gap-x-6 gap-y-3 text-sm text-copy">
+                    <ul className="mt-10 flex flex-wrap items-center gap-x-6 gap-y-3 border-t border-border pt-6 text-sm text-copy">
                         <li className="flex items-center gap-2">
                             <GhanaFlag />
                             {content.launchNote}
@@ -79,8 +75,9 @@ export default function Hero({ content }: { content: HomeContent["hero"] }) {
                     </ul>
                 </div>
 
-                <div className="lg:col-span-6">
-                    <div className="rounded-2xl border border-border bg-card p-5 shadow-[0_1px_2px_rgba(16,42,67,0.04),0_24px_48px_-24px_rgba(16,42,67,0.22)] sm:p-6">
+                {/* The record sits on a site plan's coordinate grid */}
+                <PlanFrame className="p-4 sm:p-8 lg:col-span-6">
+                    <RecordSheet reference={SAMPLE_PROPERTY.parcelId}>
                         <PropertyHeader
                             name={SAMPLE_PROPERTY.name}
                             type={SAMPLE_PROPERTY.type}
@@ -88,22 +85,22 @@ export default function Hero({ content }: { content: HomeContent["hero"] }) {
                             status={SAMPLE_PROPERTY.status}
                         />
 
-                        <dl className="mt-5 grid grid-cols-2 gap-4 rounded-xl bg-background p-4 sm:grid-cols-3">
+                        <dl className="mt-5 grid grid-cols-2 gap-4 border-y border-border py-4 sm:grid-cols-3">
                             {SAMPLE_PROPERTY.details.map((detail) => (
                                 <InfoRow key={detail.label} {...detail} />
                             ))}
                         </dl>
 
-                        <BoundaryMap className="mt-4 h-44 sm:h-48" coordinates={SAMPLE_PROPERTY.coordinates} />
+                        <BoundaryMap className="mt-4 h-40 sm:h-44" coordinates={SAMPLE_PROPERTY.coordinates} />
 
-                        <p className="text-eyebrow mt-6 text-muted-foreground">Documents</p>
+                        <p className="text-eyebrow mt-5 text-muted-foreground">Documents</p>
                         <ul className="mt-1 divide-y divide-border">
-                            <DocumentRow icon={FileText} name="Ownership document" detail="Land deed · PDF" status="complete" />
-                            <DocumentRow icon={Map} name="Site plan" detail="Surveyor coordinate sheet" status="in-review" />
-                            <DocumentRow icon={ShieldCheck} name="Supporting document" detail="Municipal confirmation" status="complete" />
+                            <DocumentRow icon={FileText} name="Indenture" detail="Signed deed · PDF" status="complete" />
+                            <DocumentRow icon={Map} name="Site plan" detail="Surveyor's coordinate sheet" status="in-review" />
+                            <DocumentRow icon={ShieldCheck} name="Search report" detail="Supporting document" status="complete" />
                         </ul>
-                    </div>
-                </div>
+                    </RecordSheet>
+                </PlanFrame>
             </div>
         </section>
     )

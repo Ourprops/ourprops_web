@@ -1,15 +1,24 @@
 import type { Metadata } from "next";
-import { Inter } from "next/font/google";
+import { IBM_Plex_Mono, IBM_Plex_Sans } from "next/font/google";
 import { Toaster } from "@/components/ui/sonner"
 import Providers from "@/components/providers"
 import { getSiteContent } from "@/lib/content"
 import { SITE_NAME, SITE_URL } from "@/lib/site"
 import "./globals.css";
 
-const inter = Inter({
+// Plex reads like technical documentation, which suits property records.
+// The mono face is for record data: parcel IDs, coordinates, digital addresses.
+const plexSans = IBM_Plex_Sans({
   subsets: ["latin"],
   display: "swap",
-  variable: "--font-inter",
+  variable: "--font-plex-sans",
+});
+
+const plexMono = IBM_Plex_Mono({
+  subsets: ["latin"],
+  weight: ["400", "500"],
+  display: "swap",
+  variable: "--font-plex-mono",
 });
 
 // Site-wide SEO and link previews, editable in Sanity under Site settings
@@ -45,7 +54,7 @@ export default function RootLayout({ children }: LayoutProps<"/">) {
   return (
     <html
       lang="en"
-      className={`${inter.variable} h-full antialiased`}
+      className={`${plexSans.variable} ${plexMono.variable} h-full antialiased`}
     >
       <body className="min-h-full">
         <Providers>

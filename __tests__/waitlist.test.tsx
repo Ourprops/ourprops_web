@@ -1,7 +1,7 @@
 import { afterEach, beforeEach, describe, expect, test, vi } from 'vitest'
 import { cleanup, fireEvent, render, screen } from '@testing-library/react'
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query'
-import Waitlist from '../app/(marketing)/_components/waitlist'
+import Waitlist from '../app/(public)/_components/waitlist'
 import { POST } from '../app/api/marketing/waitlist/route'
 import { HOME_DEFAULTS } from '../lib/content/defaults'
 

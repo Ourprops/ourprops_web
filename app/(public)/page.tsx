@@ -14,12 +14,12 @@ export const metadata: Metadata = {
   alternates: { canonical: "/" },
 };
 
-// Sections alternate between the page background and white cards
+// Sections alternate between the page background, white, and deep blue
 export default async function Home() {
   const content = await getHomeContent();
 
   return (
-    <div className="pt-20 md:pt-24">
+    <div className="pt-16">
       <Hero content={content.hero} />
       <ValueProposition content={content.valueProposition} />
       <HowItWorks content={content.howItWorks} />

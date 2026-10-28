@@ -37,7 +37,7 @@ export function InfoRow({ label, value }: { label: string; value: string }) {
     return (
         <div className="min-w-0">
             <dt className="text-xs text-muted-foreground">{label}</dt>
-            <dd className="mt-0.5 truncate text-sm font-semibold text-foreground tabular-nums">{value}</dd>
+            <dd className="text-data mt-0.5 truncate text-sm font-medium text-foreground">{value}</dd>
         </div>
     )
 }
@@ -160,6 +160,72 @@ export function BoundaryMap({ className, coordinates }: { className?: string; co
     )
 }
 
+// A record as a document: a header strip naming it, then its contents
+export function RecordSheet({
+    reference,
+    children,
+    className,
+}: {
+    reference: string
+    children: React.ReactNode
+    className?: string
+}) {
+    return (
+        <div
+            className={cn(
+                "overflow-hidden rounded-xl border border-border bg-card shadow-[0_1px_2px_rgba(16,42,67,0.06),0_16px_32px_-20px_rgba(16,42,67,0.25)]",
+                className
+            )}
+        >
+            <div className="flex items-center justify-between gap-3 border-b border-border bg-background px-4 py-2 text-[11px] text-muted-foreground sm:px-5">
+                <span className="text-eyebrow text-[10px]">Property record</span>
+                <span className="text-data">{reference}</span>
+            </div>
+            <div className="p-4 sm:p-5">{children}</div>
+        </div>
+    )
+}
+
+// Coordinate labels along the edges of a survey grid, as on a site plan. Decorative.
+export function PlanFrame({
+    children,
+    className,
+    ticks = SAMPLE_TICKS,
+}: {
+    children: React.ReactNode
+    className?: string
+    ticks?: { top: string[]; side: string[] }
+}) {
+    return (
+        <div className={cn("survey-grid relative rounded-xl border border-dashed border-primary/15", className)}>
+            <div
+                className="text-data pointer-events-none absolute inset-x-6 -top-5 hidden justify-between text-[10px] text-muted-foreground sm:flex"
+                aria-hidden
+            >
+                {ticks.top.map((tick) => (
+                    <span key={tick}>{tick}</span>
+                ))}
+            </div>
+            <div
+                className="text-data pointer-events-none absolute inset-y-6 -left-5 hidden flex-col justify-between text-[10px] text-muted-foreground [writing-mode:vertical-rl] sm:flex"
+                aria-hidden
+            >
+                {ticks.side.map((tick) => (
+                    <span key={tick} className="rotate-180">
+                        {tick}
+                    </span>
+                ))}
+            </div>
+            {children}
+        </div>
+    )
+}
+
+const SAMPLE_TICKS = {
+    top: ["0°09′30″W", "0°09′15″W", "0°09′00″W"],
+    side: ["5°38′30″N", "5°38′45″N", "5°39′00″N"],
+}
+
 // Example record used across the homepage
 export const SAMPLE_PROPERTY = {
     name: "East Legon Residence",
@@ -167,6 +233,8 @@ export const SAMPLE_PROPERTY = {
     location: "East Legon, Accra",
     status: "in-review" as RecordStatus,
     coordinates: "5°38′42.8″N 0°09′14.1″W",
+    digitalAddress: "GA-183-4290",
+    parcelId: "GA-049-3821",
     details: [
         { label: "Plot area", value: "1,240 m²" },
         { label: "Parcel ID", value: "GA-049-3821" },

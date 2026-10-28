@@ -1,12 +1,11 @@
 import { ChevronRight, Eye, FileText, Image as ImageIcon, Lock, Map, ShieldCheck } from "lucide-react"
 
 import type { HomeContent } from "@/lib/content/defaults"
-import { getIcon } from "./icons"
-
 import {
 	BoundaryMap,
 	DocumentRow,
 	InfoRow,
+	PlanFrame,
 	PropertyHeader,
 	SAMPLE_PROPERTY,
 } from "./property-record"
@@ -17,6 +16,15 @@ const SHARED_WITH = [
 	{ initials: "KB", name: "Kofi Boateng", role: "Prospective buyer", access: "Summary only" },
 ]
 
+// Numbered marker tying a place on the preview to the callout with the same number
+function Pin({ number }: { number: number }) {
+	return (
+		<span className="text-data absolute -top-3 -left-3 z-10 flex size-6 items-center justify-center rounded-full bg-secondary text-xs font-medium text-secondary-foreground ring-4 ring-background">
+			{number}
+		</span>
+	)
+}
+
 export default function ProductPreview({ content }: { content: HomeContent["productPreview"] }) {
 	return (
 		<section className="w-full bg-card py-20 md:py-28" id="product">
@@ -24,93 +32,96 @@ export default function ProductPreview({ content }: { content: HomeContent["prod
 				<SectionHeading align="center" {...content.header} />
 
 				{/* Decorative product preview: hidden from assistive tech, the callouts below describe it */}
-				<div
-					className="mt-14 overflow-hidden rounded-3xl border border-border bg-background shadow-[0_1px_2px_rgba(16,42,67,0.04),0_32px_64px_-32px_rgba(16,42,67,0.25)]"
-					aria-hidden
-					inert
-				>
-					<div className="flex items-center gap-1.5 border-b border-border bg-card px-5 py-3 text-xs text-muted-foreground">
-						<span>Properties</span>
-						<ChevronRight size={12} />
-						<span className="font-medium text-foreground">{SAMPLE_PROPERTY.name}</span>
-					</div>
-
-					<div className="grid grid-cols-1 gap-5 p-4 sm:p-6 lg:grid-cols-12">
-						<div className="flex flex-col gap-5 lg:col-span-7">
-							<div className="rounded-2xl border border-border bg-card p-5">
-								<PropertyHeader
-									name={SAMPLE_PROPERTY.name}
-									type={SAMPLE_PROPERTY.type}
-									location={SAMPLE_PROPERTY.location}
-									status={SAMPLE_PROPERTY.status}
-								/>
-								<dl className="mt-5 grid grid-cols-2 gap-4 border-t border-border pt-5 sm:grid-cols-3">
-									{SAMPLE_PROPERTY.details.map((detail) => (
-										<InfoRow key={detail.label} {...detail} />
-									))}
-								</dl>
-							</div>
-							<BoundaryMap className="h-64 sm:h-80 lg:flex-1" coordinates={SAMPLE_PROPERTY.coordinates} />
+				<PlanFrame className="mt-16 bg-background">
+					<div aria-hidden inert>
+						<div className="flex items-center justify-between gap-3 border-b border-dashed border-primary/15 px-5 py-3 text-xs text-muted-foreground">
+							<span className="flex items-center gap-1.5">
+								<span>Properties</span>
+								<ChevronRight size={12} />
+								<span className="font-medium text-foreground">{SAMPLE_PROPERTY.name}</span>
+							</span>
+							<span className="text-data hidden sm:inline">{SAMPLE_PROPERTY.parcelId}</span>
 						</div>
 
-						<div className="flex flex-col gap-5 lg:col-span-5">
-							<div className="rounded-2xl border border-border bg-card p-5">
-								<p className="text-sm font-semibold text-foreground">Documents</p>
-								<ul className="mt-1 divide-y divide-border">
-									<DocumentRow icon={FileText} name="Ownership document" detail="Land deed · PDF" status="complete" />
-									<DocumentRow icon={Map} name="Site plan" detail="Surveyor coordinate sheet" status="in-review" />
-									<DocumentRow icon={ShieldCheck} name="Supporting document" detail="Municipal confirmation" status="complete" />
-									<DocumentRow icon={ImageIcon} name="Property photos" detail="6 images" status="pending" />
-								</ul>
+						<div className="grid grid-cols-1 gap-6 p-5 sm:p-8 lg:grid-cols-12">
+							<div className="flex flex-col gap-5 lg:col-span-7">
+								<div className="rounded-xl border border-border bg-card p-5">
+									<PropertyHeader
+										name={SAMPLE_PROPERTY.name}
+										type={SAMPLE_PROPERTY.type}
+										location={SAMPLE_PROPERTY.location}
+										status={SAMPLE_PROPERTY.status}
+									/>
+									<dl className="mt-5 grid grid-cols-2 gap-4 border-t border-border pt-5 sm:grid-cols-3">
+										{SAMPLE_PROPERTY.details.map((detail) => (
+											<InfoRow key={detail.label} {...detail} />
+										))}
+									</dl>
+								</div>
+								<div className="relative flex lg:flex-1">
+									<Pin number={1} />
+									<BoundaryMap className="h-64 w-full sm:h-80 lg:h-auto" coordinates={SAMPLE_PROPERTY.coordinates} />
+								</div>
 							</div>
 
-							<div className="rounded-2xl border border-border bg-card p-5">
-								<div className="flex items-center justify-between">
-									<p className="text-sm font-semibold text-foreground">Shared with</p>
-									<span className="inline-flex items-center gap-1 text-xs text-copy">
-										<Lock size={12} />
-										Private by default
-									</span>
+							<div className="flex flex-col gap-5 lg:col-span-5">
+								<div className="relative rounded-xl border border-border bg-card p-5">
+									<Pin number={2} />
+									<p className="text-sm font-semibold text-foreground">Documents</p>
+									<ul className="mt-1 divide-y divide-border">
+										<DocumentRow icon={FileText} name="Indenture" detail="Signed deed · PDF" status="complete" />
+										<DocumentRow icon={Map} name="Site plan" detail="Surveyor's coordinate sheet" status="in-review" />
+										<DocumentRow icon={ShieldCheck} name="Search report" detail="Supporting document" status="complete" />
+										<DocumentRow icon={ImageIcon} name="Property photos" detail="6 images" status="pending" />
+									</ul>
 								</div>
-								<ul className="mt-3 flex flex-col gap-3">
-									{SHARED_WITH.map((person) => (
-										<li key={person.name} className="flex items-center gap-3">
-											<span className="flex size-9 shrink-0 items-center justify-center rounded-full bg-primary/10 text-xs font-semibold text-primary">
-												{person.initials}
-											</span>
-											<span className="min-w-0 flex-1">
-												<span className="block truncate text-sm font-medium text-foreground">{person.name}</span>
-												<span className="block truncate text-xs text-muted-foreground">{person.role}</span>
-											</span>
-											<span className="inline-flex shrink-0 items-center gap-1 rounded-full bg-background px-2 py-0.5 text-xs text-copy ring-1 ring-border">
-												<Eye size={12} />
-												{person.access}
-											</span>
-										</li>
-									))}
-								</ul>
+
+								<div className="relative rounded-xl border border-border bg-card p-5">
+									<Pin number={3} />
+									<div className="flex items-center justify-between">
+										<p className="text-sm font-semibold text-foreground">Shared with</p>
+										<span className="inline-flex items-center gap-1 text-xs text-copy">
+											<Lock size={12} />
+											Private by default
+										</span>
+									</div>
+									<ul className="mt-3 flex flex-col gap-3">
+										{SHARED_WITH.map((person) => (
+											<li key={person.name} className="flex items-center gap-3">
+												<span className="flex size-9 shrink-0 items-center justify-center rounded-full bg-primary/10 text-xs font-semibold text-primary">
+													{person.initials}
+												</span>
+												<span className="min-w-0 flex-1">
+													<span className="block truncate text-sm font-medium text-foreground">{person.name}</span>
+													<span className="block truncate text-xs text-muted-foreground">{person.role}</span>
+												</span>
+												<span className="inline-flex shrink-0 items-center gap-1 rounded-full bg-background px-2 py-0.5 text-xs text-copy ring-1 ring-border">
+													<Eye size={12} />
+													{person.access}
+												</span>
+											</li>
+										))}
+									</ul>
+								</div>
 							</div>
 						</div>
 					</div>
-				</div>
+				</PlanFrame>
 
-				<ul className="mt-12 grid grid-cols-1 gap-8 md:grid-cols-3">
-					{content.callouts.map((callout) => {
-						const Icon = getIcon(callout.icon)
-
-						return (
-							<li key={callout.title} className="flex gap-4">
-								<span className="flex size-10 shrink-0 items-center justify-center rounded-xl bg-background text-primary ring-1 ring-border">
-									<Icon size={18} aria-hidden />
-								</span>
-								<div>
-									<h3 className="text-base font-semibold text-foreground">{callout.title}</h3>
-									<p className="mt-1 text-sm leading-relaxed text-copy">{callout.description}</p>
-								</div>
-							</li>
-						)
-					})}
-				</ul>
+				{/* A legend for the numbered pins, like the key on a site plan */}
+				<ol className="mt-12 grid grid-cols-1 gap-8 md:grid-cols-3">
+					{content.callouts.map((callout, index) => (
+						<li key={callout.title} className="flex gap-4 border-t border-border pt-5">
+							<span className="text-data flex size-6 shrink-0 items-center justify-center rounded-full bg-secondary text-xs font-medium text-secondary-foreground">
+								{index + 1}
+							</span>
+							<div>
+								<h3 className="text-base font-semibold text-foreground">{callout.title}</h3>
+								<p className="mt-1 text-sm leading-relaxed text-copy">{callout.description}</p>
+							</div>
+						</li>
+					))}
+				</ol>
 			</div>
 		</section>
 	)

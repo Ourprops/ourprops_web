@@ -5,6 +5,7 @@ import Link from "next/link"
 
 import { Button } from "@/components/ui/button"
 import { useDraftDocuments } from "@/lib/queries/property"
+import { cn } from "@/lib/utils"
 import { useNewPropertyStore } from "@/stores/new-property-store"
 
 import { findGaps } from "./review"
@@ -57,17 +58,33 @@ export default function Confirmation() {
 
             <div className="mt-8 rounded-xl border border-border bg-card p-5">
                 <h2 className="text-[15px] font-semibold text-foreground">What happens next</h2>
-                <ol className="mt-4 flex flex-col gap-4">
+                {/* A timeline: the line joins the markers, and the first step is the one happening now */}
+                <ol className="mt-4 flex flex-col">
                     {NEXT_STEPS.map((step, index) => (
-                        <li key={step.title} className="flex gap-3">
+                        <li
+                            key={step.title}
+                            className="relative flex gap-3 pb-5 last:pb-0 before:absolute before:top-7 before:bottom-0 before:left-[0.8125rem] before:w-px before:bg-border last:before:hidden"
+                        >
                             <span
                                 aria-hidden
-                                className="flex size-7 shrink-0 items-center justify-center rounded-full bg-background text-sm font-semibold text-primary"
+                                className={cn(
+                                    "text-data relative flex size-7 shrink-0 items-center justify-center rounded-full text-xs font-medium",
+                                    index === 0
+                                        ? "bg-secondary text-secondary-foreground"
+                                        : "bg-background text-muted-foreground ring-1 ring-border"
+                                )}
                             >
-                                {index + 1}
+                                {String(index + 1).padStart(2, "0")}
                             </span>
-                            <div className="min-w-0">
-                                <p className="text-sm font-medium text-foreground">{step.title}</p>
+                            <div className="min-w-0 pt-0.5">
+                                <div className="flex flex-wrap items-center gap-2">
+                                    <p className="text-sm font-medium text-foreground">{step.title}</p>
+                                    {index === 0 && (
+                                        <span className="rounded-full bg-warning-soft px-2 py-0.5 text-xs font-medium text-warning">
+                                            Now
+                                        </span>
+                                    )}
+                                </div>
                                 <p className="mt-0.5 text-sm leading-relaxed text-copy">{step.description}</p>
                             </div>
                         </li>

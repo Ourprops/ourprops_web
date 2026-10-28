@@ -2,7 +2,7 @@ import { defineQuery } from 'next-sanity'
 
 const SECTION_HEADER = `header{eyebrow, heading, description}`
 const LINK = `{label, href}`
-const CARD = `{icon, title, description}`
+const CARD = `{title, description}`
 
 export const HOME_PAGE_QUERY = defineQuery(`*[_id == "homePage"][0]{
   hero{
@@ -14,10 +14,10 @@ export const HOME_PAGE_QUERY = defineQuery(`*[_id == "homePage"][0]{
     launchNote,
     trustPoints[]{icon, text}
   },
-  valueProposition{${SECTION_HEADER}, items[]{icon, title, description, highlight}},
+  valueProposition{${SECTION_HEADER}, items[]{title, description, highlight}},
   howItWorks{${SECTION_HEADER}, steps[]${CARD}},
   productPreview{${SECTION_HEADER}, callouts[]${CARD}},
-  audience{${SECTION_HEADER}, items[]{icon, title, description, cta${LINK}}},
+  audience{${SECTION_HEADER}, items[]{title, description, accessLevel, cta${LINK}}},
   values{${SECTION_HEADER}, items[]${CARD}, disclaimer},
   about{${SECTION_HEADER}, mission, vision},
   waitlist{${SECTION_HEADER}, submitLabel, privacyNote, successTitle, successMessage}

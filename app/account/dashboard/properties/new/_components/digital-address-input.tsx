@@ -103,7 +103,7 @@ export default function DigitalAddressInput({ id, value, onChange, regionLetter,
                 spellCheck={false}
                 aria-invalid={invalid}
                 aria-describedby={describedBy}
-                className="h-11 w-16 bg-card text-center tracking-widest uppercase placeholder:normal-case"
+                className="text-data h-11 w-16 bg-card text-center tracking-widest uppercase placeholder:normal-case"
             />
             <span aria-hidden className="text-muted-foreground">
                 –
@@ -120,7 +120,7 @@ export default function DigitalAddressInput({ id, value, onChange, regionLetter,
                 aria-label="Digital address numbers"
                 aria-invalid={invalid}
                 aria-describedby={describedBy}
-                className="h-11 flex-1 bg-card tracking-wider"
+                className="text-data h-11 flex-1 bg-card tracking-wider"
             />
         </div>
     )

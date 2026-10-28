@@ -1158,6 +1158,12 @@ describe('Failed saves', () => {
 })
 
 describe('Registration flow', () => {
+    test('cancelling on the start screen goes back to the dashboard', () => {
+        renderWithQuery(<NewPropertyFlow draft={null} mapsApiKey="" />)
+
+        expect(screen.getByText('Cancel').closest('a')?.getAttribute('href')).toBe('/account/dashboard')
+    })
+
     test('goes from the start screen through details to location', () => {
         renderWithQuery(<NewPropertyFlow draft={null} mapsApiKey="" />)
 

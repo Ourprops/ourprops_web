@@ -11,8 +11,9 @@ type HeaderProps = {
 
 export default function Header({ navigation, cta }: HeaderProps) {
   return (
-    <header className="fixed inset-x-0 top-0 z-50 px-3 pt-3 md:px-6 md:pt-4">
-      <div className="material mx-auto flex h-14 max-w-7xl items-center justify-between gap-4 rounded-2xl border border-white/60 px-3 shadow-[0_8px_24px_-12px_rgba(16,42,67,0.18)] sm:px-4 md:h-16 md:px-5">
+    // A plain full-width bar with a hairline edge, like the header of a document
+    <header className="material fixed inset-x-0 top-0 z-50 border-b border-border">
+      <div className="mx-auto flex h-16 max-w-310 items-center justify-between gap-4 px-5 md:px-8">
         <Link href="/" className="flex shrink-0 items-center gap-2 rounded-md" aria-label="OurProps home">
           <Image src="/logo.png" alt="" width={32} height={32} className="h-8 w-auto object-contain" priority />
           <span className="text-lg font-semibold tracking-tight text-primary">OurProps</span>

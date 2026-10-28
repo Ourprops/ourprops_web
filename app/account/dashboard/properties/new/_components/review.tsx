@@ -135,67 +135,82 @@ export default function Review() {
                 </div>
             )}
 
-            <div className="mt-8 flex flex-col gap-4">
-                <Section title="Property details" screen="details">
-                    <Row term="Name" value={details.name} required />
-                    <Row term="Type" value={TYPE_OPTIONS.find((option) => option.value === details.type)?.title} required />
-                    <Row term="Description" value={details.description} />
-                </Section>
+            {/* The answers laid out as the record they will become */}
+            <div className="mt-8 overflow-hidden rounded-xl border border-border bg-card shadow-xs">
+                <div className="flex items-center justify-between gap-3 border-b border-border bg-background px-4 py-2 text-muted-foreground sm:px-5">
+                    <span className="text-eyebrow text-[10px]">Property record</span>
+                    <span className="text-data shrink-0 text-[11px]">Draft</span>
+                </div>
 
-                <Section title="Location" screen="location">
-                    <Row term="Region" value={location.region} required />
-                    <Row term="Municipality or district" value={location.municipality} />
-                    <Row term="City or town" value={location.city} required />
-                    <Row term="Address" value={location.address} />
-                    <Row term="Digital address" value={location.digital_address} />
-                    <Row term="Landmark" value={location.landmark} />
-                </Section>
+                <div className="divide-y divide-border">
+                    <Section title="Property details" screen="details">
+                        <Row term="Name" value={details.name} required />
+                        <Row term="Type" value={TYPE_OPTIONS.find((option) => option.value === details.type)?.title} required />
+                        <Row term="Description" value={details.description} />
+                    </Section>
 
-                <Section title="Boundary" screen="boundary">
-                    {!boundary ? (
-                        <Row term="On the map" missing="No boundary or pin yet" />
-                    ) : "pin" in boundary ? (
-                        <>
-                            <Row
-                                term="On the map"
-                                value={`A pin at ${boundary.pin.latitude.toFixed(6)}, ${boundary.pin.longitude.toFixed(6)}`}
-                            />
-                            <Row term="Boundary" value="Not drawn. A reviewer will work it out from your documents." />
-                        </>
-                    ) : (
-                        <>
-                            <Row term="On the map" value={boundary.source === "geojson_import" ? "Boundary from your file" : "Boundary drawn"} />
-                            <Row term="Area" value={formatArea(polygonArea(boundary.polygon))} />
-                        </>
-                    )}
-                </Section>
+                    <Section title="Location" screen="location">
+                        <Row term="Region" value={location.region} required />
+                        <Row term="Municipality or district" value={location.municipality} />
+                        <Row term="City or town" value={location.city} required />
+                        <Row term="Address" value={location.address} />
+                        <Row term="Digital address" value={location.digital_address && <span className="text-data">{location.digital_address}</span>} />
+                        <Row term="Landmark" value={location.landmark} />
+                    </Section>
 
-                <Section title="How you got it" screen="acquisition">
-                    <AcquisitionRows acquisition={acquisition} />
-                </Section>
+                    <Section title="Boundary" screen="boundary">
+                        {!boundary ? (
+                            <Row term="On the map" missing="No boundary or pin yet" />
+                        ) : "pin" in boundary ? (
+                            <>
+                                <Row
+                                    term="On the map"
+                                    value={
+                                        <>
+                                            A pin at{" "}
+                                            <span className="text-data">
+                                                {boundary.pin.latitude.toFixed(6)}, {boundary.pin.longitude.toFixed(6)}
+                                            </span>
+                                        </>
+                                    }
+                                />
+                                <Row term="Boundary" value="Not drawn. A reviewer will work it out from your documents." />
+                            </>
+                        ) : (
+                            <>
+                                <Row term="On the map" value={boundary.source === "geojson_import" ? "Boundary from your file" : "Boundary drawn"} />
+                                <Row term="Area" value={<span className="text-data">{formatArea(polygonArea(boundary.polygon))}</span>} />
+                            </>
+                        )}
+                    </Section>
 
-                <Section title="Documents" screen="documents">
-                    {documents.isPending ? (
-                        <p role="status" className="flex items-center gap-2 py-2 text-sm text-muted-foreground">
-                            <Spinner aria-hidden /> Loading your documents…
-                        </p>
-                    ) : documents.isError ? (
-                        <div role="alert" className="flex items-center justify-between gap-3 py-2 text-sm text-destructive">
-                            <span>{documents.error.message}</span>
-                            <Button type="button" variant="outline" size="sm" onClick={() => documents.refetch()}>
-                                Try again
-                            </Button>
-                        </div>
-                    ) : (
-                        DOCUMENT_SLOT_OPTIONS.map((option) => (
-                            <DocumentRows
-                                key={option.value}
-                                term={option.title}
-                                documents={documents.data.filter((document) => document.slot === option.value)}
-                            />
-                        ))
-                    )}
-                </Section>
+                    <Section title="How you got it" screen="acquisition">
+                        <AcquisitionRows acquisition={acquisition} />
+                    </Section>
+
+                    <Section title="Documents" screen="documents">
+                        {documents.isPending ? (
+                            <p role="status" className="flex items-center gap-2 py-2 text-sm text-muted-foreground">
+                                <Spinner aria-hidden /> Loading your documents…
+                            </p>
+                        ) : documents.isError ? (
+                            <div role="alert" className="flex items-center justify-between gap-3 py-2 text-sm text-destructive">
+                                <span>{documents.error.message}</span>
+                                <Button type="button" variant="outline" size="sm" onClick={() => documents.refetch()}>
+                                    Try again
+                                </Button>
+                            </div>
+                        ) : (
+                            DOCUMENT_SLOT_OPTIONS.map((option) => (
+                                <DocumentRows
+                                    key={option.value}
+                                    term={option.title}
+                                    documents={documents.data.filter((document) => document.slot === option.value)}
+                                />
+                            ))
+                        )}
+                    </Section>
+                </div>
             </div>
 
             <Field data-invalid={!!declarationError} className="mt-8">
@@ -263,7 +278,7 @@ function Section({ title, screen, children }: SectionProps) {
     const id = `review-${screen}`
 
     return (
-        <section aria-labelledby={id} className="rounded-xl border border-border bg-card p-4">
+        <section aria-labelledby={id} className="p-4 sm:px-5">
             <div className="flex items-center justify-between gap-3">
                 <h2 id={id} className="text-[15px] font-semibold text-foreground">
                     {title}

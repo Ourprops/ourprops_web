@@ -51,7 +51,10 @@ export default function Waitlist({ content }: { content: HomeContent["waitlist"]
 	}
 
 	return (
-		<section className="w-full bg-primary py-20 text-primary-foreground md:py-28" id="waitlist">
+		<section
+			className="survey-grid w-full bg-primary py-20 text-primary-foreground [--grid-line:rgba(255,255,255,0.05)] md:py-28"
+			id="waitlist"
+		>
 			<div className="mx-auto max-w-310 px-5 md:px-8">
 				<div className="mx-auto flex max-w-2xl flex-col items-center text-center">
 					<p className="text-eyebrow text-white/70">{content.header.eyebrow}</p>

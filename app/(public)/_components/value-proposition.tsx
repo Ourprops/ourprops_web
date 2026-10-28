@@ -1,34 +1,32 @@
 import { Check } from "lucide-react"
 
 import type { HomeContent } from "@/lib/content/defaults"
-import { getIcon } from "./icons"
 import SectionHeading from "./section-heading"
 
+// The problem on the left, what OurProps changes as numbered entries on the right, like clauses in a document
 export default function ValueProposition({ content }: { content: HomeContent["valueProposition"] }) {
 	return (
 		<section className="w-full bg-card py-20 md:py-28">
-			<div className="mx-auto max-w-310 px-5 md:px-8">
-				<SectionHeading {...content.header} />
+			<div className="mx-auto grid max-w-310 grid-cols-1 gap-12 px-5 md:px-8 lg:grid-cols-12 lg:gap-16">
+				<SectionHeading className="lg:sticky lg:top-28 lg:col-span-5 lg:self-start" {...content.header} />
 
-				<div className="mt-14 grid grid-cols-1 gap-10 md:grid-cols-3 md:gap-8">
-					{content.items.map((item) => {
-						const Icon = getIcon(item.icon)
-
-						return (
-							<article key={item.title} className="flex flex-col border-t border-border pt-8">
-								<span className="flex size-11 items-center justify-center rounded-xl bg-primary text-primary-foreground">
-									<Icon size={20} aria-hidden />
-								</span>
-								<h3 className="text-heading mt-6 text-foreground">{item.title}</h3>
+				<ol className="divide-y divide-border border-y border-border lg:col-span-7">
+					{content.items.map((item, index) => (
+						<li key={item.title} className="grid grid-cols-[2.5rem_1fr] gap-x-4 py-8 sm:grid-cols-[3.5rem_1fr]">
+							<span className="text-data pt-1 text-sm text-secondary" aria-hidden>
+								{String(index + 1).padStart(2, "0")}
+							</span>
+							<div>
+								<h3 className="text-heading text-foreground">{item.title}</h3>
 								<p className="mt-3 text-base leading-relaxed text-copy">{item.description}</p>
-								<p className="mt-5 flex items-center gap-2 text-sm font-medium text-foreground">
-									<Check size={16} strokeWidth={2.5} className="shrink-0 text-secondary" aria-hidden />
+								<p className="mt-4 flex items-center gap-2 text-sm font-medium text-foreground">
+									<Check size={16} strokeWidth={2.5} className="shrink-0 text-success" aria-hidden />
 									{item.highlight}
 								</p>
-							</article>
-						)
-					})}
-				</div>
+							</div>
+						</li>
+					))}
+				</ol>
 			</div>
 		</section>
 	)
