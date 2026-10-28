@@ -19,6 +19,13 @@ export type PendingTotp = {
     secret: string;
 };
 
+// Supabase returns the QR code as "data:image/svg+xml;utf-8,<svg ...>" with the SVG unencoded and a trailing
+// newline, which next/image rejects. This rebuilds it as a clean, encoded data URL any <img> or <Image> accepts.
+export function toQrCodeDataUrl(qrCode: string): string {
+    const svg = qrCode.replace(/^data:image\/svg\+xml[^,]*,/, "").trim();
+    return `data:image/svg+xml;charset=utf-8,${encodeURIComponent(svg)}`;
+}
+
 export const mfaKeys = {
     status: ["mfa", "status"] as const,
 };
@@ -90,7 +97,7 @@ export function useEnrollTotp() {
                 throw error;
             }
 
-            return { factorId: data.id, qrCode: data.totp.qr_code, secret: data.totp.secret };
+            return { factorId: data.id, qrCode: toQrCodeDataUrl(data.totp.qr_code), secret: data.totp.secret };
         },
     });
 }
