@@ -4,6 +4,7 @@ import { QueryClient, QueryClientProvider } from '@tanstack/react-query'
 import type { ReactNode } from 'react'
 
 import Acquisition from '../app/account/dashboard/properties/new/_components/acquisition'
+import Boundary from '../app/account/dashboard/properties/new/_components/boundary'
 import Confirmation from '../app/account/dashboard/properties/new/_components/confirmation'
 import Details from '../app/account/dashboard/properties/new/_components/details'
 import Documents from '../app/account/dashboard/properties/new/_components/documents'
@@ -58,6 +59,30 @@ function typeInto(label: string | RegExp, value: string) {
     fireEvent.change(screen.getByLabelText(label), { target: { value } })
 }
 
+// Base UI only accepts a mouse click that started on the option, as a real click does
+async function clickOption(name: string) {
+    const option = await screen.findByRole('option', { name })
+    fireEvent.pointerDown(option, { pointerType: 'mouse' })
+    fireEvent.click(option)
+}
+
+// Opens a select by its label and picks an option
+async function pickOption(label: string, name: string) {
+    fireEvent.click(screen.getByLabelText(label))
+    await clickOption(name)
+}
+
+// Types into a combobox to filter its options. jsdom's change event doesn't open the list, so ArrowDown does, as a keyboard user would
+function searchCombobox(label: string, query: string) {
+    typeInto(label, query)
+    fireEvent.keyDown(screen.getByLabelText(label), { key: 'ArrowDown' })
+}
+
+async function searchAndPick(label: string, query: string, name: string) {
+    searchCombobox(label, query)
+    await clickOption(name)
+}
+
 // The error messages shown under fields, in the order they appear
 function errorMessages() {
     return screen.queryAllByRole('alert').map((element) => element.textContent)
@@ -73,7 +98,7 @@ beforeEach(() => {
     vi.stubGlobal('fetch', fetchMock)
     fetchMock.mockClear()
     storageUpload.mockClear()
-    window.history.replaceState(null, '', '/properties/new')
+    window.history.replaceState(null, '', '/account/dashboard/properties/new')
     useNewPropertyStore.getState().reset()
 })
 
@@ -143,30 +168,110 @@ describe('Location screen', () => {
 
         fireEvent.click(continueButton())
 
-        expect(errorMessages()).toEqual(['Choose a region', 'Municipality is required', 'City is required'])
+        expect(errorMessages()).toEqual(['Choose a region', 'Choose a municipality or district', 'City is required'])
         expect(document.activeElement).toBe(screen.getByLabelText('Region'))
     })
 
     test('rejects a badly formatted digital address', () => {
-        useNewPropertyStore.getState().updateLocation({ region: 'Ashanti', municipality: 'KMA', city: 'Kumasi' })
+        useNewPropertyStore.getState().updateLocation({ region: 'Ashanti', municipality: 'Kumasi', city: 'Kumasi' })
         renderWithQuery(<Location />)
 
-        typeInto(/digital address/i, 'GA-12')
+        typeInto(/digital address \(optional\)/i, 'AK-12')
         fireEvent.click(continueButton())
 
-        expect(screen.getByText('Digital address must be in the format XX-000-0000')).toBeDefined()
-        expect(document.activeElement).toBe(screen.getByLabelText(/digital address/i))
+        expect(screen.getByText('Enter the digital address like GA-183-4290 or GA-0183-4290')).toBeDefined()
+        expect(document.activeElement).toBe(screen.getByLabelText(/digital address \(optional\)/i))
     })
 
-    test('stores the location, uppercasing the digital address, and moves on to the map', () => {
+    test('adds the dashes to the digital address as the user types', () => {
+        useNewPropertyStore.getState().updateLocation({ region: 'Greater Accra' })
+        renderWithQuery(<Location />)
+
+        typeInto(/digital address \(optional\)/i, 'ga1834290')
+
+        expect(useNewPropertyStore.getState().location.digital_address).toBe('GA-183-4290')
+    })
+
+    test("prefills the region's letter, takes the district letter, then moves on to the numbers", () => {
+        useNewPropertyStore.getState().updateLocation({ region: 'Greater Accra' })
+        renderWithQuery(<Location />)
+        const letters = screen.getByLabelText(/digital address \(optional\)/i)
+
+        fireEvent.focus(letters)
+        expect(useNewPropertyStore.getState().location.digital_address).toBe('G')
+
+        // The prefilled G is selected, so typing replaces it; a lone district letter keeps the G in front
+        typeInto(/digital address \(optional\)/i, 'A')
+
+        expect(useNewPropertyStore.getState().location.digital_address).toBe('GA')
+        expect(document.activeElement).toBe(screen.getByLabelText('Digital address numbers'))
+    })
+
+    test('opens the number keypad for the numbers and adds the dashes', () => {
+        useNewPropertyStore.getState().updateLocation({ region: 'Greater Accra', digital_address: 'GA' })
+        renderWithQuery(<Location />)
+        const numbers = screen.getByLabelText('Digital address numbers') as HTMLInputElement
+
+        typeInto('Digital address numbers', '01834290')
+
+        expect(numbers.inputMode).toBe('numeric')
+        expect(numbers.value).toBe('0183-4290')
+        expect(useNewPropertyStore.getState().location.digital_address).toBe('GA-0183-4290')
+    })
+
+    test('fills both boxes when a whole address is pasted into the numbers', () => {
+        useNewPropertyStore.getState().updateLocation({ region: 'Greater Accra' })
+        renderWithQuery(<Location />)
+
+        typeInto('Digital address numbers', 'GA 183 4290')
+
+        expect((screen.getByLabelText(/digital address \(optional\)/i) as HTMLInputElement).value).toBe('GA')
+        expect((screen.getByLabelText('Digital address numbers') as HTMLInputElement).value).toBe('183-4290')
+    })
+
+    test('goes back to the letters on Backspace at the start of the numbers', () => {
+        useNewPropertyStore.getState().updateLocation({ region: 'Greater Accra', digital_address: 'GA' })
+        renderWithQuery(<Location />)
+        const numbers = screen.getByLabelText('Digital address numbers') as HTMLInputElement
+
+        numbers.focus()
+        fireEvent.keyDown(numbers, { key: 'Backspace' })
+
+        expect(document.activeElement).toBe(screen.getByLabelText(/digital address \(optional\)/i))
+    })
+
+    test('clears the prefilled letter when the user leaves without typing, so the optional field stays empty', () => {
+        useNewPropertyStore.getState().updateLocation({ region: 'Greater Accra' })
+        renderWithQuery(<Location />)
+        const letters = screen.getByLabelText(/digital address \(optional\)/i)
+
+        fireEvent.focus(letters)
+        fireEvent.blur(letters, { relatedTarget: screen.getByLabelText('City or town') })
+
+        expect(useNewPropertyStore.getState().location.digital_address).toBe('')
+    })
+
+    test("rejects a digital address that doesn't start with the region's letter", () => {
+        useNewPropertyStore.getState().updateLocation({ region: 'Ashanti', municipality: 'Kumasi', city: 'Kumasi' })
+        renderWithQuery(<Location />)
+
+        // Pasted with Greater Accra's G, which the field leaves as is rather than silently changing
+        typeInto(/digital address \(optional\)/i, 'GA-183-4290')
+        fireEvent.click(continueButton())
+
+        expect(errorMessages()).toEqual(['Digital addresses in Ashanti start with A'])
+        expect(document.activeElement).toBe(screen.getByLabelText(/digital address \(optional\)/i))
+    })
+
+    test('stores the location, uppercasing the digital address, and moves on to the map', async () => {
         useNewPropertyStore.getState().setScreen('location')
         useNewPropertyStore.getState().updateLocation({ region: 'Greater Accra' })
         renderWithQuery(<Location />)
 
-        typeInto('Municipality or district', ' Ayawaso West ')
+        await searchAndPick('Municipality or district', 'ayawaso w', 'Ayawaso West Municipal')
         typeInto('City or town', 'East Legon')
         typeInto(/^address/i, '12 Lagos Avenue')
-        typeInto(/digital address/i, 'ga-123-4567')
+        typeInto(/digital address \(optional\)/i, 'ga-123-4567')
         typeInto(/landmark/i, '')
         fireEvent.click(continueButton())
 
@@ -182,16 +287,83 @@ describe('Location screen', () => {
         expect(state.screen).toBe('boundary')
     })
 
+    test('goes back to the property details', () => {
+        useNewPropertyStore.getState().setScreen('location')
+        renderWithQuery(<Location />)
+
+        fireEvent.click(screen.getByRole('button', { name: 'Back' }))
+
+        expect(useNewPropertyStore.getState().screen).toBe('details')
+    })
+
     test('lets the user pick a region', async () => {
         renderWithQuery(<Location />)
 
-        fireEvent.click(screen.getByLabelText('Region'))
-        const option = await screen.findByRole('option', { name: 'Ashanti' })
-        // Base UI only accepts a mouse click that started on the option, as a real click does
-        fireEvent.pointerDown(option, { pointerType: 'mouse' })
-        fireEvent.click(option)
+        await pickOption('Region', 'Ashanti')
 
         expect(useNewPropertyStore.getState().location.region).toBe('Ashanti')
+    })
+
+    test('keeps the municipality search disabled until a region is chosen', () => {
+        renderWithQuery(<Location />)
+
+        expect((screen.getByLabelText('Municipality or district') as HTMLInputElement).disabled).toBe(true)
+    })
+
+    test('filters the municipalities and districts by what the user types', async () => {
+        useNewPropertyStore.getState().updateLocation({ region: 'Ashanti' })
+        renderWithQuery(<Location />)
+
+        searchCombobox('Municipality or district', 'sekyere')
+
+        await screen.findByRole('option', { name: 'Sekyere East District' })
+        expect(screen.getAllByRole('option').map((option) => option.textContent)).toEqual([
+            'Sekyere Afram Plains District',
+            'Sekyere Central District',
+            'Sekyere East District',
+            'Sekyere Kumawu District',
+            'Sekyere South District',
+        ])
+    })
+
+    test("only searches the chosen region's municipalities and districts", async () => {
+        useNewPropertyStore.getState().updateLocation({ region: 'Greater Accra' })
+        renderWithQuery(<Location />)
+
+        // Kumasi is in Ashanti
+        searchCombobox('Municipality or district', 'Kumasi')
+
+        expect(await screen.findByText('No municipality or district by that name in Greater Accra')).toBeDefined()
+        expect(screen.queryAllByRole('option')).toHaveLength(0)
+    })
+
+    test('clears the municipality when the region changes', async () => {
+        useNewPropertyStore.getState().updateLocation({ region: 'Greater Accra', municipality: 'Ayawaso West' })
+        renderWithQuery(<Location />)
+
+        await pickOption('Region', 'Ashanti')
+
+        // "" rather than undefined, so the autosaved draft clears the column too
+        expect(useNewPropertyStore.getState().location.municipality).toBe('')
+    })
+
+    test('keeps the municipality when the same region is picked again', async () => {
+        useNewPropertyStore.getState().updateLocation({ region: 'Greater Accra', municipality: 'Ayawaso West' })
+        renderWithQuery(<Location />)
+
+        await pickOption('Region', 'Greater Accra')
+
+        expect(useNewPropertyStore.getState().location.municipality).toBe('Ayawaso West')
+    })
+
+    test('rejects a municipality from another region, such as one left in a saved draft', () => {
+        useNewPropertyStore.getState().updateLocation({ region: 'Ashanti', municipality: 'Ayawaso West', city: 'Kumasi' })
+        renderWithQuery(<Location />)
+
+        fireEvent.click(continueButton())
+
+        expect(errorMessages()).toEqual(['Choose a municipality or district in this region'])
+        expect(useNewPropertyStore.getState().screen).not.toBe('boundary')
     })
 })
 
@@ -444,6 +616,52 @@ describe('Acquisition screen', () => {
 
         expect(useNewPropertyStore.getState().acquisition).toEqual({ method: 'lease_sublease', metadata: { lease_years: 99 } })
     })
+
+    test.each([
+        { answer: /leased/i, question: 'How long is the lease?', next: /inherited/i },
+        { answer: /^other$/i, question: 'Tell us how you got the property', next: /not sure/i },
+    ])("shows the questions for $question right under the chosen answer, before the next one", ({ answer, question, next }) => {
+        startOnAcquisition()
+
+        fireEvent.click(screen.getByRole('radio', { name: answer }))
+
+        const field = screen.getByLabelText(question)
+        const follows = (earlier: Element, later: Element) => !!(earlier.compareDocumentPosition(later) & Node.DOCUMENT_POSITION_FOLLOWING)
+        expect(follows(screen.getByRole('radio', { name: answer }), field)).toBe(true)
+        expect(follows(field, screen.getByRole('radio', { name: next }))).toBe(true)
+    })
+
+    test('goes back to the map', () => {
+        startOnAcquisition()
+
+        fireEvent.click(screen.getByRole('button', { name: 'Back' }))
+
+        expect(useNewPropertyStore.getState().screen).toBe('boundary')
+    })
+
+    test('holds Back while a document uploads, so the upload is not lost', async () => {
+        answerDocumentRequests()
+        startOnAcquisition()
+
+        fireEvent.click(screen.getByRole('radio', { name: /inherited/i }))
+        fireEvent.click(screen.getByRole('radio', { name: 'Yes' }))
+        chooseFile('Letters.pdf', 'application/pdf')
+
+        expect(screen.getByRole('button', { name: 'Back' }).hasAttribute('disabled')).toBe(true)
+        await screen.findByText('Uploaded')
+        expect(screen.getByRole('button', { name: 'Back' }).hasAttribute('disabled')).toBe(false)
+    })
+
+    test('asks for the note and stores it when Other is chosen', () => {
+        startOnAcquisition()
+
+        fireEvent.click(screen.getByRole('radio', { name: /^other$/i }))
+        typeInto('Tell us how you got the property', 'A gift from my uncle')
+        fireEvent.click(continueButton())
+
+        expect(useNewPropertyStore.getState().acquisition).toEqual({ method: 'other', metadata: { note: 'A gift from my uncle' } })
+        expect(useNewPropertyStore.getState().screen).toBe('documents')
+    })
 })
 
 describe('Documents screen', () => {
@@ -533,8 +751,11 @@ describe('Documents screen', () => {
         chooseFiles(checklistItem('Site plan or survey plan'), ['Plan.pdf', 'Survey.pdf'])
 
         expect(screen.getByRole('button', { name: 'Uploading…' }).hasAttribute('disabled')).toBe(true)
+        // Back waits too, as leaving would drop the uploads in progress and any errors they end with
+        expect(screen.getByRole('button', { name: 'Back' }).hasAttribute('disabled')).toBe(true)
         await waitFor(() => expect(checklistItem('Site plan or survey plan').getAllByText(/^(Plan|Survey)\.pdf$/)).toHaveLength(2))
         expect(screen.queryByText('Uploading…')).toBeNull()
+        expect(screen.getByRole('button', { name: 'Back' }).hasAttribute('disabled')).toBe(false)
         const uploads = requests().filter((request) => request.method === 'POST')
         expect(uploads.map((request) => request.body)).toEqual([
             { slot: 'site_plan', file_name: 'Plan.pdf', file_size_bytes: 8, mime_type: 'application/pdf' },
@@ -608,6 +829,84 @@ describe('Documents screen', () => {
         fireEvent.click(await screen.findByRole('button', { name: /continue without documents/i }))
 
         expect(useNewPropertyStore.getState().screen).toBe('review')
+    })
+
+    test('goes back to how the user got the property', async () => {
+        answerDocumentRequests([])
+        startOnDocuments()
+
+        fireEvent.click(await screen.findByRole('button', { name: 'Back' }))
+
+        expect(useNewPropertyStore.getState().screen).toBe('acquisition')
+    })
+
+    // The map screen offers the same site plan item, so it shares this block's stand-in document API
+    describe('site plan on the map screen', () => {
+        function startOnBoundary() {
+            useNewPropertyStore.setState({ screen: 'boundary', propertyId: DRAFT_ID })
+            render(
+                <QueryClientProvider client={new QueryClient({ defaultOptions: { queries: { retry: false } } })}>
+                    {/* No key shows the map-unavailable message, so the screen renders without Google Maps */}
+                    <Boundary mapsApiKey="" />
+                </QueryClientProvider>,
+            )
+        }
+
+        const sitePlanItem = () => checklistItem('Have a site plan\\? Upload it \\(optional\\)')
+
+        test('asks for a site plan where the GeoJSON upload used to be', async () => {
+            answerDocumentRequests([])
+            startOnBoundary()
+
+            expect(await sitePlanItem().findByRole('button', { name: 'Add a file' })).toBeDefined()
+            expect(screen.queryByText(/geojson/i)).toBeNull()
+        })
+
+        test('uploads the plan to the site plan slot, so it also shows on the documents screen', async () => {
+            answerDocumentRequests([])
+            startOnBoundary()
+            await sitePlanItem().findByRole('button', { name: 'Add a file' })
+
+            chooseFiles(sitePlanItem(), ['Plan.pdf'])
+
+            expect(await sitePlanItem().findByText('Plan.pdf')).toBeDefined()
+            const upload = requests().find((request) => request.method === 'POST')
+            expect(upload).toMatchObject({ url: `/api/property/draft/${DRAFT_ID}/documents`, body: { slot: 'site_plan', file_name: 'Plan.pdf' } })
+            expect(storageUpload).toHaveBeenCalledOnce()
+        })
+
+        test('shows a plan uploaded earlier, from either screen', async () => {
+            answerDocumentRequests([listed(0, { slot: 'site_plan', file_name: 'Plan.pdf' }), listed(1)])
+            startOnBoundary()
+
+            expect(await sitePlanItem().findByText('Plan.pdf')).toBeDefined()
+            // Only site plans: the ownership document stays on the documents screen
+            expect(screen.queryByText('File 1.pdf')).toBeNull()
+        })
+
+        test('holds Continue, Skip and Back while the plan is uploading', async () => {
+            answerDocumentRequests([])
+            startOnBoundary()
+            await sitePlanItem().findByRole('button', { name: 'Add a file' })
+
+            chooseFiles(sitePlanItem(), ['Plan.pdf'])
+
+            expect(screen.getByRole('button', { name: 'Uploading…' }).hasAttribute('disabled')).toBe(true)
+            expect(screen.getByRole('button', { name: 'Skip for now' }).hasAttribute('disabled')).toBe(true)
+            expect(screen.getByRole('button', { name: 'Back' }).hasAttribute('disabled')).toBe(true)
+            await sitePlanItem().findByText('Plan.pdf')
+            expect(screen.getByRole('button', { name: /continue/i }).hasAttribute('disabled')).toBe(false)
+            expect(screen.getByRole('button', { name: 'Back' }).hasAttribute('disabled')).toBe(false)
+        })
+
+        test('goes back to the location', async () => {
+            answerDocumentRequests([])
+            startOnBoundary()
+
+            fireEvent.click(await screen.findByRole('button', { name: 'Back' }))
+
+            expect(useNewPropertyStore.getState().screen).toBe('location')
+        })
     })
 })
 

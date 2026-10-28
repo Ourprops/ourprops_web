@@ -138,7 +138,8 @@ export default function LoginPage() {
         signInMutation.mutate(
             { email: email.trim(), password },
             {
-                // The proxy sends users who haven't finished onboarding on to /onboarding
+                // The proxy sends users with an authenticator app on to /account/security for its code,
+                // and users who haven't finished onboarding on to /account/onboarding
                 onSuccess: () => router.replace("/account/dashboard"),
                 onError: (error) => setErrors({ form: formatAuthError(error).message }),
             }

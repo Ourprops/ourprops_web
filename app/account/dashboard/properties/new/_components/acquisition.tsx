@@ -1,7 +1,7 @@
 "use client"
 
 import { ArrowRight, FileText, Paperclip, X } from "lucide-react"
-import { useRef, useState, type ChangeEvent, type ReactNode, type SubmitEvent } from "react"
+import { Fragment, useRef, useState, type ChangeEvent, type ReactNode, type SubmitEvent } from "react"
 
 import {
     Attachment,
@@ -38,6 +38,8 @@ import {
     type DocumentReference,
 } from "@/lib/validators/property"
 import { useNewPropertyStore } from "@/stores/new-property-store"
+
+import BackButton from "./back-button"
 
 // Field ids in the order they appear, keyed by the path of the answer they hold, used to focus the first one to fix
 const FIELD_IDS: Record<string, string> = {
@@ -134,6 +136,17 @@ export default function Acquisition() {
         handleNext()
     }
 
+    const followUps = acquisition && (
+        <FollowUps
+            // A fresh set of fields for each method, so one method's upload state doesn't carry over
+            key={acquisition.method}
+            method={acquisition.method}
+            metadata={acquisition.metadata as Metadata}
+            errors={errors}
+            onUploadingChange={setUploading}
+        />
+    )
+
     return (
         <section className="mx-auto w-full max-w-xl px-5 py-10 md:py-14">
             <h1 className="text-heading text-foreground md:text-2xl">How did you get the property?</h1>
@@ -153,43 +166,45 @@ export default function Acquisition() {
                             className="gap-3"
                         >
                             {ACQUISITION_OPTIONS.map((option) => (
-                                <FieldLabel
-                                    key={option.value}
-                                    htmlFor={`acquisition-method-${option.value}`}
-                                    className="bg-card"
-                                >
-                                    <Field orientation="horizontal" className="items-center gap-3 p-3.5!">
-                                        <span className="flex size-9 shrink-0 items-center justify-center rounded-lg bg-background text-primary">
-                                            <option.icon size={18} aria-hidden />
-                                        </span>
-                                        <FieldContent>
-                                            <FieldTitle className="leading-snug">{option.title}</FieldTitle>
-                                        </FieldContent>
-                                        <RadioGroupItem
-                                            id={`acquisition-method-${option.value}`}
-                                            value={option.value}
-                                            aria-invalid={!!errors.method}
-                                        />
-                                    </Field>
-                                </FieldLabel>
+                                <Fragment key={option.value}>
+                                    <FieldLabel
+                                        htmlFor={`acquisition-method-${option.value}`}
+                                        className="bg-card"
+                                    >
+                                        <Field orientation="horizontal" className="items-center gap-3 p-3.5!">
+                                            <span className="flex size-9 shrink-0 items-center justify-center rounded-lg bg-background text-primary">
+                                                <option.icon size={18} aria-hidden />
+                                            </span>
+                                            <FieldContent>
+                                                <FieldTitle className="leading-snug">{option.title}</FieldTitle>
+                                            </FieldContent>
+                                            <RadioGroupItem
+                                                id={`acquisition-method-${option.value}`}
+                                                value={option.value}
+                                                aria-invalid={!!errors.method}
+                                            />
+                                        </Field>
+                                    </FieldLabel>
+                                    {/* The questions for an answer sit right under it, indented so it's clear they belong to it */}
+                                    {acquisition?.method === option.value && (
+                                        <FieldGroup
+                                            // Keeps arrow keys in these fields working as normal, rather than switching
+                                            // the answer above, as they sit inside its radio group
+                                            onKeyDown={(event) => event.stopPropagation()}
+                                            className="mb-3 ml-4 gap-8 border-l-2 border-primary/30 py-1 pl-4"
+                                        >
+                                            {followUps}
+                                        </FieldGroup>
+                                    )}
+                                </Fragment>
                             ))}
                         </RadioGroup>
                         <FieldError errors={errors.method ? [{ message: errors.method }] : undefined} />
                     </FieldSet>
-
-                    {acquisition && (
-                        <FollowUps
-                            // A fresh set of fields for each method, so one method's upload state doesn't carry over
-                            key={acquisition.method}
-                            method={acquisition.method}
-                            metadata={acquisition.metadata as Metadata}
-                            errors={errors}
-                            onUploadingChange={setUploading}
-                        />
-                    )}
                 </FieldGroup>
 
-                <div className="mt-10 flex justify-end">
+                <div className="mt-10 flex flex-col-reverse gap-3 sm:flex-row sm:justify-between">
+                    <BackButton disabled={uploading} />
                     <Button
                         type="submit"
                         disabled={uploading}
