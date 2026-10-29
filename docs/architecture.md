@@ -14,10 +14,10 @@ The V1 technical core is:
 
 ```text
 Property registration -> boundary and evidence submission -> review and verification ->
-Property Passport -> controlled sharing of private documents
+public property page -> controlled sharing of private documents
 ```
 
-The **Property Passport** is the shareable representation of a property and its verification state. It must present only a deliberately selected public projection of the property; it is not a public copy of the property record or document vault.
+The **public property page** is the shareable representation of a property and its verification state. Its product name is not yet approved. It must present only a deliberately selected public projection of the property; it is not a public copy of the property record or document vault.
 
 OurProps is an independent platform. A verification checkpoint, document review, or overlap flag is not by itself an official registry result, legal opinion, or determination of title.
 
@@ -64,7 +64,7 @@ Supabase Auth  PostgreSQL + PostGIS     Supabase Storage
       +-----------+---------------------------+
                   |
                   v
-   Limited public Property Passport / controlled data room
+   Limited public property page / controlled data room
 ```
 
 The application is a single product surface with distinct public, authenticated, and internal-review areas. The implementation framework is intentionally not prescribed by the source materials; whichever web framework is selected must keep privileged operations server-side and use the same authorization rules across all route surfaces.
@@ -76,7 +76,7 @@ The repository should keep product code, database changes, and architecture deci
 ```text
 .
 ├── app/                         # Public, authenticated, and internal route surfaces
-│   ├── public/                  # Marketing, discovery, and Passport routes
+│   ├── public/                  # Marketing, discovery, and public property pages
 │   ├── account/                 # Sign-up, onboarding, dashboard
 │   ├── properties/              # Registration and property management
 │   └── admin/                   # Review and verification workflows
@@ -105,7 +105,7 @@ Application code may compose domain operations, but it must not bypass database 
 
 ### Supabase Auth and profiles
 
-Supabase Auth provides account identity and session management. The `profiles` table extends `auth.users` with full name, phone number, role, optional organization name, and onboarding status. The current schema includes a one-to-one `ghana_card_records` relation for Ghana Card verification status.
+Supabase Auth provides account identity and session management. The `profiles` table extends `auth.users` with full name, phone number, role, optional organization name, and onboarding status. Each profile has at most one `identity_documents` row: a Ghana Card, or a passport for owners abroad without one, with its verification status (see `docs/admin.md`, section 5).
 
 Account-registration material identifies Property Owner, Buyer/Investor, and Real Estate Agent as product profile types. The current schema instead defines `owner`, `developer`, `partner_verifier`, and `admin` authorization roles. These are related concepts but must not be silently treated as the same model. The final mapping is an open authorization decision.
 
@@ -127,7 +127,7 @@ Storage holds objects while PostgreSQL holds their metadata and authorization co
 
 ```text
 Profile
-  |- Ghana Card record (current proposal: at most one)
+  |- Identity document (at most one)
   |- submits -> Property
 
 Property
@@ -155,14 +155,14 @@ Authorization uses authenticated identity, role, and a record-level relationship
 | `partner_verifier` | Current schema role for verification work; permitted actions must be constrained to assigned or authorized records. |
 | `admin`            | Internal administration and review, subject to audit logging and least privilege.                                   |
 
-Public visitors and data-room requesters are not authorization roles in the current schema. They receive only the limited data permitted by public Passport rules or an approved, time-bounded data-room grant.
+Public visitors and data-room requesters are not authorization roles in the current schema. They receive only the limited data permitted by public property page rules or an approved, time-bounded data-room grant.
 
 ## 8. Property lifecycle and registration
 
 The proposed lifecycle is:
 
 ```text
-draft -> submitted -> under_review -> active_passport
+draft -> submitted -> under_review -> active
                     |                   |
                     v                   v
              action_required        suspended
@@ -170,14 +170,14 @@ draft -> submitted -> under_review -> active_passport
                     +---- resubmission -> under_review
 ```
 
-`active_passport` is a reviewer-controlled state; submission alone must not activate a Passport. The exact transition policy, including who can suspend and what evidence is required for activation, belongs in server-side domain logic and database policies.
+`active` is a reviewer-controlled state; submission alone must not make a property active. A suspended property returns only by going back through review (`docs/admin.md`, section 5). The exact transition policy, including who can suspend and what evidence is required for activation, belongs in server-side domain logic and database policies.
 
 The source registration flow is:
 
 ```text
 Create account -> dashboard -> add property -> property details -> map/coordinates ->
 boundary validation -> documents -> visibility and ownership preferences -> submit ->
-review -> active Passport or action required
+review -> active or action required
 ```
 
 Current registration material includes identity/contact details, ownership type and structure, property details and location, size, GPS coordinates or GhanaPost Digital Address, boundary definition, documents, up to three images, visibility, availability, declarations, and consent. The working schema does not model every form field (for example, availability, agent management, declarations, or consent). Do not imply persistence for those fields until a manager-approved migration exists.
@@ -195,7 +195,7 @@ When a property is submitted or its boundary changes, the spatial workflow shoul
 Verification is represented by one unique checkpoint per property and checkpoint key. The proposed keys are:
 
 - `identity_verified`
-- `capacity_to_transact`
+- `ownership_claim_verified`
 - `boundary_mapped`
 - `cadastral_cross_check`
 - `overlap_clearance`
@@ -205,26 +205,26 @@ Each checkpoint has a separate status (`unverified`, `submitted`, `in_progress`,
 
 Internal notes are never part of the public projection. Checkpoint changes must be authorized, auditable, and performed through a server-side operation that updates the property lifecycle consistently.
 
-## 11. Property Passport and visibility
+## 11. Public property page and visibility
 
-The Property Passport is a stable, shareable public page identified by the property's unique slug. Its public data contract should be an explicit query, database view, or server-side projection rather than a direct read of the `properties` table.
+The public property page is a stable, shareable page identified by the property's unique slug. Its public data contract should be an explicit query, database view, or server-side projection rather than a direct read of the `properties` table.
 
 The current visibility values mean:
 
-| Visibility | Passport behavior                                                                            |
+| Visibility | Public page behavior                                                                         |
 | ---------- | -------------------------------------------------------------------------------------------- |
 | `private`  | Restricted; no general public exposure.                                                      |
-| `unlisted` | Available through a direct Passport link, but not intended for general browsing or indexing. |
+| `unlisted` | Available through a direct link, but not intended for general browsing or indexing.          |
 | `public`   | Eligible for public discovery and browsing.                                                  |
 
-Visibility concerns the public property representation, not document access. A public or unlisted Passport must not reveal confidential document paths, national-ID data, private contacts, internal notes, or audit-log contents. The final Passport field list and whether an owner can hide ownership details remain product decisions.
+Visibility concerns the public property representation, not document access. A public or unlisted property page must not reveal confidential document paths, national-ID data, private contacts, internal notes, or audit-log contents. The final field list for the public page and whether an owner can hide ownership details remain product decisions.
 
 ## 12. Data room
 
 The data room provides a separate, controlled path to private document access:
 
 ```text
-Passport -> request access -> pending request -> authorized review ->
+Public page -> request access -> pending request -> authorized review ->
 approved/rejected -> time-limited access or expiry
 ```
 
@@ -238,7 +238,7 @@ Row Level Security is mandatory on application tables and Storage objects. UI ro
 
 | Resource                                  | Minimum policy intent                                                                                                                                                                       |
 | ----------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| Profiles and Ghana Card records           | A user accesses their own profile/identity data; privileged reviewers access only as explicitly authorized.                                                                                 |
+| Profiles and identity documents           | A user accesses their own profile/identity data; privileged reviewers access only as explicitly authorized.                                                                                 |
 | Properties, boundaries, images, documents | Submitter and any future approved ownership relationship can access permitted records; reviewers and administrators receive least-privilege access for work they are authorized to perform. |
 | Checkpoints and overlap flags             | Owners receive only the permitted external-facing state; internal notes and reviewer data remain restricted.                                                                                |
 | Data-room requests                        | Requesters can create a request; property-side approvers can review requests for authorized properties; tokens do not grant broad database access.                                          |
@@ -246,7 +246,7 @@ Row Level Security is mandatory on application tables and Storage objects. UI ro
 | Audit logs                                | Users do not edit audit history. Write access is restricted to trusted server/database paths; read access is narrowly scoped.                                                               |
 | Storage                                   | Object paths are not public capability URLs. Object read/download follows the same property and data-room authorization model.                                                              |
 
-The public Passport should use an intentionally narrow anonymous-read surface. Do not make a base property table publicly selectable merely to serve a Passport. All service-role calls, signed URL generation, state transitions, reviewer actions, and token validation occur on the server or in tightly scoped backend functions.
+The public property page should use an intentionally narrow anonymous-read surface. Do not make a base property table publicly selectable merely to serve that page. All service-role calls, signed URL generation, state transitions, reviewer actions, and token validation occur on the server or in tightly scoped backend functions.
 
 ## 14. Auditability and notifications
 
@@ -264,7 +264,7 @@ Every change should validate, in a non-production environment:
 
 - application formatting, linting, type checks, and automated tests;
 - migration application on a clean database and migration compatibility with the target environment;
-- RLS tests for owner, reviewer, administrator, anonymous Passport visitor, and unauthorised user paths;
+- RLS tests for owner, reviewer, administrator, anonymous public-page visitor, and unauthorised user paths;
 - PostGIS boundary validation and overlap-query tests;
 - Storage policy and signed-URL authorization tests.
 
@@ -274,7 +274,7 @@ Production release should be traceable to a commit and migration set, with a doc
 
 Operational logs must capture failures in authentication, database operations, storage access, background work, and notification delivery without logging Ghana Card values, access tokens, document contents, or signed URLs.
 
-Measure technical health such as request failures, latency, migration status, storage failures, and asynchronous job failures. Product events may include submission, review outcome, checkpoint change, overlap detection, Passport view, and data-room request or decision, subject to a privacy review. Analytics must use the minimum information required and must not become an alternate store of sensitive property data.
+Measure technical health such as request failures, latency, migration status, storage failures, and asynchronous job failures. Product events may include submission, review outcome, checkpoint change, overlap detection, public property page view, and data-room request or decision, subject to a privacy review. Analytics must use the minimum information required and must not become an alternate store of sensitive property data.
 
 ## 17. Sanity.io Content Management System
 
@@ -294,7 +294,7 @@ Supabase Auth, PostgreSQL, PostGIS, and Storage provide the identity, relational
 
 **Status:** Accepted.
 
-The application, Passport, and notifications are derived from database state. Client-side maps, forms, and cached views are not independent records of property or verification truth.
+The application, public property pages, and notifications are derived from database state. Client-side maps, forms, and cached views are not independent records of property or verification truth.
 
 ### ADR-003: Store boundaries in PostGIS
 
@@ -306,7 +306,7 @@ GeoJSON is retained for input/representation, while validated geometry and spati
 
 **Status:** Accepted.
 
-Separate checkpoint states accurately represent partial review and support a transparent Passport without overclaiming a single global verification state.
+Separate checkpoint states accurately represent partial review and support a transparent public property page without overclaiming a single global verification state.
 
 ### ADR-005: Documents are private by default
 
@@ -326,13 +326,25 @@ Manager-approved requirements may alter tables, relationships, states, and polic
 
 An owner can choose to delegate property management to an agent. The agent is a verified user with a defined relationship to the property owner. The system must enforce that agents can only act on behalf of the owners they are authorized to represent. In V1, agent management is not implemented, but the architecture must support future agent delegation and authorization.
 
+### Known risks
+
+Risks accepted for now, each with what would close it. Remove an entry once it is resolved.
+
+**Uploaded document contents are not checked (added 2026-10-14).** The `property-documents` bucket takes PDFs, Word files (DOC, DOCX, ODT) and images (JPEG, PNG, WebP, HEIC, TIFF), up to 20 MB each. Storage decides whether to accept a file by the type the browser declares; nothing looks inside the file. A harmful file renamed to `.pdf` or `.docx` is therefore accepted, and old-style `.doc` files can contain macros even though macro-enabled `.docm` files are refused.
+
+- *Who is exposed:* reviewers and administrators who download and open uploaded documents. Owners only open their own files.
+- *Until it is fixed:* open Word files in a previewer or convert them to PDF rather than opening them in Word with macros enabled, and do not open documents on machines that hold service-role keys.
+- *To close it:* scan each file after upload (for example a storage-triggered edge function or a malware-scanning service) and check its first bytes match its declared type, holding a document back from reviewers until it passes. Converting Word files to PDF on upload would also remove the macro risk.
+- *Where the accepted types are set:* `lib/storage/property-documents.ts` and `supabase/migrations/20261014160000_property_documents_word_files.sql`.
+
 ## 18. Open questions
 
 - What is the final separation between product profile types and authorization roles?
 - Do developers and partner verifiers act as organizations, and how are organization memberships and assignments modeled?
 - Which property fields from the registration form are required and persisted in V1, including availability, consent, and ownership-visibility preferences?
-- What evidence and authority are required to transition a property to `active_passport` or `suspended`?
-- Which checkpoint states and notes are visible on the Passport, and what is the approved public disclaimer?
+- What evidence and authority are required to transition a property to `active` or `suspended`? Decided for V1 in `docs/admin.md` (section 5): admins only, with ownership `verified` and every other checkpoint `verified` or `waived`.
+- What is the approved product name for the public property page?
+- Which checkpoint states and notes are visible on the public property page, and what is the approved public disclaimer?
 - What exact government or official-search integrations, if any, are in scope?
 - What rules distinguish an overlap alert, adjacency, and a resolved conflict, and who may resolve each?
 - Is boundary revision history required before launch?

@@ -102,20 +102,19 @@ export const homePage = defineType({
           name: 'items',
           title: 'Cards',
           type: 'array',
-          validation: (rule) => rule.max(3).warning('The layout is a three-column grid.'),
+          validation: (rule) => rule.max(3).warning('More than three makes the list hard to scan.'),
           of: [
             defineArrayMember({
               name: 'valuePropCard',
               type: 'object',
               fields: [
-                iconField,
                 titleField,
                 descriptionField,
                 defineField({
                   name: 'highlight',
                   title: 'Highlight',
                   type: 'string',
-                  description: 'Short line shown with a check mark at the bottom of the card.',
+                  description: 'Short line shown with a check mark under the description.',
                 }),
               ],
               preview: cardPreview,
@@ -136,13 +135,14 @@ export const homePage = defineType({
           name: 'steps',
           title: 'Steps',
           type: 'array',
-          description: 'Steps are numbered automatically in this order.',
-          validation: (rule) => rule.max(3).warning('The layout is a three-column grid.'),
+          description:
+            'Steps are numbered automatically in this order. Each one sits under a picture of the record at that stage, which stays in code.',
+          validation: (rule) => rule.max(3).warning('There are only three record pictures, one per step.'),
           of: [
             defineArrayMember({
               name: 'step',
               type: 'object',
-              fields: [iconField, titleField, descriptionField],
+              fields: [titleField, descriptionField],
               preview: cardPreview,
             }),
           ],
@@ -162,13 +162,14 @@ export const homePage = defineType({
           name: 'callouts',
           title: 'Callouts',
           type: 'array',
-          description: 'Short explanations shown under the product preview.',
-          validation: (rule) => rule.max(3).warning('The layout is a three-column grid.'),
+          description:
+            'Numbered notes under the product preview. Numbers 1 to 3 are pinned to the map, the document list, and the sharing panel, in that order.',
+          validation: (rule) => rule.max(3).warning('Only three places on the preview are numbered.'),
           of: [
             defineArrayMember({
               name: 'callout',
               type: 'object',
-              fields: [iconField, titleField, descriptionField],
+              fields: [titleField, descriptionField],
               preview: cardPreview,
             }),
           ],
@@ -193,9 +194,24 @@ export const homePage = defineType({
               name: 'audienceCard',
               type: 'object',
               fields: [
-                iconField,
                 titleField,
                 descriptionField,
+                defineField({
+                  name: 'accessLevel',
+                  title: 'What they see',
+                  type: 'string',
+                  description: 'Which parts of the sample record the card shows as visible.',
+                  options: {
+                    list: [
+                      {title: 'The whole record (owners)', value: 'full'},
+                      {title: 'A summary (buyers and family)', value: 'summary'},
+                      {title: 'The documents (professionals)', value: 'documents'},
+                    ],
+                    layout: 'radio',
+                  },
+                  initialValue: 'summary',
+                  validation: (rule) => rule.required(),
+                }),
                 defineField({name: 'cta', title: 'Link', type: 'link'}),
               ],
               preview: cardPreview,
@@ -221,7 +237,7 @@ export const homePage = defineType({
             defineArrayMember({
               name: 'valueCard',
               type: 'object',
-              fields: [iconField, titleField, descriptionField],
+              fields: [titleField, descriptionField],
               preview: cardPreview,
             }),
           ],

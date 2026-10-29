@@ -123,7 +123,7 @@ Singletons cannot be created, duplicated, or deleted in the Studio; only edited 
 | --- | --- | --- |
 | `sectionHeader` | `eyebrow`, `heading` (required), `description` | Every homepage section except the hero |
 | `link` | `label`, `href` (must start with `#`, `/`, `http(s)://`, or `mailto:`) | Buttons and navigation |
-| Icon field | String from `ICON_OPTIONS` in `sanity/schemaTypes/objects/icon.ts` | Cards, steps, trust points |
+| Icon field | String from `ICON_OPTIONS` in `sanity/schemaTypes/objects/icon.ts` | Hero trust points only |
 
 ### `homePage` fields
 
@@ -132,15 +132,17 @@ Groups appear as tabs in the Studio, in page order.
 | Section | Fields |
 | --- | --- |
 | Hero | `eyebrow`, `heading`, `subheading`, `primaryCta`, `secondaryCta`, `launchNote` (shown with the Ghana flag), `trustPoints[]` (`icon`, `text`; max 2) |
-| Value proposition | `header`, `items[]` (`icon`, `title`, `description`, `highlight`) |
-| How it works | `header`, `steps[]` (`icon`, `title`, `description`); numbered automatically |
-| Product preview | `header`, `callouts[]` (`icon`, `title`, `description`) |
-| Who it is for | `header`, `items[]` (`icon`, `title`, `description`, `cta`) |
-| Values | `header`, `items[]` (`icon`, `title`, `description`), `disclaimer` |
+| Value proposition | `header`, `items[]` (`title`, `description`, `highlight`); numbered automatically |
+| How it works | `header`, `steps[]` (`title`, `description`); numbered automatically, each under a picture of the sample record at that stage |
+| Product preview | `header`, `callouts[]` (`title`, `description`); numbers 1–3 match the pins on the map, documents, and sharing panel |
+| Who it is for | `header`, `items[]` (`title`, `description`, `accessLevel`, `cta`); `accessLevel` is `full`, `summary`, or `documents` and picks which parts of the sample record the card shows |
+| Values | `header`, `items[]` (`title`, `description`), `disclaimer`; shown on deep blue |
 | About | `header`, `mission`, `vision` |
 | Waitlist | `header`, `submitLabel`, `privacyNote`, `successTitle`, `successMessage` |
 
-Card arrays warn above three items because each section is a three-column grid.
+Card arrays warn above three items: the layouts, the record pictures, and the numbered pins are built for three.
+
+Section cards had an `icon` field until the 2026-10 redesign replaced icon tiles with numbers and record pictures. Old `icon` values left in the dataset are ignored: the query no longer asks for them.
 
 ### `siteSettings` fields
 

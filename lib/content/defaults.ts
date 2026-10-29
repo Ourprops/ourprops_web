@@ -12,158 +12,149 @@ import {
 
 export type Link = { label: string; href: string }
 export type SectionHeader = { eyebrow: string; heading: string; description: string }
-export type Card = { icon: string; title: string; description: string }
+export type Card = { title: string; description: string }
+
+// How much of the sample record each audience card shows; matches `accessLevel` in the Sanity schema
+export const ACCESS_LEVELS = ["full", "summary", "documents"] as const
+export type AccessLevel = (typeof ACCESS_LEVELS)[number]
 
 export const HOME_DEFAULTS = {
   hero: {
-    eyebrow: "Property information, organized",
-    heading: "Know the property before you commit.",
+    eyebrow: "Property records for Ghana",
+    heading: "Know the land before you pay for it.",
     subheading:
-      "OurProps keeps ownership documents, site plans, and mapped boundaries together in one clear record, so owners, buyers, and agents in Ghana can check the details and share them with confidence.",
+      "OurProps keeps a property's indenture, site plan, and mapped boundary together in one record. Share it with your family, lawyer, or buyer, and show each of them only what they need.",
     primaryCta: { label: "Join the waitlist", href: "#waitlist" } as Link,
     secondaryCta: { label: "See how it works", href: "#how-it-works" } as Link,
     launchNote: "Launching in Ghana",
     trustPoints: [
       { icon: "Lock", text: "Private by default" },
-      { icon: "ShieldCheck", text: "You choose who sees your records" },
+      { icon: "ShieldCheck", text: "You choose who sees what" },
     ],
   },
   valueProposition: {
     header: {
-      eyebrow: "Why OurProps",
-      heading: "Property information shouldn't be scattered everywhere.",
+      eyebrow: "The problem",
+      heading: "A plot's story is usually scattered across people and paper.",
       description:
-        "When records are spread across people and places, it's hard to know what's true. OurProps brings property details, documents, and location together in one place built for Ghana.",
+        "The indenture is with one relative, the site plan with the surveyor, and the receipts are in someone's phone. When nobody can see the whole picture, double sales and boundary disputes go unnoticed until money has changed hands.",
     } as SectionHeader,
     items: [
       {
-        icon: "MapPinned",
-        title: "Check the details before you transact",
+        title: "See the boundary next to the papers",
         description:
-          "See a property's mapped boundary alongside the documents behind it, so missing paperwork and overlapping claims come to light early.",
-        highlight: "Boundaries and documents side by side",
+          "Compare the mapped plot with its site plan and indenture, so a missing document or an overlapping claim shows up before you transact.",
+        highlight: "Boundary and documents side by side",
       },
       {
-        icon: "FolderOpen",
-        title: "Keep documents and history together",
+        title: "Keep one record per property",
         description:
-          "Deeds, site plans, receipts, and supporting records live in one organized record instead of folders, phones, and filing cabinets.",
-        highlight: "One record per property",
+          "Indentures, site plans, receipts, and search reports live together, instead of in envelopes, chat threads, and filing cabinets.",
+        highlight: "Nothing stuck in someone's phone",
       },
       {
-        icon: "Users",
-        title: "Share with the people who need it",
+        title: "Share exactly what's needed",
         description:
-          "Give family, lawyers, buyers, or agents access to the right information, and keep everything else private.",
-        highlight: "You control who sees what",
+          "Give a lawyer the documents, a buyer the summary, and family the whole record. Everything else stays private.",
+        highlight: "You choose who sees what",
       },
     ],
   },
   howItWorks: {
     header: {
       eyebrow: "How it works",
-      heading: "Three steps to a clear property record.",
-      description: "A simple process that replaces scattered files with one organized place.",
+      heading: "From a folder of papers to one clear record.",
+      description: "Most people finish in one sitting. Your progress saves as a draft as you go.",
     } as SectionHeader,
     steps: [
       {
-        icon: "SquarePlus",
-        title: "Add",
-        description: "Enter the key details of a property: location, parcel number, size, and type.",
+        title: "Describe the property",
+        description: "Give it a name and type, then add the region, district, and digital address.",
       },
       {
-        icon: "FolderUp",
-        title: "Organize",
-        description:
-          "Attach site plans, survey records, deeds, and notes so everything about the property sits in one record.",
+        title: "Map the boundary",
+        description: "Find the plot on the map and trace its edges, or import the coordinates from your surveyor.",
       },
       {
-        icon: "Share2",
-        title: "Access",
+        title: "Attach the documents",
         description:
-          "View the record whenever you need it, and share it with family, lawyers, or buyers when you choose.",
+          "Say how you acquired it and upload the indenture, site plan, and receipts. Then submit the record for review.",
       },
     ] as Card[],
   },
   productPreview: {
     header: {
       eyebrow: "The property record",
-      heading: "Everything important, in one place.",
+      heading: "Everything about a plot, on one page.",
       description:
-        "Each property gets a single record that brings its details, location, documents, and sharing together.",
+        "Each property gets a single record: where it is, where its edges run, which documents back it up, and who can see it.",
     } as SectionHeader,
     callouts: [
       {
-        icon: "MapPinned",
-        title: "Location",
-        description: "A clear map of where the property is and where its boundary runs.",
+        title: "Mapped boundary",
+        description: "The plot's edges on the map, with coordinates you can check against the site plan.",
       },
       {
-        icon: "FileText",
-        title: "Documents",
-        description: "Every supporting document, with its status, in one list.",
+        title: "Documents with a status",
+        description: "Each document shows whether it's complete, in review, or still missing.",
       },
       {
-        icon: "Users",
-        title: "Access",
-        description: "A plain view of who can see the record, and how much of it.",
+        title: "Access you control",
+        description: "A plain list of who can see the record, and how much of it.",
       },
     ] as Card[],
   },
   audience: {
     header: {
       eyebrow: "Who it's for",
-      heading: "Designed for everyone involved in a property.",
+      heading: "One record, seen differently by each person.",
       description:
-        "Clear, organized records help each person in a transaction, from the owner to the buyer to the professionals in between.",
+        "Owners see everything. Everyone else sees only the parts the owner chooses to share with them.",
     } as SectionHeader,
     items: [
       {
-        icon: "House",
         title: "Property owners",
         description:
-          "Map your boundaries, keep ownership documents in one place, and decide who can view your records.",
+          "Keep the indenture, site plan, and boundary together, and decide who can see each part.",
+        accessLevel: "full" as AccessLevel,
         cta: { label: "For owners", href: "#waitlist" } as Link,
       },
       {
-        icon: "Search",
         title: "Buyers and families",
         description:
-          "Get clearer information about a property before you commit, so you can ask the right questions early.",
+          "Ask for a property's record before you pay, then go through the boundary and papers with your lawyer.",
+        accessLevel: "summary" as AccessLevel,
         cta: { label: "For buyers", href: "#waitlist" } as Link,
       },
       {
-        icon: "BriefcaseBusiness",
-        title: "Agents and professionals",
+        title: "Lawyers, surveyors, and agents",
         description:
-          "Work from organized records and documents when you coordinate with clients and other professionals.",
+          "Work from the documents your client has shared, instead of chasing copies over chat.",
+        accessLevel: "documents" as AccessLevel,
         cta: { label: "For professionals", href: "#waitlist" } as Link,
       },
     ],
   },
   values: {
     header: {
-      eyebrow: "Our values",
-      heading: "Trust is earned in the details.",
-      description: "These commitments guide every feature we build for owners, buyers, and agents.",
+      eyebrow: "Our commitments",
+      heading: "What we promise, and what we don't.",
+      description: "For many families, property is the biggest thing they own. These are the rules we hold ourselves to.",
     } as SectionHeader,
     items: [
       {
-        icon: "Waypoints",
         title: "Transparency",
         description:
           "Clear records, documents you can see, and plain language about what OurProps does and doesn't do.",
       },
       {
-        icon: "LockKeyhole",
         title: "Privacy",
         description: "Your records are private by default. You decide who can see them, and which parts.",
       },
       {
-        icon: "ShieldCheck",
         title: "Reliability",
         description:
-          "Consistent, dependable ways to manage property details and the documents that support them.",
+          "Your records are there when you need them, in the same clear format every time.",
       },
     ] as Card[],
     disclaimer:
@@ -184,9 +175,9 @@ export const HOME_DEFAULTS = {
   waitlist: {
     header: {
       eyebrow: "Early access",
-      heading: "Be among the first to use OurProps.",
+      heading: "Be one of the first to put your property on record.",
       description:
-        "We're building a simpler way to manage property information. Join the waitlist to hear when we launch.",
+        "Join the waitlist and we'll email you as soon as OurProps opens in Ghana.",
     } as SectionHeader,
     submitLabel: "Join the waitlist",
     privacyNote: "No spam. Only launch news and important product updates.",
