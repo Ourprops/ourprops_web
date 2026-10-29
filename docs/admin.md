@@ -2,7 +2,7 @@
 
 This document proposes how to build the internal console that administrators use to review submitted properties. It builds on `docs/architecture.md`, which remains the source for the domain model and authorization principles. Where this document decides something the architecture leaves open, it says so.
 
-Written 2026-10-15 against the local database at migration `20261015140000_submit_property.sql`. Updated 2026-10-17 with the V1 decisions (section 10). Updated 2026-10-22 with a proposal for stricter verification rules (section 11), which is not yet decided. Updated 2026-10-27 to keep V1 simple: identity is required before a property goes active, identity documents are deleted once verified, admins set the ownership classification, and properties are expired by hand (decisions 10 to 14); then with how a duplicate identity number is settled and that owners register themselves (decisions 15 and 16). Most of section 11 is now rejected for V1. Updated 2026-10-28 with when a property may be deleted (decision 17).
+Written 2026-10-15 against the local database at migration `20261015140000_submit_property.sql`. Updated 2026-10-17 with the V1 decisions (section 10). Updated 2026-10-22 with a proposal for stricter verification rules (section 11), which is not yet decided. Updated 2026-10-27 to keep V1 simple: identity is required before a property goes active, identity documents are deleted once verified, admins set the ownership classification, and properties are expired by hand (decisions 10 to 14); then with how a duplicate identity number is settled and that owners register themselves (decisions 15 and 16). Most of section 11 is now rejected for V1. Updated 2026-10-28 with when a property may be deleted (decision 17). Updated 2026-10-29 with answers to the open questions in 11.12: the 1% overlap tolerance is accepted, admins decide by hand which encumbrances block activation, encumbrances never appear on the public page, and SMS is built behind one function with no provider yet. The payment provider is still not chosen. Then with a seventh checkpoint, `encumbrance_clearance`, in its simplest form: one admin-only table and no searches table or expiry (decision 18).
 
 ## 1. Recommendation in brief
 
@@ -53,7 +53,7 @@ What this means for the console:
 | `properties`                | Move through `submitted → under_review → active`, or out to `action_required` / `suspended` | Owners read their own; only drafts are editable                                                |
 | `property_boundaries`       | View on a map against neighbouring properties                                               | Owners read their own                                                                          |
 | `property_documents`        | Open, set the final `document_type`, mark `accepted` / `rejected` / `superseded`            | Owners read their own; `slot` and `declared_type` are hints                                    |
-| `property_checkpoints`      | Six checkpoints per property, each with a status, public notes and internal notes           | No policies; nothing creates the rows yet                                                      |
+| `property_checkpoints`      | Seven checkpoints per property (`encumbrance_clearance` added in `20261029120000_property_encumbrances.sql`), each with a status, public notes and internal notes           | No policies; nothing creates the rows yet                                                      |
 | `property_overlap_flags`    | Investigate and resolve (`resolved_valid`, `resolved_false_positive`)                       | Created by the boundary overlap trigger; no policies                                           |
 | `audit_logs`                | Read a property's history; every admin action writes here                                   | Written by `submit_property`; no policies                                                      |
 | `notifications`             | Created when admins act (for example `property.changes_requested`)                          | Table and types exist; nothing sends them yet                                                  |
@@ -162,7 +162,7 @@ Each change is one function. All review actions are admin-only in V1 (this answe
 
 | From              | To                | Function                                                              | Who   | Also does                                                                                                          |
 | ----------------- | ----------------- | --------------------------------------------------------------------- | ----- | ------------------------------------------------------------------------------------------------------------------ |
-| `submitted`       | `under_review`    | `start_review(property_id)`                                           | Admin | Creates the six checkpoint rows if missing; records the reviewer                                                   |
+| `submitted`       | `under_review`    | `start_review(property_id)`                                           | Admin | Creates the seven checkpoint rows if missing; records the reviewer                                                   |
 | `under_review`    | `under_review`    | `classify_property(property_id, ownership_type, ownership_structure)` | Admin | Sets the ownership classification (see below); can be changed until approval                                       |
 | `under_review`    | `action_required` | `request_changes(property_id, message, documents, identity)`          | Admin | Records the requested documents, and whether identity is needed; notifies the owner (`property.changes_requested`) |
 | `action_required` | `under_review`    | `resubmit_property(property_id)`                                      | Owner | Requires every requested document, and an identity document if one was asked for; resets affected checkpoints      |
@@ -235,7 +235,7 @@ While the property is `action_required`, the owner:
 | What the owner changed | Checkpoints reset                                               |
 | ---------------------- | --------------------------------------------------------------- |
 | The boundary           | `boundary_mapped`, `cadastral_cross_check`, `overlap_clearance` |
-| Any other answer       | `ownership_claim_verified`, `official_search_status`            |
+| Any other answer       | `ownership_claim_verified`, `official_search_status`, `encumbrance_clearance` |
 
 `identity_verified` is not reset, because owners can't change their identity through the property flow.
 
@@ -266,7 +266,7 @@ Property status wording:
 
 Checkpoint status wording collapses six statuses into five: `unverified` and `submitted` show as "Not checked yet", `in_progress` as "Being checked", `verified` as "Checked", `waived` as "Waived" with the public note, and `flagged` as "Needs attention" with the public note.
 
-Notifications, in the app and by email, go out only for `property.changes_requested`, `property.approved` and suspension. Not for each checkpoint change: six messages that mean nothing until approval would be noise. The `checkpoint.verified` and `checkpoint.flagged` types stay unused in V1. Admins write public notes from short templates they can edit, because free text written under time pressure is where alarming or legally risky wording slips in.
+Notifications, in the app and by email, go out only for `property.changes_requested`, `property.approved` and suspension. Not for each checkpoint change: seven messages that mean nothing until approval would be noise. The `checkpoint.verified` and `checkpoint.flagged` types stay unused in V1. Admins write public notes from short templates they can edit, because free text written under time pressure is where alarming or legally risky wording slips in.
 
 ### Identity documents
 
@@ -292,7 +292,29 @@ An owner can submit properties without verifying their identity, but no property
 
 ### Checkpoints
 
-The six checkpoints (`identity_verified`, `ownership_claim_verified`, `boundary_mapped`, `cadastral_cross_check`, `overlap_clearance`, `official_search_status`) each get a status and notes through `update_checkpoint(...)`. `internal_notes` must never reach owners. When owners are given read access to checkpoints, give it through a view or column grants that leave `internal_notes` out.
+The seven checkpoints (`identity_verified`, `ownership_claim_verified`, `boundary_mapped`, `cadastral_cross_check`, `overlap_clearance`, `official_search_status`, `encumbrance_clearance`) each get a status and notes through `update_checkpoint(...)`. `internal_notes` must never reach owners. When owners are given read access to checkpoints, give it through a view or column grants that leave `internal_notes` out.
+
+### Encumbrances
+
+`encumbrance_clearance` checks for court cases and registered encumbrances (a mortgage, a caveat, a lease) on the land. A Lands Commission search shows registered encumbrances but not reliably cases still in court, so the admin also checks the court registry. The admin records the searches they ran (reference and date) in the checkpoint's internal notes. There is no separate searches table.
+
+Each encumbrance found goes in one table, `20261029120000_property_encumbrances.sql`. Admins read it directly; nobody writes it except through the two functions below:
+
+```text
+property_encumbrances
+  id, property_id, kind (mortgage | caveat | litigation | lease | other), reference,
+  blocks_activation, status (open | resolved), internal_notes,
+  recorded_by, created_at, resolved_by, resolved_at
+```
+
+- **`record_encumbrance(property_id, kind, reference, blocks_activation, note)`** adds a record. There is no default by kind: the admin decides whether it blocks activation.
+- **`update_encumbrance(encumbrance_id, blocks_activation, status, note)`** changes whether it blocks, or marks it resolved. The note is required.
+- **Both write `audit_logs`.** That is the record's history; there is no separate history table.
+- **Blocking is enforced through the checkpoint, by triggers.** While an open record has `blocks_activation` set, a trigger on `property_checkpoints` refuses to set `encumbrance_clearance` to `verified` or `waived`, whichever function writes it. Recording a blocking encumbrance, or making one block, sets the checkpoint to `flagged`. Resolving it leaves the checkpoint flagged until the admin verifies it again. `approve_property` needs no extra condition: it already requires the checkpoint to be `verified` or `waived`.
+- **On an active property,** recording a blocking encumbrance flags the checkpoint but doesn't change the property's status. The admin decides whether to suspend it, as with any other suspension.
+- **The owner sees their own (2026-10-29).** `property_encumbrances_for_owner(property_id)` returns the kind, reference, whether it blocks, status and dates, but not `internal_notes` or which admin recorded or resolved it. Another owner's property returns nothing. Owners read through this function rather than the table because column grants can't hide `internal_notes` from owners without hiding it from admins too: both are the `authenticated` role. When the owner needs to do something, such as provide a discharge letter, the admin asks through `request_changes`.
+- **Never shown publicly.** Signed-out users can't read the table or call the function. The public property page shows only the checkpoint's status and its public note, which comes from a template that never names the encumbrance (for example "Checked" or "Needs attention").
+- **No expiry.** Like every other checkpoint in V1, it stays as the admin left it until someone changes it (decision 13).
 
 ### Overlap flags
 
@@ -335,7 +357,7 @@ Self-hosted Gotenberg on a container service that scales to zero (Google Cloud R
 ## 8. Screens for V1
 
 1. **Review queue.** Properties in `submitted`, `under_review` and `action_required`, oldest first, with what's missing (no boundary, empty checklist items), the number of open overlap flags and who is reviewing each.
-2. **Property review page.** The owner's answers, as on their review screen, with fields changed since the last request highlighted; the map with the boundary and any overlapping boundaries; documents with slot, owner's type, final type and status; the owner's identity status, with "Ask for identity" when it isn't verified; the ownership type and structure for the admin to set; the six checkpoints; overlap flags; open document requests; the history from `audit_logs`; and the actions in section 5, including "Expire" (a suspension with the "Verification expired" reason). The approve button lists whatever is still blocking approval.
+2. **Property review page.** The owner's answers, as on their review screen, with fields changed since the last request highlighted; the map with the boundary and any overlapping boundaries; documents with slot, owner's type, final type and status; the owner's identity status, with "Ask for identity" when it isn't verified; the ownership type and structure for the admin to set; the seven checkpoints; encumbrances; overlap flags; open document requests; the history from `audit_logs`; and the actions in section 5, including "Expire" (a suspension with the "Verification expired" reason). The approve button lists whatever is still blocking approval.
 3. **Second-factor screen.** `/account/security` to set up TOTP and to enter a code after the password (any user).
 
 On the owner's side, `/account/identity` collects the identity document, the dashboard reminds the owner from sign-up until it is saved, and `action_required` needs the admin's message, editable answers and an upload control only for each requested document.
@@ -347,7 +369,7 @@ Later: partner verifiers, admin management, registering on someone else's behalf
 1. **Foundation.** `staff_role()` (admin only, with the `aal2` check); admin read grants and policies on tables (the old blanket grants are already revoked); the `/admin` gate in `proxy.ts` and the layout; `/account/security`; and the script that grants the first admin only after a factor is verified.
 2. **Document safety.** Type check, isolated conversion to PDF, `preview_path` and `preview_status`, and the admin storage policy that allows only viewable files (section 7).
 3. **Read-only console.** Queue and property page, with documents opened through signed URLs.
-4. **Review actions.** `start_review`, `classify_property`, `review_document`, `update_checkpoint`, `resolve_overlap`, `approve_property` (with its conditions), `suspend_property`, `reopen_review`, `review_identity_document` (including deleting the photo) and `release_identity_document`, each with tests.
+4. **Review actions.** `start_review`, `classify_property`, `review_document`, `update_checkpoint`, `record_encumbrance`, `update_encumbrance`, `resolve_overlap`, `approve_property` (with its conditions), `suspend_property`, `reopen_review`, `review_identity_document` (including deleting the photo) and `release_identity_document`, each with tests.
 5. **Requesting changes.** `property_document_requests`, `request_changes` (with the identity request), owner editing and request-only uploads in `action_required`, and `resubmit_property` with checkpoint resets.
 6. **Identity documents.** The `identity_documents` migration is written (tests in `supabase/tests/identity_documents.test.sql`), but it keeps the number and the photo. A follow-up migration adds `document_number_hmac` with the Vault key, moves the unique check onto it, and lets `file_path` and `document_number` be cleared once verified. Then `/account/identity` and the dashboard card.
 
@@ -355,6 +377,7 @@ Later: partner verifiers, admin management, registering on someone else's behalf
 
 - **Each function:** test as an owner, a partner verifier (who must get nothing in V1), an admin without MFA, and an admin with MFA. Also test the invalid transitions (for example approving a draft). These are the RLS tests `docs/architecture.md` asks for.
 - **Approval:** one test per condition in section 5, each showing that approval is refused when only that condition fails; approval succeeds with waived checkpoints but not with a waived `ownership_claim_verified`.
+- **Encumbrances** (`supabase/tests/property_encumbrances.test.sql`, written): only an admin with a second factor can record or change one; a draft can't have one; a change needs a reason; the checkpoint can't be verified or waived while a blocking encumbrance is open, and can once it is resolved; a blocking one flags the checkpoint and a non-blocking one doesn't; owners see their own without internal notes, other owners and the public see nothing.
 - **Owner changes:** an upload with no open request is refused; an upload into a request fulfils it; resubmitting with an open request is refused; a boundary change resets exactly the three boundary checkpoints.
 - **Identity documents:** an expired document, a file in another user's folder, a number already on another account and a change to a verified document are each refused; a user can't mark their own document verified or see anyone else's; document numbers never reach the audit log. Verifying a document deletes its photo and number and keeps a fingerprint, and a second account saving the same number is still refused afterwards. The refusal doesn't say which account holds the number. `release_identity_document` is admin-only, needs a reason, writes the audit log, lets the other owner save the number afterwards and, when the released document was verified, sends that account's active properties back to review.
 - **Identity and classification at approval:** approval is refused when the owner's identity isn't verified (and `identity_verified` can't be waived), and when the ownership type or structure isn't set. `resubmit_property` is refused when identity was asked for and no document is saved.
@@ -386,6 +409,10 @@ Decided 2026-10-27, to keep V1 simple:
 16. **Owners register themselves:** an individual owner registers from their own account, from abroad if need be, using a passport. Registering on someone else's behalf with a power of attorney is not in V1; a power of attorney can still be uploaded as a supporting document (section 5).
 17. **Deleting:** only drafts are deleted, with their files. Submitted properties are never deleted; owners will withdraw them instead, through a `withdrawn` status (not built yet). How long personal documents are kept is part of the open retention question (section 5).
 
+Decided 2026-10-29:
+
+18. **Encumbrances, kept simple:** a seventh checkpoint, `encumbrance_clearance`, and one admin-only table, `property_encumbrances`. The admin decides whether each record blocks activation; a blocking one keeps the checkpoint from being verified or waived. The owner sees their own property's encumbrances, without internal notes; the public sees none. No searches table and no expiry; `occupancy_check` stays rejected (section 5). This replaces 11.6.
+
 ## 11. Proposal: stricter verification rules (for review)
 
 Proposed 2026-10-22. Nothing in this section is built yet. It covers what keeps a property verified after it goes active, and checks the earlier sections leave out. Two items change V1 decisions in section 10 and need sign-off; they are marked **Changes decision N**.
@@ -396,7 +423,11 @@ Proposed 2026-10-22. Nothing in this section is built yet. It covers what keeps 
 - checkpoint expiry dates, reminders, the `reverification_pending` status and the grace period (11.1 item 2, 11.3, 11.4). Properties are expired by hand instead (section 5);
 - partner verifiers acting as agents (11.1 item 3, 11.2). V1 is admins only.
 
-Still undecided, and kept below for later: `encumbrance_clearance` (11.6), keeping resolved overlap flags and first come, first served (11.5), paid leasehold details (11.8) and the wider notifications (11.9).
+Decided 2026-10-29 in a simpler form: `encumbrance_clearance` (decision 18, section 5), which replaces 11.6.
+
+Still undecided, and kept below for later: keeping resolved overlap flags and first come, first served (11.5), paid leasehold details (11.8) and the wider notifications (11.9).
+
+**Answered 2026-10-29** (11.12): the 1% overlap tolerance is accepted (11.5); admins decide by hand which encumbrances block activation, and no encumbrance is shown on the public page (11.6); SMS is sent through one function with no provider plugged in yet (11.9); the payment provider is still not chosen (11.8).
 
 ### 11.1 Summary
 
@@ -459,7 +490,7 @@ A daily scheduled job in the database (`pg_cron`) sends the reminders and change
 
 ### 11.5 Overlaps
 
-- **Tolerance.** Ignore an overlap smaller than 1% of the smaller property's area. Small mapping errors would otherwise create false alarms. Measuring against the smaller property stops a small plot from being hidden inside a large one. The threshold lives in one function so it is easy to change.
+- **Tolerance (accepted 2026-10-29).** Ignore an overlap smaller than 1% of the smaller property's area. Small mapping errors would otherwise create false alarms. Measuring against the smaller property stops a small plot from being hidden inside a large one. The threshold lives in one function so it is easy to change.
 - **One flag per pair**, not one for each property.
 - **Keep resolved flags.** Today the overlap trigger deletes all of a property's flags every time its boundary is saved. That loses an admin's decisions and the record of them. Instead, keep resolved flags and reopen one only if the overlap grows beyond the tolerance.
 - **Which property is held.** An active property is never held automatically by an overlap. Otherwise the property submitted later is held. This means adding a `submitted_at` column, set by `submit_property`. Drafts never block anyone.
@@ -482,6 +513,8 @@ How an admin resolves a flag:
 
 ### 11.6 Court cases and encumbrances
 
+**Replaced 2026-10-29** by the simpler version in section 5 (decision 18): one table, no `property_official_searches`, no 90-day expiry. Kept below as the original proposal.
+
 A Lands Commission search shows registered encumbrances but not reliably cases in progress at court, so this gets its own checkpoint and two new tables:
 
 ```text
@@ -492,14 +525,15 @@ property_official_searches
 property_encumbrances
   id, property_id, search_id, kind (mortgage | caveat | litigation | lease | easement | other),
   reference (suit number or registry reference), parties, status (open | discharged | dismissed | settled),
-  blocks_activation, public_notes, internal_notes, recorded_by, resolved_by, resolved_at, created_at
+  blocks_activation, internal_notes, recorded_by, resolved_by, resolved_at, created_at
 ```
 
 - **`official_search_status`** needs a Lands Commission search from the last 90 days.
 - **`encumbrance_clearance`** needs:
   - a court registry search from the last 90 days;
   - no open encumbrance with `blocks_activation` set.
-- **Proposed default for what blocks activation:** litigation and caveats block it. A mortgage or a lease is disclosed but does not block it. An agent can change the setting on a single record, with a reason.
+- **What blocks activation is decided by the admin (2026-10-29).** There is no default by kind: the admin sets `blocks_activation` on each record when recording it, and can change it later with a reason, which is recorded.
+- **Encumbrances are never shown on the public property page (2026-10-29).** They are visible only to admins in the console. A mortgage or a court case is sensitive for the owner, so there is no `public_notes` column. The owner is told only what they need to do, in plain words (decision 6).
 
 ### 11.7 Is the land already occupied?
 
@@ -521,7 +555,7 @@ Most land in Ghana is held on a lease (stool, family or state), and a foreign na
 - **Free to everyone:** that the property is leasehold, and a band of years remaining ("50+ years", "25–50 years", "under 25 years").
 - **Paid, per property:** the full details. A buyer who has paid has a row in `property_leasehold_access`.
 - **Enforced in the database**, not just hidden in the page. The row-level security on `property_leaseholds` checks for that row, so the API returns nothing to someone who hasn't paid.
-- **The payment provider is not yet chosen** (11.11).
+- **The payment provider is not yet chosen** (still open, 11.12). Paid access isn't built until it is.
 
 ### 11.9 Notifications
 
@@ -536,7 +570,7 @@ The `notifications` table and its types already exist (section 2). This proposal
 | Leasehold details purchased             | The buyer (a receipt)                    |
 
 - **SMS carries no property details**, only a short message and a link, because a phone can be seen or shared by others. It is sent only to owners with a phone number on their profile.
-- **SMS costs money per message.** An SMS provider needs choosing; Ghanaian options such as Hubtel or Arkesel are usually cheaper locally than Twilio.
+- **SMS goes through one function, with no provider yet (2026-10-29).** Every SMS is sent by a single `sendSms` function. Until a provider is chosen it sends nothing and only logs that a message would have gone. Plugging in a provider later changes that one function and nothing else. Ghanaian options such as Hubtel or Arkesel are usually cheaper locally than Twilio, and every message costs money.
 - SMS is still not used for sign-in codes (section 4).
 
 ### 11.10 Build order
@@ -579,9 +613,12 @@ Changes to existing decisions:
 
 Still open:
 
-1. Which payment provider for leasehold access, and what price?
-2. Which SMS provider?
-3. Is the 1% overlap tolerance (11.5) acceptable?
-4. Which kinds of encumbrance block activation, and which should the public property page show? Showing a mortgage publicly may be sensitive for the owner.
+1. Which payment provider for leasehold access, and what price? Not decided as of 2026-10-29; paid access waits for it.
+
+Answered 2026-10-29:
+
+2. ~~Which SMS provider?~~ Not chosen yet. SMS goes through one `sendSms` function that only logs until a provider is plugged in (11.9).
+3. ~~Is the 1% overlap tolerance acceptable?~~ Yes (11.5).
+4. ~~Which kinds of encumbrance block activation, and which should the public page show?~~ The admin decides whether each record blocks activation; there is no default by kind. No encumbrance is shown on the public property page (11.6).
 
 Settled by rejection (2026-10-27): who pays for renewal searches, whether partner verifiers see every property, and the expiry and grace periods.
