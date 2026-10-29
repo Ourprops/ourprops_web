@@ -6,7 +6,7 @@ import { useState } from "react"
 
 import { Button } from "@/components/ui/button"
 import { Spinner } from "@/components/ui/spinner"
-import { useHandleSaveDraft } from "@/lib/queries/property"
+import { useDeleteDraft, useHandleSaveDraft } from "@/lib/queries/property"
 import { cn } from "@/lib/utils"
 import { useNewPropertyStore, type Screen } from "@/stores/new-property-store"
 
@@ -34,7 +34,9 @@ export default function ProgressIndicator() {
     const savingDraft = useNewPropertyStore((state) => state.savingDraft)
     const draftSavedAt = useNewPropertyStore((state) => state.draftSavedAt)
     const draftSaveFailed = useNewPropertyStore((state) => state.draftSaveFailed)
+    const propertyId = useNewPropertyStore((state) => state.propertyId)
     const { mutate: saveDraft } = useHandleSaveDraft()
+    const deleteDraft = useDeleteDraft()
     const router = useRouter()
     const [exitOpen, setExitOpen] = useState(false)
 
@@ -42,6 +44,11 @@ export default function ProgressIndicator() {
         // The draft is saved automatically, so leaving keeps it for the user to resume
         setExitOpen(false)
         router.push(EXIT_HREF)
+    }
+
+    function handleDelete() {
+        // The dialog stays open until the dashboard replaces this page, so the user sees the delete through
+        deleteDraft.mutate(undefined, { onSuccess: () => router.push(EXIT_HREF) })
     }
 
     if (screen === "start" || screen === "confirmation") return null
@@ -136,7 +143,18 @@ export default function ProgressIndicator() {
                 </nav>
             </div>
 
-            <ExitAlert open={exitOpen} onClose={() => setExitOpen(false)} onLeave={handleLeave} />
+            <ExitAlert
+                open={exitOpen}
+                onClose={() => {
+                    deleteDraft.reset()
+                    setExitOpen(false)
+                }}
+                onLeave={handleLeave}
+                onDelete={propertyId ? handleDelete : undefined}
+                // Stays "deleting" after success too, until the page changes, so the buttons can't be pressed again
+                deleting={deleteDraft.isPending || deleteDraft.isSuccess}
+                deleteError={deleteDraft.error?.message}
+            />
         </header>
     )
 }

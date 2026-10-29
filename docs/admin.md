@@ -2,7 +2,7 @@
 
 This document proposes how to build the internal console that administrators use to review submitted properties. It builds on `docs/architecture.md`, which remains the source for the domain model and authorization principles. Where this document decides something the architecture leaves open, it says so.
 
-Written 2026-10-15 against the local database at migration `20261015140000_submit_property.sql`. Updated 2026-10-17 with the V1 decisions (section 10). Updated 2026-10-22 with a proposal for stricter verification rules (section 11), which is not yet decided. Updated 2026-10-27 to keep V1 simple: identity is required before a property goes active, identity documents are deleted once verified, admins set the ownership classification, and properties are expired by hand (decisions 10 to 14); then with how a duplicate identity number is settled and that owners register themselves (decisions 15 and 16). Most of section 11 is now rejected for V1.
+Written 2026-10-15 against the local database at migration `20261015140000_submit_property.sql`. Updated 2026-10-17 with the V1 decisions (section 10). Updated 2026-10-22 with a proposal for stricter verification rules (section 11), which is not yet decided. Updated 2026-10-27 to keep V1 simple: identity is required before a property goes active, identity documents are deleted once verified, admins set the ownership classification, and properties are expired by hand (decisions 10 to 14); then with how a duplicate identity number is settled and that owners register themselves (decisions 15 and 16). Most of section 11 is now rejected for V1. Updated 2026-10-28 with when a property may be deleted (decision 17).
 
 ## 1. Recommendation in brief
 
@@ -173,6 +173,17 @@ Each change is one function. All review actions are admin-only in V1 (this answe
 ### Expiring a property
 
 Nothing expires on a timer in V1. When an admin notices a property drawing a lot of views and requests, which is when a stale verification would do the most harm, they expire it by suspending it with `suspend_property` and the reason template "Verification expired". It then follows the same path as any suspension: the public page says "not currently verified", and it comes back only through `reopen_review` and full approval. There is no separate `expired` status, so nothing new to migrate, word or test.
+
+### Deleting and withdrawing
+
+Only drafts are ever deleted. Once a property is submitted it is kept for good, and an owner who no longer wants it withdraws it instead.
+
+- **Drafts are hard-deleted.** Only the owner has seen a draft, no reviewer has acted on it and it has no audit history (the first entry is written at submit), so nothing is lost. `deleteDraft` in `lib/supabase/property-drafts.ts` removes every file in the draft's folder in `property-documents`, then the row; its boundary, document records and other child rows go with it (`on delete cascade`). The files go first because the storage delete policy only lets the owner remove files while the draft exists: deleting the row first would leave the files behind for good. If removing the files fails, the row is kept so the owner can try again. The owner deletes a draft from the exit dialog in the registration flow.
+- **Submitted properties are never deleted.** A record that was submitted, reviewed or flagged is evidence: in an overlap or a dispute it is exactly what a reviewer, or a court, needs to see. Deleting it would also cascade to other owners' overlap flags and leave its audit entries pointing at nothing.
+- **Withdrawing, not built yet.** An owner who no longer wants a submitted property will move it to a `withdrawn` status, through a function that records who withdrew it and why in `audit_logs`. It disappears from the owner's list and the public page; admins still see it. A status rather than a `deleted_at` column, because every query and policy already filters on status, while a `deleted_at` filter forgotten in one place leaks the record.
+- **Personal data:** keeping records for good has to be squared with people's right to have their personal data erased (Ghana's Data Protection Act, 2012). The likely answer is a retention period after which personal documents are deleted or anonymised while the property record and its history stay. This is part of the retention question still open in `docs/architecture.md`.
+
+Because only drafts are deleted, and drafts have no audit entries, `audit_logs.property_id` can keep its foreign key: `on delete set null` never fires for a property with history.
 
 ### Ownership classification
 
@@ -373,6 +384,7 @@ Decided 2026-10-27, to keep V1 simple:
 14. **No occupancy check, and admins only:** `occupancy_check` and partner verifiers acting as agents (section 11) are not part of V1.
 15. **A number already on another account:** the owner is asked to contact us. Once they prove the document is theirs, an admin removes it from the other account with `release_identity_document`, which is audited. If that document was verified, the other account loses its verified identity and its active properties go back to review (section 5).
 16. **Owners register themselves:** an individual owner registers from their own account, from abroad if need be, using a passport. Registering on someone else's behalf with a power of attorney is not in V1; a power of attorney can still be uploaded as a supporting document (section 5).
+17. **Deleting:** only drafts are deleted, with their files. Submitted properties are never deleted; owners will withdraw them instead, through a `withdrawn` status (not built yet). How long personal documents are kept is part of the open retention question (section 5).
 
 ## 11. Proposal: stricter verification rules (for review)
 

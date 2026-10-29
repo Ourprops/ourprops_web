@@ -3,6 +3,7 @@
 import { ArrowRight, CircleAlert, Pencil, TriangleAlert } from "lucide-react"
 import { useState, type ReactNode } from "react"
 
+import BrandLoader from "@/components/brand-loader"
 import { Button } from "@/components/ui/button"
 import { Checkbox } from "@/components/ui/checkbox"
 import { Field, FieldContent, FieldError, FieldLabel, FieldTitle } from "@/components/ui/field"
@@ -263,6 +264,9 @@ export default function Review() {
                     </Button>
                 </div>
             </div>
+
+            {/* Gone when the confirmation screen replaces this one, or when the submit fails and the error shows */}
+            {submit.isPending && <BrandLoader overlay message="Submitting your property" />}
         </section>
     )
 }

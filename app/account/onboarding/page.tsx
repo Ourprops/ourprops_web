@@ -2,6 +2,7 @@
 
 import { useRouter } from "next/navigation";
 import { type FormEvent, useState } from "react";
+import BrandLoader from "@/components/brand-loader";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { formatAuthError } from "@/lib/supabase/auth";
@@ -25,8 +26,10 @@ const AFTER_ONBOARDING_PATH = "/account/dashboard";
 export default function OnboardingPage() {
     const { data: profile, isPending, isError } = useMyProfile();
 
-    // Stays false after a successful submit so the spinner shows while navigating away
     const isReady = profile != null && !profile.onboarding_complete;
+    // The proxy keeps finished users off this page, so a finished profile here means the form was
+    // just submitted: show the loading screen while the dashboard loads
+    const isFinished = profile?.onboarding_complete === true;
 
     return (
         <AuthShell>
@@ -48,6 +51,7 @@ export default function OnboardingPage() {
                     </div>
                 )}
             </section>
+            {isFinished && <BrandLoader overlay message="Setting up your account" />}
         </AuthShell>
     );
 }

@@ -37,7 +37,9 @@ export function useHandleSaveDraft() {
         scope: { id: "save-draft" },
         mutationFn: async () => {
             // Read the store when the save runs, not when it was queued, so the latest edit and the draft's id are used
-            const { propertyId, details, location, boundary, acquisition } = useNewPropertyStore.getState()
+            const { propertyId, discarding, details, location, boundary, acquisition } = useNewPropertyStore.getState()
+            // The draft is being deleted: saving now would create it again
+            if (discarding) return null
             // Parse so the body always matches what the API accepts; this also trims the text fields
             const draft = draftSchema.parse({ details, location, boundary, acquisition })
             console.log("Saving draft", propertyId, draft)
@@ -66,11 +68,36 @@ export function useHandleSaveDraft() {
         },
         onMutate: () => setSavingDraft(true),
         onSuccess: (saved) => {
+            if (!saved) return
             setDraftSavedAt(new Date(saved.updatedAt))
             setDraftSaveFailed(false)
         },
         onError: () => setDraftSaveFailed(true),
         onSettled: () => setSavingDraft(false),
+    })
+}
+
+/**
+ * Deletes the draft and everything uploaded to it. Runs in the same queue as saves, so a save already under way
+ * finishes first and the delete sees the draft's id; saves queued after it are skipped (see `discarding`).
+ */
+export function useDeleteDraft() {
+    return useMutation({
+        scope: { id: "save-draft" },
+        mutationFn: async () => {
+            const { propertyId, setDiscarding } = useNewPropertyStore.getState()
+            setDiscarding(true)
+            // Nothing was saved yet, so there is nothing on the server to delete
+            if (!propertyId) return
+
+            const response = await fetch(`/api/property/draft/${propertyId}`, { method: "DELETE" })
+            // Already gone, for example deleted in another tab, which is what the user wanted
+            if (!response.ok && response.status !== 404) {
+                throw new Error(await errorMessage(response, "Unable to delete your draft right now."))
+            }
+        },
+        // The draft is still there, so saving can carry on
+        onError: () => useNewPropertyStore.getState().setDiscarding(false),
     })
 }
 

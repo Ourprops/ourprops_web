@@ -16,7 +16,8 @@ import { useHandleSaveDraft } from '../lib/queries/property'
 import type { SavedDraft } from '../lib/validators/property'
 import { useNewPropertyStore } from '../stores/new-property-store'
 
-vi.mock('next/navigation', () => ({ useRouter: () => ({ push: vi.fn() }) }))
+const { push } = vi.hoisted(() => ({ push: vi.fn() }))
+vi.mock('next/navigation', () => ({ useRouter: () => ({ push }) }))
 
 // Stands in for uploading a file straight to the storage bucket
 const storageUpload = vi.fn<(path: string, file: File, options: unknown) => Promise<{ error: unknown }>>(async () => ({ error: null }))
@@ -1056,6 +1057,28 @@ describe('Review screen', () => {
         expect(requests()).toContainEqual({ url: `/api/property/draft/${DRAFT_ID}/submit`, method: 'POST', body: { confirmed: true } })
     })
 
+    test('covers the screen while submitting, and uncovers it if the submit fails', async () => {
+        fillDraft()
+        answerRequests([INDENTURE])
+        // Holds the submit open until the test answers it
+        let answerSubmit: (response: unknown) => void = () => {}
+        const answerOthers = fetchMock.getMockImplementation()!
+        fetchMock.mockImplementation((url: string, init: RequestInit) =>
+            url.endsWith('/submit') ? new Promise((resolve) => (answerSubmit = resolve)) as never : answerOthers(url, init),
+        )
+        render(<QueryClientProvider client={new QueryClient()}><Review /></QueryClientProvider>)
+
+        fireEvent.click(screen.getByRole('checkbox', { name: 'I confirm' }))
+        fireEvent.click(screen.getByRole('button', { name: /submit for review/i }))
+
+        expect(await screen.findByText('Submitting your property…')).toBeDefined()
+
+        answerSubmit({ ok: false, status: 500, json: async () => ({ error: { message: 'Unable to submit your property right now.' } }) })
+
+        expect(await screen.findByText('Unable to submit your property right now.')).toBeDefined()
+        expect(screen.queryByText('Submitting your property…')).toBeNull()
+    })
+
     test("says why when the submit doesn't go through, and stays on review", async () => {
         fillDraft()
         answerRequests([INDENTURE], { ok: false, status: 500, body: { error: { message: 'Unable to submit your property right now.' } } })
@@ -1154,6 +1177,89 @@ describe('Failed saves', () => {
         await waitFor(() => expect(useNewPropertyStore.getState().draftSaveFailed).toBe(false))
         expect(requests().map((request) => request.body.details)).toEqual([{ name: 'House' }, { name: 'House' }])
         expect(screen.queryByRole('button', { name: /retry/i })).toBeNull()
+    })
+})
+
+describe('Deleting a draft', () => {
+    // Answers deletes with `deleteResponse` and everything else as the draft API does
+    function answerDeletes(deleteResponse: { ok: boolean; status: number; body?: unknown }) {
+        const answerOthers = fetchMock.getMockImplementation()!
+        fetchMock.mockImplementation(async (url: string, init: RequestInit) =>
+            init?.method === 'DELETE'
+                ? ({ ...deleteResponse, json: async () => deleteResponse.body ?? {} } as never)
+                : answerOthers(url, init),
+        )
+    }
+
+    function openDraft() {
+        useNewPropertyStore.getState().loadDraft({ id: DRAFT_ID, updatedAt: SAVED_AT, details: { name: 'East Legon house' }, location: {} })
+        return renderWithQuery(
+            <>
+                <ProgressIndicator />
+                <Details />
+            </>,
+        )
+    }
+
+    beforeEach(() => push.mockClear())
+
+    test('deletes the draft once the user confirms, then goes to the dashboard', async () => {
+        answerDeletes({ ok: true, status: 204 })
+        openDraft()
+
+        fireEvent.click(screen.getByRole('button', { name: 'Exit' }))
+        fireEvent.click(screen.getByRole('button', { name: 'Delete this draft' }))
+        // Nothing is deleted until the second, explicit step
+        expect(requests().some((request) => request.method === 'DELETE')).toBe(false)
+        expect(screen.getByText('Delete this draft?')).toBeDefined()
+
+        fireEvent.click(screen.getByRole('button', { name: 'Delete draft' }))
+
+        await waitFor(() => expect(push).toHaveBeenCalledWith('/account/dashboard'))
+        expect(requests()).toContainEqual({ url: `/api/property/draft/${DRAFT_ID}`, method: 'DELETE', body: undefined })
+    })
+
+    test("doesn't bring the draft back by saving a change that was still waiting", async () => {
+        answerDeletes({ ok: true, status: 204 })
+        const { unmount } = openDraft()
+
+        // A change the autosave hasn't sent yet, which leaving the screen would normally save
+        typeInto('Property name', 'East Legon house, renamed')
+        fireEvent.click(screen.getByRole('button', { name: 'Exit' }))
+        fireEvent.click(screen.getByRole('button', { name: 'Delete this draft' }))
+        fireEvent.click(screen.getByRole('button', { name: 'Delete draft' }))
+        await waitFor(() => expect(push).toHaveBeenCalled())
+
+        unmount()
+        await waitForAutosave()
+
+        const methods = requests().map((request) => request.method)
+        // Nothing is saved after the delete, and no new draft is created
+        expect(methods.slice(methods.indexOf('DELETE') + 1)).toEqual([])
+        expect(methods).not.toContain('POST')
+    })
+
+    test("says why when the delete doesn't go through, and keeps saving the draft", async () => {
+        answerDeletes({ ok: false, status: 500, body: { error: { message: 'Unable to delete your draft right now.' } } })
+        openDraft()
+
+        fireEvent.click(screen.getByRole('button', { name: 'Exit' }))
+        fireEvent.click(screen.getByRole('button', { name: 'Delete this draft' }))
+        fireEvent.click(screen.getByRole('button', { name: 'Delete draft' }))
+
+        expect(await screen.findByText('Unable to delete your draft right now.')).toBeDefined()
+        expect(push).not.toHaveBeenCalled()
+        expect(useNewPropertyStore.getState().discarding).toBe(false)
+    })
+
+    test("doesn't offer to delete a draft that was never saved", () => {
+        useNewPropertyStore.getState().setScreen('details')
+        renderWithQuery(<ProgressIndicator />)
+
+        fireEvent.click(screen.getByRole('button', { name: 'Exit' }))
+
+        expect(screen.getByText('Leave registration?')).toBeDefined()
+        expect(screen.queryByRole('button', { name: 'Delete this draft' })).toBeNull()
     })
 })
 

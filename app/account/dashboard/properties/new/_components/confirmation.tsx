@@ -3,6 +3,7 @@
 import { ArrowRight, Check, TriangleAlert } from "lucide-react"
 import Link from "next/link"
 
+import BrandMark from "@/components/brand-mark"
 import { Button } from "@/components/ui/button"
 import { useDraftDocuments } from "@/lib/queries/property"
 import { cn } from "@/lib/utils"
@@ -42,10 +43,17 @@ export default function Confirmation() {
 
     return (
         <section className="mx-auto w-full max-w-xl px-5 py-12 md:py-20">
-            <span className="flex size-14 items-center justify-center rounded-full bg-success-soft text-success">
-                <Check size={28} strokeWidth={2.5} aria-hidden />
-            </span>
-            <h1 className="mt-6 text-heading text-foreground md:text-2xl">Property submitted</h1>
+            {/* The pin lands on the plot and its boundary draws in, then the check confirms it's filed */}
+            <div className="relative w-fit">
+                <BrandMark className="-ml-3 size-24" />
+                <span
+                    className="absolute right-0 bottom-2 flex size-8 animate-pop-in items-center justify-center rounded-full bg-success text-white ring-4 ring-background motion-reduce:animate-none"
+                    style={{ animationDelay: "1300ms" }}
+                >
+                    <Check size={16} strokeWidth={3} aria-hidden />
+                </span>
+            </div>
+            <h1 className="mt-4 text-heading text-foreground md:text-2xl">Property submitted</h1>
             <p className="mt-2 text-[15px] leading-relaxed text-copy">
                 {details.name ? (
                     <>
@@ -63,7 +71,7 @@ export default function Confirmation() {
                     {NEXT_STEPS.map((step, index) => (
                         <li
                             key={step.title}
-                            className="relative flex gap-3 pb-5 last:pb-0 before:absolute before:top-7 before:bottom-0 before:left-[0.8125rem] before:w-px before:bg-border last:before:hidden"
+                            className="relative flex gap-3 pb-5 last:pb-0 before:absolute before:top-7 before:bottom-0 before:left-3.25 before:w-px before:bg-border last:before:hidden"
                         >
                             <span
                                 aria-hidden
