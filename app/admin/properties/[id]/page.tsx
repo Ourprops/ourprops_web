@@ -701,6 +701,25 @@ function Overlaps({ overlaps }: { overlaps: PropertyForReview["overlaps"] }) {
     )
 }
 
+// The owner's answers as resubmit_property names them (property_answers in the database)
+const CHANGED_FIELD_LABELS: Record<string, string> = {
+    name: "name",
+    property_type: "type",
+    description: "description",
+    size_value: "size",
+    size_unit: "size unit",
+    region: "region",
+    district_municipality: "district",
+    city_town: "city or town",
+    address: "address",
+    digital_address: "digital address",
+    landmark: "landmark",
+    acquisition_method: "how they got it",
+    acquisition_metadata: "details of how they got it",
+    boundary: "boundary",
+    boundary_source: "how the boundary was made",
+}
+
 // The details worth showing for each kind of entry; the owner's declaration is long and left out
 function describe(entry: PropertyForReview["history"][number]) {
     const metadata = entry.metadata ?? {}
@@ -727,6 +746,12 @@ function describe(entry: PropertyForReview["history"][number]) {
     }
     if (entry.action === "changes_requested" && typeof metadata.message === "string") {
         return metadata.message
+    }
+    // What to look at again: the answers the owner changed, by name (never their values)
+    if (entry.action === "property_resubmitted" && Array.isArray(metadata.changed_fields)) {
+        return metadata.changed_fields.length > 0
+            ? `Changed: ${(metadata.changed_fields as string[]).map((field) => CHANGED_FIELD_LABELS[field] ?? field).join(", ")}`
+            : "No answers changed"
     }
     return null
 }

@@ -34,7 +34,7 @@ const fetchMock = vi.fn(async (_url: string, init: RequestInit) => {
     return {
         ok: true,
         status: init.method === 'POST' ? 201 : 200,
-        json: async () => ({ id: DRAFT_ID, updatedAt: SAVED_AT, ...body }),
+        json: async () => ({ id: DRAFT_ID, updatedAt: SAVED_AT, status: 'draft', ...body }),
     }
 })
 
@@ -457,7 +457,7 @@ describe('Autosave', () => {
         let finish: () => void = () => {}
         fetchMock.mockImplementationOnce(async (_url, init) => {
             await new Promise<void>((resolve) => (finish = resolve))
-            return { ok: true, status: 201, json: async () => ({ id: DRAFT_ID, updatedAt: SAVED_AT, ...JSON.parse(init.body as string) }) }
+            return { ok: true, status: 201, json: async () => ({ id: DRAFT_ID, updatedAt: SAVED_AT, status: 'draft', ...JSON.parse(init.body as string) }) }
         })
         renderWithQuery(<Details />)
 
@@ -485,7 +485,7 @@ describe('Acquisition screen', () => {
             if (url.endsWith('/documents')) return { ok: true, status: 201, json: async () => DOCUMENT } as never
             if (url.includes('/documents/')) return { ok: true, status: 204, json: async () => ({}) } as never
             const body = JSON.parse(init.body as string)
-            return { ok: true, status: 200, json: async () => ({ id: DRAFT_ID, updatedAt: SAVED_AT, ...body }) } as never
+            return { ok: true, status: 200, json: async () => ({ id: DRAFT_ID, updatedAt: SAVED_AT, status: 'draft', ...body }) } as never
         })
     }
 
@@ -701,7 +701,7 @@ describe('Documents screen', () => {
             }
             if (method === 'DELETE') return { ok: true, status: 204, json: async () => ({}) } as never
             const body = JSON.parse(init.body as string)
-            return { ok: true, status: 200, json: async () => ({ id: DRAFT_ID, updatedAt: SAVED_AT, ...body }) } as never
+            return { ok: true, status: 200, json: async () => ({ id: DRAFT_ID, updatedAt: SAVED_AT, status: 'draft', ...body }) } as never
         })
     }
 
@@ -949,7 +949,7 @@ describe('Review screen', () => {
             if (url.endsWith('/documents')) return { ok: true, status: 200, json: async () => documents } as never
             if (url.endsWith('/submit')) return { ...submitResponse, json: async () => submitResponse.body } as never
             const body = JSON.parse(init.body as string)
-            return { ok: true, status: 200, json: async () => ({ id: DRAFT_ID, updatedAt: SAVED_AT, ...body }) } as never
+            return { ok: true, status: 200, json: async () => ({ id: DRAFT_ID, updatedAt: SAVED_AT, status: 'draft', ...body }) } as never
         })
     }
 
@@ -958,7 +958,7 @@ describe('Review screen', () => {
         const { details, location } = useNewPropertyStore.getState()
         render(
             <QueryClientProvider client={new QueryClient({ defaultOptions: { queries: { retry: false } } })}>
-                <NewPropertyFlow draft={{ id: DRAFT_ID, updatedAt: SAVED_AT, details, location }} mapsApiKey="" />
+                <NewPropertyFlow draft={{ id: DRAFT_ID, updatedAt: SAVED_AT, status: 'draft', details, location }} mapsApiKey="" />
             </QueryClientProvider>,
         )
     }
@@ -1116,7 +1116,7 @@ describe('Confirmation screen', () => {
         fetchMock.mockImplementation(async (url: string, init: RequestInit) => {
             if (url.endsWith('/documents')) return { ok: true, status: 200, json: async () => documents } as never
             const body = JSON.parse(init.body as string)
-            return { ok: true, status: 200, json: async () => ({ id: DRAFT_ID, updatedAt: SAVED_AT, ...body }) } as never
+            return { ok: true, status: 200, json: async () => ({ id: DRAFT_ID, updatedAt: SAVED_AT, status: 'draft', ...body }) } as never
         })
         render(
             <QueryClientProvider client={new QueryClient({ defaultOptions: { queries: { retry: false } } })}>
@@ -1192,7 +1192,7 @@ describe('Deleting a draft', () => {
     }
 
     function openDraft() {
-        useNewPropertyStore.getState().loadDraft({ id: DRAFT_ID, updatedAt: SAVED_AT, details: { name: 'East Legon house' }, location: {} })
+        useNewPropertyStore.getState().loadDraft({ id: DRAFT_ID, updatedAt: SAVED_AT, status: 'draft', details: { name: 'East Legon house' }, location: {} })
         return renderWithQuery(
             <>
                 <ProgressIndicator />
@@ -1299,6 +1299,7 @@ describe('Registration flow', () => {
         const draft: SavedDraft = {
             id: DRAFT_ID,
             updatedAt: SAVED_AT,
+            status: 'draft',
             details: { name: 'East Legon house', type: 'residential' },
             location: { region: 'Greater Accra', city: 'East Legon' },
         }

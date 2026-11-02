@@ -10,9 +10,21 @@ export type Screen = z.infer<typeof screenSchema>;
 
 const SCREENS = screenSchema.options;
 
+// When an admin has asked for changes, the owner edits their answers only. Documents go through the requests on
+// the property's page, and the property is sent back from there, so the flow ends at review.
+const CHANGE_SCREENS: Screen[] = ['details', 'location', 'boundary', 'acquisition', 'review'];
+
+/** 'draft' while registering; 'changes' while editing a property an admin has asked the owner to change */
+export type FlowMode = 'draft' | 'changes';
+
+function screensFor(mode: FlowMode): Screen[] {
+    return mode === 'changes' ? CHANGE_SCREENS : SCREENS;
+}
+
 export type NewPropertyStoreState = {
     /** The draft's id on the server, set by the first save */
     propertyId?: string;
+    mode: FlowMode;
     screen: Screen;
     savingDraft: boolean;
     draftSavedAt: Date | null;
@@ -58,6 +70,7 @@ export type NewPropertyStore = NewPropertyStoreState & NewPropertyStoreActions;
 
 export const useNewPropertyStore = create<NewPropertyStore>((set) => ({
     propertyId: undefined,
+    mode: 'draft',
     screen: 'start',
     savingDraft: false,
     draftSavedAt: null,
@@ -71,9 +84,10 @@ export const useNewPropertyStore = create<NewPropertyStore>((set) => ({
     setDraftSavedAt: (savedAt: Date) => set({ draftSavedAt: savedAt }),
     setDraftSaveFailed: (failed: boolean) => set({ draftSaveFailed: failed }),
     setDiscarding: (discarding: boolean) => set({ discarding }),
-    reset: () => set({ propertyId: undefined, screen: 'start', savingDraft: false, draftSavedAt: null, draftSaveFailed: false, editingFromReview: false, discarding: false, details: {}, location: {}, boundary: null, acquisition: null }),
+    reset: () => set({ propertyId: undefined, mode: 'draft', screen: 'start', savingDraft: false, draftSavedAt: null, draftSaveFailed: false, editingFromReview: false, discarding: false, details: {}, location: {}, boundary: null, acquisition: null }),
     loadDraft: (draft: SavedDraft) => set({
         propertyId: draft.id,
+        mode: draft.status === 'action_required' ? 'changes' : 'draft',
         screen: 'details',
         savingDraft: false,
         draftSavedAt: new Date(draft.updatedAt),
@@ -87,15 +101,17 @@ export const useNewPropertyStore = create<NewPropertyStore>((set) => ({
     }),
     handleNext: () => set((state: NewPropertyStore) => {
         if (state.editingFromReview) return { screen: 'review', editingFromReview: false };
-        const currentIndex = SCREENS.indexOf(state.screen);
-        if (currentIndex === SCREENS.length - 1) return state;
-        return { ...state, screen: SCREENS[currentIndex + 1] };
+        const screens = screensFor(state.mode);
+        const currentIndex = screens.indexOf(state.screen);
+        if (currentIndex === screens.length - 1) return state;
+        return { ...state, screen: screens[currentIndex + 1] };
     }),
     handleBack: () => set((state: NewPropertyStore) => {
         if (state.editingFromReview) return { screen: 'review', editingFromReview: false };
-        const currentIndex = SCREENS.indexOf(state.screen);
-        if (currentIndex === 0) return state;
-        return { ...state, screen: SCREENS[currentIndex - 1] };
+        const screens = screensFor(state.mode);
+        const currentIndex = screens.indexOf(state.screen);
+        if (currentIndex <= 0) return state;
+        return { ...state, screen: screens[currentIndex - 1] };
     }),
     editFromReview: (screen: Screen) => set({ screen: screenSchema.parse(screen), editingFromReview: true }),
     details: {},

@@ -48,6 +48,14 @@ export default async function OwnPropertyPage({ params }: PageProps<"/account/da
                 <section className="grid gap-4 rounded-xl border border-border bg-card p-4 sm:p-5">
                     {property.changes_requested_message ? <p>{property.changes_requested_message}</p> : null}
 
+                    {/* The registration flow, in its changes mode: answers and boundary only */}
+                    <Link
+                        href={`/account/dashboard/properties/new?draft=${property.id}`}
+                        className="w-fit text-sm font-medium text-primary hover:underline"
+                    >
+                        Change your answers or boundary
+                    </Link>
+
                     {property.openRequests.length > 0 ? (
                         <ul className="grid gap-4">
                             {property.openRequests.map((request) => {

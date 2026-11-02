@@ -33,7 +33,7 @@ describe('requestedUploads', () => {
     })
 
     test('compares times, not text, so timestamps written with different precision still order correctly', () => {
-        // As text, ".5" sorts after ".123456"; as times it is later as well, but "10:00:00Z" sorts after "10:00:00.5Z"
+        // As text, "10:00:00Z" sorts after "10:00:00.5+00:00", though it is half a second earlier
         const uploads = requestedUploads(
             [{ slot: 'site_plan', created_at: '2026-11-03T10:00:00.5+00:00' }],
             [{ id: 'same-second', slot: 'site_plan', file_name: 'a.pdf', created_at: '2026-11-03T10:00:00Z' }]
