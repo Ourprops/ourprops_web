@@ -1,5 +1,6 @@
 -- run with: npx supabase test db
 -- everything happens in one transaction that is rolled back, so the local database is left as it was.
+-- queries are limited to the rows made here, so data already in the local database doesn't change the results.
 begin;
 create extension if not exists pgtap with schema extensions;
 
@@ -69,7 +70,7 @@ select lives_ok(
 -- checkpoints and the audit log have no admin read access yet, so they are checked as superuser
 reset role;
 select is(
-  (select status from public.property_checkpoints where checkpoint_key = 'encumbrance_clearance'),
+  (select status from public.property_checkpoints where property_id = 'aaaaaaaa-0000-0000-0000-000000000001' and checkpoint_key = 'encumbrance_clearance'),
   'verified',
   'an encumbrance that doesn''t block leaves the checkpoint verified'
 );
@@ -85,13 +86,13 @@ select lives_ok(
 reset role;
 
 select results_eq(
-  $$ select status, verified_by from public.property_checkpoints where checkpoint_key = 'encumbrance_clearance' $$,
+  $$ select status, verified_by from public.property_checkpoints where property_id = 'aaaaaaaa-0000-0000-0000-000000000001' and checkpoint_key = 'encumbrance_clearance' $$,
   $$ values ('flagged'::text, null::uuid) $$,
   'a blocking encumbrance flags the checkpoint and clears who verified it'
 );
 
 select is(
-  (select count(*)::int from public.audit_logs where action = 'encumbrance_recorded'),
+  (select count(*)::int from public.audit_logs where property_id = 'aaaaaaaa-0000-0000-0000-000000000001' and action = 'encumbrance_recorded'),
   2,
   'each recorded encumbrance writes the audit log'
 );
@@ -99,13 +100,13 @@ select is(
 -- the checkpoint can't be cleared while the court case is open, whoever writes it
 
 select throws_ok(
-  $$ update public.property_checkpoints set status = 'verified' where checkpoint_key = 'encumbrance_clearance' $$,
+  $$ update public.property_checkpoints set status = 'verified' where property_id = 'aaaaaaaa-0000-0000-0000-000000000001' and checkpoint_key = 'encumbrance_clearance' $$,
   '23514', null,
   'the checkpoint can''t be verified while a blocking encumbrance is open'
 );
 
 select throws_ok(
-  $$ update public.property_checkpoints set status = 'waived' where checkpoint_key = 'encumbrance_clearance' $$,
+  $$ update public.property_checkpoints set status = 'waived' where property_id = 'aaaaaaaa-0000-0000-0000-000000000001' and checkpoint_key = 'encumbrance_clearance' $$,
   '23514', null,
   'the checkpoint can''t be waived while a blocking encumbrance is open'
 );
@@ -116,19 +117,19 @@ set local role authenticated;
 
 select throws_ok(
   $$ select public.update_encumbrance(
-       (select id from public.property_encumbrances where kind = 'litigation'), true, 'resolved', '  ') $$,
+       (select id from public.property_encumbrances where property_id = 'aaaaaaaa-0000-0000-0000-000000000001' and kind = 'litigation'), true, 'resolved', '  ') $$,
   '23514', null,
   'a change needs a reason'
 );
 
 select lives_ok(
   $$ select public.update_encumbrance(
-       (select id from public.property_encumbrances where kind = 'litigation'), true, 'resolved', 'Case struck out') $$,
+       (select id from public.property_encumbrances where property_id = 'aaaaaaaa-0000-0000-0000-000000000001' and kind = 'litigation'), true, 'resolved', 'Case struck out') $$,
   'an admin resolves the court case with a reason'
 );
 
 select results_eq(
-  $$ select resolved_by from public.property_encumbrances where kind = 'litigation' $$,
+  $$ select resolved_by from public.property_encumbrances where property_id = 'aaaaaaaa-0000-0000-0000-000000000001' and kind = 'litigation' $$,
   $$ values ('22222222-2222-2222-2222-222222222222'::uuid) $$,
   'resolving records who resolved it'
 );
@@ -136,13 +137,13 @@ select results_eq(
 reset role;
 
 select is(
-  (select metadata ->> 'reason' from public.audit_logs where action = 'encumbrance_updated'),
+  (select metadata ->> 'reason' from public.audit_logs where property_id = 'aaaaaaaa-0000-0000-0000-000000000001' and action = 'encumbrance_updated'),
   'Case struck out',
   'the reason for the change is in the audit log'
 );
 
 select lives_ok(
-  $$ update public.property_checkpoints set status = 'verified' where checkpoint_key = 'encumbrance_clearance' $$,
+  $$ update public.property_checkpoints set status = 'verified' where property_id = 'aaaaaaaa-0000-0000-0000-000000000001' and checkpoint_key = 'encumbrance_clearance' $$,
   'once the blocking encumbrance is resolved, the checkpoint can be verified'
 );
 
