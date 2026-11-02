@@ -1,3 +1,4 @@
+import { Check, CircleDashed, CircleMinus, Clock, Inbox, TriangleAlert, type LucideIcon } from "lucide-react"
 import type { Metadata } from "next"
 import Link from "next/link"
 import { notFound } from "next/navigation"
@@ -18,9 +19,11 @@ import {
 } from "@/lib/admin/labels"
 import { getPropertyForReview, type PropertyForReview } from "@/lib/admin/review"
 import { requireAdmin } from "@/lib/auth/staff"
+import { cn } from "@/lib/utils"
 import { ACQUISITION_OPTIONS, DOCUMENT_SLOT_OPTIONS, DOCUMENT_TYPE_LABELS, TYPE_OPTIONS } from "@/lib/types/property"
 
-import { startReview } from "./actions"
+import { startReview, updateCheckpoint } from "./actions"
+import { CheckpointForm } from "./checkpoint-form"
 import { StartReviewButton } from "./start-review-button"
 
 export const metadata: Metadata = {
@@ -41,7 +44,6 @@ function formatDate(value: string | null) {
 }
 
 // The review actions live in ./actions.ts, and each calls requireAdmin() itself (docs/admin.md, section 9)
-// TODO: wire the checkpoint controls to update_checkpoint.
 export default async function PropertyReviewPage({ params }: PageProps<"/admin/properties/[id]">) {
     const { supabase } = await requireAdmin()
     const { id } = await params
@@ -116,7 +118,11 @@ export default async function PropertyReviewPage({ params }: PageProps<"/admin/p
             </Section>
 
             <Section title="Checkpoints">
-                <Checkpoints checkpoints={review.checkpoints} />
+                <Checkpoints
+                    checkpoints={review.checkpoints}
+                    propertyId={property.id}
+                    editable={property.status === "under_review"}
+                />
             </Section>
 
             <Section title="Documents">
@@ -164,7 +170,43 @@ function Empty({ children }: { children: React.ReactNode }) {
     return <p className="text-sm text-muted-foreground">{children}</p>
 }
 
-function Checkpoints({ checkpoints }: { checkpoints: PropertyForReview["checkpoints"] }) {
+// The same tones as the homepage's StatusBadge (app/(public)/_components/property-record.tsx)
+const CHECKPOINT_STATUS_STYLES: Record<string, { icon: LucideIcon; className: string }> = {
+    unverified: { icon: CircleDashed, className: "bg-background text-copy ring-1 ring-border" },
+    submitted: { icon: Inbox, className: "bg-primary/10 text-primary dark:bg-primary/20" },
+    in_progress: { icon: Clock, className: "bg-warning-soft text-warning" },
+    verified: { icon: Check, className: "bg-success-soft text-success" },
+    flagged: { icon: TriangleAlert, className: "bg-destructive/10 text-destructive dark:bg-destructive/20" },
+    waived: { icon: CircleMinus, className: "bg-muted text-muted-foreground ring-1 ring-border" },
+}
+
+// Status is carried by the icon and label as well as the colour
+function CheckpointStatus({ status }: { status: string }) {
+    const { icon: Icon, className } = CHECKPOINT_STATUS_STYLES[status] ?? CHECKPOINT_STATUS_STYLES.unverified
+
+    return (
+        <span
+            className={cn(
+                "inline-flex shrink-0 items-center gap-1 rounded-full px-2 py-0.5 text-xs font-medium",
+                className
+            )}
+        >
+            <Icon size={12} strokeWidth={2.5} aria-hidden />
+            {labelFor(CHECKPOINT_STATUS_LABELS, status)}
+        </span>
+    )
+}
+
+// editable only offers the form; update_checkpoint refuses changes outside review all the same
+function Checkpoints({
+    checkpoints,
+    propertyId,
+    editable,
+}: {
+    checkpoints: PropertyForReview["checkpoints"]
+    propertyId: string
+    editable: boolean
+}) {
     if (checkpoints.length === 0) {
         return <Empty>Created when the review starts.</Empty>
     }
@@ -179,9 +221,7 @@ function Checkpoints({ checkpoints }: { checkpoints: PropertyForReview["checkpoi
                 <li key={checkpoint.checkpoint_key} className="py-3 first:pt-0 last:pb-0">
                     <div className="flex flex-wrap items-center justify-between gap-2">
                         <span className="font-medium">{labelFor(CHECKPOINT_LABELS, checkpoint.checkpoint_key)}</span>
-                        <Badge variant={checkpoint.status === "flagged" ? "destructive" : "outline"}>
-                            {labelFor(CHECKPOINT_STATUS_LABELS, checkpoint.status)}
-                        </Badge>
+                        <CheckpointStatus status={checkpoint.status} />
                     </div>
                     {checkpoint.verifier ? (
                         <p className="mt-1 text-xs text-muted-foreground">
@@ -193,6 +233,15 @@ function Checkpoints({ checkpoints }: { checkpoints: PropertyForReview["checkpoi
                     ) : null}
                     {checkpoint.internal_notes ? (
                         <p className="mt-1 text-sm text-copy">Internal: {checkpoint.internal_notes}</p>
+                    ) : null}
+                    {editable ? (
+                        <CheckpointForm
+                            checkpointKey={checkpoint.checkpoint_key}
+                            status={checkpoint.status}
+                            publicNotes={checkpoint.public_notes}
+                            internalNotes={checkpoint.internal_notes}
+                            action={updateCheckpoint.bind(null, propertyId, checkpoint.checkpoint_key)}
+                        />
                     ) : null}
                 </li>
             ))}

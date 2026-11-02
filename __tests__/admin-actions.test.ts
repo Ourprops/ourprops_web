@@ -1,7 +1,8 @@
 import { beforeEach, describe, expect, test, vi } from 'vitest'
 
-import { startReview } from '../app/admin/properties/[id]/actions'
+import { startReview, updateCheckpoint } from '../app/admin/properties/[id]/actions'
 import { actionErrorMessage, GENERIC_ACTION_ERROR } from '../lib/admin/errors'
+import { MAX_CHECKPOINT_NOTE_LENGTH } from '../lib/validators/admin'
 
 const PROPERTY = 'aaaaaaaa-0000-4000-8000-000000000001'
 
@@ -53,6 +54,75 @@ describe('startReview', () => {
         rpc.mockResolvedValue({ data: null, error: { code: '08006', message: 'connection to 10.0.0.5 failed' } })
 
         expect(await startReview(PROPERTY, null)).toEqual({ error: GENERIC_ACTION_ERROR })
+    })
+})
+
+function checkpointForm(fields: Record<string, string>) {
+    const formData = new FormData()
+    for (const [name, value] of Object.entries(fields)) formData.set(name, value)
+    return formData
+}
+
+describe('updateCheckpoint', () => {
+    const verified = { status: 'verified', public_note: 'Matches the indenture.', internal_note: '' }
+
+    beforeEach(() => {
+        rpc.mockReset().mockResolvedValue({ data: null, error: null })
+        requireAdmin.mockReset().mockResolvedValue({ supabase: { rpc }, adminId: 'admin' })
+        refresh.mockReset()
+        vi.spyOn(console, 'error').mockImplementation(() => {})
+    })
+
+    test('checks the caller before reading the form or touching the database', async () => {
+        requireAdmin.mockRejectedValue(new Error('NEXT_HTTP_ERROR_FALLBACK;404'))
+
+        await expect(updateCheckpoint(PROPERTY, 'boundary_mapped', null, checkpointForm(verified))).rejects.toThrow()
+        expect(rpc).not.toHaveBeenCalled()
+    })
+
+    test('sends the update to update_checkpoint and refreshes the page', async () => {
+        expect(await updateCheckpoint(PROPERTY, 'boundary_mapped', null, checkpointForm(verified))).toBeNull()
+        expect(rpc).toHaveBeenCalledWith('update_checkpoint', {
+            property_id: PROPERTY,
+            checkpoint_key: 'boundary_mapped',
+            status: 'verified',
+            public_note: 'Matches the indenture.',
+            internal_note: '',
+        })
+        expect(refresh).toHaveBeenCalledOnce()
+    })
+
+    test('treats missing note fields as empty, which clears them', async () => {
+        await updateCheckpoint(PROPERTY, 'boundary_mapped', null, checkpointForm({ status: 'in_progress' }))
+        expect(rpc).toHaveBeenCalledWith('update_checkpoint', expect.objectContaining({ public_note: '', internal_note: '' }))
+    })
+
+    test.each([
+        ['a property id that is not a uuid', 'not-a-uuid', 'boundary_mapped', verified, 'Checkpoint not found.'],
+        ['a checkpoint that is not one of the seven', PROPERTY, 'made_up', verified, 'Checkpoint not found.'],
+        ['no status', PROPERTY, 'boundary_mapped', { public_note: '' }, 'Choose a status'],
+        ["'submitted', which only owners' evidence sets", PROPERTY, 'boundary_mapped', { status: 'submitted' }, 'Choose a status'],
+        [
+            'a note over the limit',
+            PROPERTY,
+            'boundary_mapped',
+            { status: 'verified', public_note: 'x'.repeat(MAX_CHECKPOINT_NOTE_LENGTH + 1) },
+            'Keep notes to 2,000 characters or fewer',
+        ],
+    ])('refuses %s without calling the database', async (_case, propertyId, checkpointKey, fields, message) => {
+        expect(await updateCheckpoint(propertyId, checkpointKey, null, checkpointForm(fields))).toEqual({ error: message })
+        expect(rpc).not.toHaveBeenCalled()
+    })
+
+    test("leaves the review rules to the database and shows its message", async () => {
+        // Flagged without a public note gets through the shape check; update_checkpoint is what refuses it
+        rpc.mockResolvedValue({ data: null, error: { code: '23514', message: 'Add a public note saying why.' } })
+
+        expect(
+            await updateCheckpoint(PROPERTY, 'boundary_mapped', null, checkpointForm({ status: 'flagged', public_note: '' }))
+        ).toEqual({ error: 'Add a public note saying why.' })
+        expect(rpc).toHaveBeenCalledOnce()
+        expect(refresh).not.toHaveBeenCalled()
     })
 })
 
