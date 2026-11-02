@@ -1,7 +1,7 @@
 import { afterEach, describe, expect, test, vi } from 'vitest'
 import { cleanup, fireEvent, render, screen, waitFor } from '@testing-library/react'
 
-import { ActionForm } from '../app/admin/properties/[id]/action-form'
+import { ActionForm } from '../components/action-form'
 
 describe('ActionForm', () => {
     afterEach(cleanup)

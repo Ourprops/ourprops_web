@@ -95,6 +95,8 @@ export const AUDIT_ACTION_LABELS: Record<string, string> = {
     property_approved: "Approved",
     property_suspended: "Suspended",
     review_reopened: "Review reopened",
+    changes_requested: "Changes requested",
+    property_resubmitted: "Sent back by the owner",
 }
 
 // Falls back to the stored value, so a new status shows up rather than disappearing

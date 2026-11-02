@@ -31,6 +31,9 @@ export const OVERLAP_OUTCOMES = ["investigating", "resolved_valid", "resolved_fa
 
 export const ENCUMBRANCE_KINDS = ["mortgage", "caveat", "litigation", "lease", "other"] as const
 
+// The checklist items an owner uploads into (property_documents_slot_check)
+export const DOCUMENT_SLOTS = ["ownership", "site_plan", "supporting"] as const
+
 // The database has no limit on notes; this keeps one form post from storing a novel in the row and the audit log
 export const MAX_NOTE_LENGTH = 2000
 
@@ -96,6 +99,21 @@ export const encumbranceRecordSchema = z.object({
     .max(MAX_ENCUMBRANCE_REFERENCE_LENGTH, `Keep the reference to ${MAX_ENCUMBRANCE_REFERENCE_LENGTH} characters or fewer`),
   blocksActivation: yesNo("Say whether it blocks activation"),
   note: noteSchema,
+})
+
+// The owner sees the message and every note. Identity can't be asked for from the console yet: owners have
+// nowhere to add the document until /account/identity exists (build order, step 6), so a document is required.
+export const changeRequestSchema = z.object({
+  propertyId,
+  message: noteSchema.trim().min(1, "Write the message the owner will see"),
+  documents: z
+    .array(
+      z.object({
+        slot: z.enum(DOCUMENT_SLOTS, { error: "Choose checklist items from the list" }),
+        note: noteSchema.trim().min(1, "Say what to send for each item you ask for"),
+      })
+    )
+    .min(1, "Ask for at least one document"),
 })
 
 export const encumbranceUpdateSchema = z.object({

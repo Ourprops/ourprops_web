@@ -2,9 +2,10 @@
 
 import { refresh } from "next/cache"
 
-import { actionErrorMessage, type ActionState } from "@/lib/admin/errors"
+import { actionErrorMessage, type ActionState } from "@/lib/action-errors"
 import { requireAdmin } from "@/lib/auth/staff"
 import {
+    changeRequestSchema,
     checkpointUpdateSchema,
     classificationSchema,
     documentReviewSchema,
@@ -188,6 +189,31 @@ export async function reopenReview(propertyId: string, _previous: ActionState, f
         property_id: parsed.data.propertyId,
         note: parsed.data.note,
         checkpoints: parsed.data.checkpoints,
+    })
+}
+
+// Asks the owner for documents, each a checklist item and a note, and sends the property to action_required.
+// The form has a checkbox per item, posted as "slots", and a note for each, posted as "note_<slot>".
+export async function requestChanges(propertyId: string, _previous: ActionState, formData: FormData): Promise<ActionState> {
+    const { supabase } = await requireAdmin()
+
+    const parsed = changeRequestSchema.safeParse({
+        propertyId,
+        message: text(formData, "message"),
+        documents: formData.getAll("slots").map((slot) => ({
+            slot,
+            note: typeof slot === "string" ? text(formData, `note_${slot}`) : "",
+        })),
+    })
+    if (!parsed.success) {
+        return { error: parsed.error.issues[0].message }
+    }
+
+    return callReviewFunction(supabase, "request_changes", {
+        property_id: parsed.data.propertyId,
+        message: parsed.data.message,
+        documents: parsed.data.documents,
+        identity: false,
     })
 }
 

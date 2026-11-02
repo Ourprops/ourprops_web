@@ -4,11 +4,11 @@ import { startTransition, useActionState } from "react"
 
 import { Button } from "@/components/ui/button"
 import { Spinner } from "@/components/ui/spinner"
-import type { ActionState } from "@/lib/admin/errors"
+import type { ActionState } from "@/lib/action-errors"
 import { cn } from "@/lib/utils"
 
 type Props = {
-    // A server action from ./actions.ts, with its ids already bound by the page
+    // A server action, with its ids already bound by the page
     action: (previous: ActionState, formData: FormData) => Promise<ActionState>
     submitLabel: string
     variant?: "default" | "outline" | "destructive"
@@ -18,7 +18,7 @@ type Props = {
     children?: React.ReactNode
 }
 
-// Every review form on the property page. The fields are plain inputs the page puts inside it.
+// A form for one server action. The fields are plain inputs the page puts inside it.
 export function ActionForm({ action, submitLabel, variant = "default", disabled, className, children }: Props) {
     const [state, formAction, pending] = useActionState(action, null)
 

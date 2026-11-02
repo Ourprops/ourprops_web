@@ -1,7 +1,7 @@
-// What a review action gives back to its form: null when it went through, or a message to show the admin
+// What a server action gives back to its form: null when it went through, or a message to show the admin
 export type ActionState = { error: string } | null
 
-// The review functions raise these with messages written for the admin (supabase/migrations, start_review onwards)
+// The database functions raise these with messages written for the person acting (supabase/migrations, start_review onwards)
 const SHOWABLE_CODES = new Set([
     "23514", // the property or checkpoint isn't in a state that allows this
     "P0002", // the property or checkpoint doesn't exist

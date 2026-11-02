@@ -155,10 +155,14 @@ export type PropertyForReview = {
         ownership_structure: string | null
         // Shown to the owner while the property is suspended
         suspension_reason: string | null
+        // What the admin asked the owner for, while the property waits on them
+        changes_requested_message: string | null
+        identity_requested: boolean
         created_at: string
         updated_at: string
         owner: { id: string; full_name: string; phone_number: string | null } | null
-        property_boundaries: { source: string; area_sqm: number | null } | null
+        // boundary_geojson is a Polygon, or a Point when the owner only dropped a pin
+        property_boundaries: { source: string; area_sqm: number | null; boundary_geojson: unknown } | null
     }
     identity: {
         document_type: string
@@ -205,6 +209,8 @@ export type PropertyForReview = {
         created_at: string
         // The other property in the pair, whichever side of the flag it is on
         otherPropertyId: string
+        // Its boundary, for the map; null if it has none
+        otherBoundary: unknown
     }[]
     history: {
         id: string
@@ -212,6 +218,14 @@ export type PropertyForReview = {
         metadata: Record<string, unknown> | null
         created_at: string
         actor: { full_name: string } | null
+    }[]
+    // What the admin has asked the owner for, newest first; fulfilled once the owner sends the property back
+    requests: {
+        id: string
+        slot: string
+        note: string
+        created_at: string
+        fulfilled_at: string | null
     }[]
     // What still stands between the property and approval, in plain words; empty unless it is in review
     blockers: string[]
@@ -226,7 +240,7 @@ export async function getPropertyForReview(supabase: SupabaseClient, id: string)
     const { data: property, error } = await supabase
         .from("properties")
         .select(
-            "id, prop_id, name, status, property_type, description, region, district_municipality, city_town, address, digital_address, landmark, acquisition_method, acquisition_metadata, ownership_type, ownership_structure, suspension_reason, created_at, updated_at, owner:profiles!properties_submitted_by_fkey(id, full_name, phone_number), property_boundaries(source, area_sqm)"
+            "id, prop_id, name, status, property_type, description, region, district_municipality, city_town, address, digital_address, landmark, acquisition_method, acquisition_metadata, ownership_type, ownership_structure, suspension_reason, changes_requested_message, identity_requested, created_at, updated_at, owner:profiles!properties_submitted_by_fkey(id, full_name, phone_number), property_boundaries(source, area_sqm, boundary_geojson)"
         )
         .eq("id", id)
         .maybeSingle()
@@ -235,7 +249,7 @@ export async function getPropertyForReview(supabase: SupabaseClient, id: string)
 
     const row = property as unknown as PropertyForReview["property"]
 
-    const [identity, documents, checkpoints, encumbrances, flags, history, blockers] = await Promise.all([
+    const [identity, documents, checkpoints, encumbrances, flags, history, requests, blockers] = await Promise.all([
         row.owner
             ? supabase
                   .from("identity_documents")
@@ -271,17 +285,38 @@ export async function getPropertyForReview(supabase: SupabaseClient, id: string)
             .select("id, action, metadata, created_at, actor:profiles!audit_logs_actor_id_fkey(full_name)")
             .eq("property_id", id)
             .order("created_at", { ascending: false }),
+        supabase
+            .from("property_document_requests")
+            .select("id, slot, note, created_at, fulfilled_at")
+            .eq("property_id", id)
+            .order("created_at", { ascending: false }),
         // approval_blockers doesn't check the status, so it is asked only when approval is possible at all
         row.status === "under_review"
             ? supabase.rpc("approval_blockers", { property_id: id })
             : Promise.resolve({ data: [], error: null }),
     ])
 
-    for (const result of [identity, documents, checkpoints, encumbrances, flags, history, blockers]) {
+    for (const result of [identity, documents, checkpoints, encumbrances, flags, history, requests, blockers]) {
         if (result.error) throw result.error
     }
 
-    const flagRows = (flags.data ?? []) as (OverlapPairRow & Omit<PropertyForReview["overlaps"][number], "otherPropertyId">)[]
+    const flagRows = (flags.data ?? []) as (OverlapPairRow &
+        Omit<PropertyForReview["overlaps"][number], "otherPropertyId" | "otherBoundary">)[]
+    const otherIds = flagRows.map((flag) => (flag.property_id === id ? flag.conflicting_property_id : flag.property_id))
+
+    // The overlapping properties' boundaries, for the map. The admin read policy only returns submitted ones,
+    // which are the only ones with a flag the admin can see.
+    const otherBoundaries = new Map<string, unknown>()
+    if (otherIds.length > 0) {
+        const { data, error: boundaryError } = await supabase
+            .from("property_boundaries")
+            .select("property_id, boundary_geojson")
+            .in("property_id", otherIds)
+        if (boundaryError) throw boundaryError
+        for (const row of (data ?? []) as { property_id: string; boundary_geojson: unknown }[]) {
+            otherBoundaries.set(row.property_id, row.boundary_geojson)
+        }
+    }
 
     return {
         property: row,
@@ -289,11 +324,12 @@ export async function getPropertyForReview(supabase: SupabaseClient, id: string)
         documents: (documents.data ?? []) as PropertyForReview["documents"],
         checkpoints: (checkpoints.data ?? []) as unknown as PropertyForReview["checkpoints"],
         encumbrances: (encumbrances.data ?? []) as unknown as PropertyForReview["encumbrances"],
-        overlaps: flagRows.map(({ property_id, conflicting_property_id, ...flag }) => ({
-            ...flag,
-            otherPropertyId: property_id === id ? conflicting_property_id : property_id,
-        })),
+        overlaps: flagRows.map(({ property_id, conflicting_property_id, ...flag }) => {
+            const otherPropertyId = property_id === id ? conflicting_property_id : property_id
+            return { ...flag, otherPropertyId, otherBoundary: otherBoundaries.get(otherPropertyId) ?? null }
+        }),
         history: (history.data ?? []) as unknown as PropertyForReview["history"],
+        requests: (requests.data ?? []) as PropertyForReview["requests"],
         blockers: (blockers.data ?? []) as string[],
     }
 }

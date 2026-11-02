@@ -1,8 +1,8 @@
-import type { ActionState } from "@/lib/admin/errors"
+import { ActionForm } from "@/components/action-form"
+import type { ActionState } from "@/lib/action-errors"
 import { CHECKPOINT_STATUS_LABELS } from "@/lib/admin/labels"
 import { ADMIN_CHECKPOINT_STATUSES, UNWAIVABLE_CHECKPOINTS } from "@/lib/validators/admin"
 
-import { ActionForm } from "./action-form"
 import { ChoiceField, NoteField } from "./fields"
 
 type Props = {

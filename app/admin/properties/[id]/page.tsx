@@ -3,6 +3,7 @@ import type { Metadata } from "next"
 import Link from "next/link"
 import { notFound } from "next/navigation"
 
+import { ActionForm } from "@/components/action-form"
 import { Badge } from "@/components/ui/badge"
 import {
     AUDIT_ACTION_LABELS,
@@ -31,12 +32,12 @@ import {
     OVERLAP_OUTCOMES,
 } from "@/lib/validators/admin"
 
-import { ActionForm } from "./action-form"
 import {
     approveProperty,
     classifyProperty,
     recordEncumbrance,
     reopenReview,
+    requestChanges,
     resolveOverlap,
     reviewDocument,
     startReview,
@@ -44,6 +45,7 @@ import {
     updateCheckpoint,
     updateEncumbrance,
 } from "./actions"
+import { BoundaryMap } from "./boundary-map"
 import { CheckpointForm } from "./checkpoint-form"
 import { ChoiceField, NoteField, TextField, YesNoField } from "./fields"
 
@@ -94,7 +96,7 @@ export default async function PropertyReviewPage({ params }: PageProps<"/admin/p
                 </div>
                 <p className="text-data mt-1 text-sm text-muted-foreground">{property.prop_id}</p>
                 <div className="mt-4">
-                    <StatusActions property={property} blockers={review.blockers} />
+                    <StatusActions property={property} blockers={review.blockers} requests={review.requests} />
                 </div>
             </header>
 
@@ -172,6 +174,10 @@ export default async function PropertyReviewPage({ params }: PageProps<"/admin/p
                 ) : null}
             </Section>
 
+            <Section title="Map">
+                <PropertyMap review={review} />
+            </Section>
+
             <Section title="Checkpoints">
                 <Checkpoints
                     checkpoints={review.checkpoints}
@@ -200,7 +206,15 @@ export default async function PropertyReviewPage({ params }: PageProps<"/admin/p
 }
 
 // What the admin can do with the property as a whole in its current status
-function StatusActions({ property, blockers }: { property: PropertyForReview["property"]; blockers: string[] }) {
+function StatusActions({
+    property,
+    blockers,
+    requests,
+}: {
+    property: PropertyForReview["property"]
+    blockers: string[]
+    requests: PropertyForReview["requests"]
+}) {
     if (property.status === "submitted") {
         return <ActionForm action={startReview.bind(null, property.id)} submitLabel="Start review" />
     }
@@ -223,6 +237,58 @@ function StatusActions({ property, blockers }: { property: PropertyForReview["pr
                     submitLabel="Approve"
                     disabled={blockers.length > 0}
                 />
+                <details>
+                    <summary className="cursor-pointer text-sm text-primary">Ask the owner for documents</summary>
+                    <ActionForm
+                        action={requestChanges.bind(null, property.id)}
+                        submitLabel="Send request"
+                        variant="outline"
+                        className="mt-3"
+                    >
+                        <NoteField
+                            id="changes-message"
+                            name="message"
+                            label="Message to the owner"
+                            hint="Shown to the owner under “We need something from you”."
+                        />
+                        <fieldset className="grid gap-3">
+                            <legend className="text-sm font-medium">Documents to ask for</legend>
+                            {DOCUMENT_SLOT_OPTIONS.map((option) => (
+                                <div key={option.value} className="grid gap-1.5">
+                                    <label className="flex items-center gap-2 text-sm">
+                                        <input type="checkbox" name="slots" value={option.value} className="size-4 accent-primary" />
+                                        {option.title}
+                                    </label>
+                                    <NoteField
+                                        id={`changes-note-${option.value}`}
+                                        name={`note_${option.value}`}
+                                        label="What to send, and why"
+                                        hint="The owner sees this."
+                                    />
+                                </div>
+                            ))}
+                        </fieldset>
+                    </ActionForm>
+                </details>
+            </div>
+        )
+    }
+
+    if (property.status === "action_required") {
+        const open = requests.filter((request) => request.fulfilled_at === null)
+        return (
+            <div className="grid gap-2 text-sm">
+                <p>
+                    <span className="text-muted-foreground">Waiting on the owner:</span> {property.changes_requested_message ?? "—"}
+                </p>
+                <ul className="list-disc pl-5 text-copy">
+                    {open.map((request) => (
+                        <li key={request.id}>
+                            {DOCUMENT_SLOT_OPTIONS.find((option) => option.value === request.slot)?.title ?? request.slot}: {request.note}
+                        </li>
+                    ))}
+                    {property.identity_requested ? <li>Their identity document</li> : null}
+                </ul>
             </div>
         )
     }
@@ -280,6 +346,39 @@ function StatusActions({ property, blockers }: { property: PropertyForReview["pr
     }
 
     return null
+}
+
+function PropertyMap({ review }: { review: PropertyForReview }) {
+    const boundary = review.property.property_boundaries?.boundary_geojson ?? null
+    if (!boundary) {
+        return <Empty>The owner hasn&apos;t marked the property on the map.</Empty>
+    }
+
+    // The key goes to the browser, so it is restricted to the app's domains in Google Cloud
+    const apiKey = process.env.GOOGLE_MAPS_API_KEY
+    if (!apiKey) {
+        return <Empty>The map isn&apos;t set up here (no GOOGLE_MAPS_API_KEY).</Empty>
+    }
+
+    const overlaps = review.overlaps.map((overlap) => overlap.otherBoundary).filter((shape) => shape !== null)
+
+    return (
+        <div className="grid gap-2">
+            <BoundaryMap apiKey={apiKey} boundary={boundary} overlaps={overlaps} />
+            <p className="flex flex-wrap gap-x-4 gap-y-1 text-xs text-muted-foreground">
+                <span className="flex items-center gap-1.5">
+                    <span aria-hidden className="size-2.5 rounded-sm bg-[#4C8BF5]" />
+                    This property
+                </span>
+                {overlaps.length > 0 ? (
+                    <span className="flex items-center gap-1.5">
+                        <span aria-hidden className="size-2.5 rounded-sm bg-[#E53935]" />
+                        Overlapping {overlaps.length === 1 ? "property" : `properties (${overlaps.length})`}
+                    </span>
+                ) : null}
+            </p>
+        </div>
+    )
 }
 
 function Section({ title, children }: { title: string; children: React.ReactNode }) {
@@ -625,6 +724,9 @@ function describe(entry: PropertyForReview["history"][number]) {
     }
     if (entry.action === "review_reopened" && typeof metadata.note === "string") {
         return metadata.note
+    }
+    if (entry.action === "changes_requested" && typeof metadata.message === "string") {
+        return metadata.message
     }
     return null
 }

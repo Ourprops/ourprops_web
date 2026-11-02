@@ -5,6 +5,7 @@ import {
     classifyProperty,
     recordEncumbrance,
     reopenReview,
+    requestChanges,
     resolveOverlap,
     reviewDocument,
     startReview,
@@ -12,7 +13,7 @@ import {
     updateCheckpoint,
     updateEncumbrance,
 } from '../app/admin/properties/[id]/actions'
-import { actionErrorMessage, GENERIC_ACTION_ERROR } from '../lib/admin/errors'
+import { actionErrorMessage, GENERIC_ACTION_ERROR } from '../lib/action-errors'
 import { MAX_NOTE_LENGTH } from '../lib/validators/admin'
 
 const PROPERTY = 'aaaaaaaa-0000-4000-8000-000000000001'
@@ -190,6 +191,27 @@ const ACTIONS = [
         args: { property_id: PROPERTY, note: 'Neighbour disputes it', checkpoints: ['boundary_mapped', 'overlap_clearance'] },
     },
     {
+        name: 'requestChanges',
+        call: () =>
+            requestChanges(
+                PROPERTY,
+                null,
+                form({
+                    message: ' We need a clearer site plan. ',
+                    slots: ['site_plan'],
+                    note_site_plan: 'Too blurry to read',
+                    note_ownership: 'Left over from a box that was unticked',
+                })
+            ),
+        fn: 'request_changes',
+        args: {
+            property_id: PROPERTY,
+            message: 'We need a clearer site plan.',
+            documents: [{ slot: 'site_plan', note: 'Too blurry to read' }],
+            identity: false,
+        },
+    },
+    {
         name: 'recordEncumbrance',
         call: () =>
             recordEncumbrance(
@@ -247,6 +269,10 @@ describe('the other review actions', () => {
         ['reopenReview with a made-up checkpoint', () => reopenReview(PROPERTY, null, form({ note: 'Why', checkpoints: ['made_up'] })), 'Choose checkpoints from the list'],
         ['recordEncumbrance without saying whether it blocks', () => recordEncumbrance(PROPERTY, null, form({ kind: 'mortgage', reference: 'LC/1' })), 'Say whether it blocks activation'],
         ['recordEncumbrance with a blank reference', () => recordEncumbrance(PROPERTY, null, form({ kind: 'mortgage', reference: '   ', blocks_activation: 'no' })), 'Enter the suit number or registry reference'],
+        ['requestChanges with nothing ticked', () => requestChanges(PROPERTY, null, form({ message: 'Please send' })), 'Ask for at least one document'],
+        ['requestChanges without a message', () => requestChanges(PROPERTY, null, form({ message: '  ', slots: ['site_plan'], note_site_plan: 'Clearer' })), 'Write the message the owner will see'],
+        ['requestChanges with a ticked item but no note', () => requestChanges(PROPERTY, null, form({ message: 'Please send', slots: ['site_plan'] })), 'Say what to send for each item you ask for'],
+        ['requestChanges for an item that isn\'t on the checklist', () => requestChanges(PROPERTY, null, form({ message: 'Please send', slots: ['photos'], note_photos: 'x' })), 'Choose checklist items from the list'],
         ['updateEncumbrance with an unknown status', () => updateEncumbrance(ENCUMBRANCE, null, form({ blocks_activation: 'no', status: 'closed' })), 'Choose open or resolved'],
     ])('refuses %s without calling the database', async (_case, call, message) => {
         expect(await call()).toEqual({ error: message })
