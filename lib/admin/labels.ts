@@ -55,6 +55,20 @@ export const ENCUMBRANCE_KIND_LABELS: Record<string, string> = {
     other: "Other",
 }
 
+// The admin's classification (docs/admin.md, section 5); owners never choose these
+export const OWNERSHIP_TYPE_LABELS: Record<string, string> = {
+    customary_family: "Customary family land",
+    stool_sublease: "Stool land sublease",
+    state_lease: "State lease",
+    private_freehold: "Private freehold",
+}
+
+export const OWNERSHIP_STRUCTURE_LABELS: Record<string, string> = {
+    sole: "Sole owner",
+    co_owned: "Co-owned",
+    company: "Company",
+}
+
 export const OVERLAP_STATUS_LABELS: Record<string, string> = {
     detected: "Detected",
     investigating: "Investigating",
@@ -75,6 +89,12 @@ export const AUDIT_ACTION_LABELS: Record<string, string> = {
     checkpoint_updated: "Checkpoint updated",
     encumbrance_recorded: "Encumbrance recorded",
     encumbrance_updated: "Encumbrance updated",
+    property_classified: "Ownership classified",
+    document_reviewed: "Document reviewed",
+    overlap_updated: "Overlap updated",
+    property_approved: "Approved",
+    property_suspended: "Suspended",
+    review_reopened: "Review reopened",
 }
 
 // Falls back to the stored value, so a new status shows up rather than disappearing

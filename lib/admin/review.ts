@@ -153,6 +153,8 @@ export type PropertyForReview = {
         acquisition_metadata: unknown
         ownership_type: string | null
         ownership_structure: string | null
+        // Shown to the owner while the property is suspended
+        suspension_reason: string | null
         created_at: string
         updated_at: string
         owner: { id: string; full_name: string; phone_number: string | null } | null
@@ -171,6 +173,8 @@ export type PropertyForReview = {
         declared_type: string | null
         document_type: string
         verification_status: string
+        // The admin's note on the outcome, which the owner sees
+        review_note: string | null
         file_name: string
         created_at: string
     }[]
@@ -209,6 +213,8 @@ export type PropertyForReview = {
         created_at: string
         actor: { full_name: string } | null
     }[]
+    // What still stands between the property and approval, in plain words; empty unless it is in review
+    blockers: string[]
 }
 
 // Everything the property review page shows. Null when there is no such property, or it is still a draft:
@@ -220,7 +226,7 @@ export async function getPropertyForReview(supabase: SupabaseClient, id: string)
     const { data: property, error } = await supabase
         .from("properties")
         .select(
-            "id, prop_id, name, status, property_type, description, region, district_municipality, city_town, address, digital_address, landmark, acquisition_method, acquisition_metadata, ownership_type, ownership_structure, created_at, updated_at, owner:profiles!properties_submitted_by_fkey(id, full_name, phone_number), property_boundaries(source, area_sqm)"
+            "id, prop_id, name, status, property_type, description, region, district_municipality, city_town, address, digital_address, landmark, acquisition_method, acquisition_metadata, ownership_type, ownership_structure, suspension_reason, created_at, updated_at, owner:profiles!properties_submitted_by_fkey(id, full_name, phone_number), property_boundaries(source, area_sqm)"
         )
         .eq("id", id)
         .maybeSingle()
@@ -229,7 +235,7 @@ export async function getPropertyForReview(supabase: SupabaseClient, id: string)
 
     const row = property as unknown as PropertyForReview["property"]
 
-    const [identity, documents, checkpoints, encumbrances, flags, history] = await Promise.all([
+    const [identity, documents, checkpoints, encumbrances, flags, history, blockers] = await Promise.all([
         row.owner
             ? supabase
                   .from("identity_documents")
@@ -239,7 +245,7 @@ export async function getPropertyForReview(supabase: SupabaseClient, id: string)
             : Promise.resolve({ data: null, error: null }),
         supabase
             .from("property_documents")
-            .select("id, slot, declared_type, document_type, verification_status, file_name, created_at")
+            .select("id, slot, declared_type, document_type, verification_status, review_note, file_name, created_at")
             .eq("property_id", id)
             .order("created_at", { ascending: true }),
         supabase
@@ -265,9 +271,13 @@ export async function getPropertyForReview(supabase: SupabaseClient, id: string)
             .select("id, action, metadata, created_at, actor:profiles!audit_logs_actor_id_fkey(full_name)")
             .eq("property_id", id)
             .order("created_at", { ascending: false }),
+        // approval_blockers doesn't check the status, so it is asked only when approval is possible at all
+        row.status === "under_review"
+            ? supabase.rpc("approval_blockers", { property_id: id })
+            : Promise.resolve({ data: [], error: null }),
     ])
 
-    for (const result of [identity, documents, checkpoints, encumbrances, flags, history]) {
+    for (const result of [identity, documents, checkpoints, encumbrances, flags, history, blockers]) {
         if (result.error) throw result.error
     }
 
@@ -284,5 +294,6 @@ export async function getPropertyForReview(supabase: SupabaseClient, id: string)
             otherPropertyId: property_id === id ? conflicting_property_id : property_id,
         })),
         history: (history.data ?? []) as unknown as PropertyForReview["history"],
+        blockers: (blockers.data ?? []) as string[],
     }
 }
