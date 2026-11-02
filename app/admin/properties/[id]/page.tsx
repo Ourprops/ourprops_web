@@ -20,6 +20,9 @@ import { getPropertyForReview, type PropertyForReview } from "@/lib/admin/review
 import { requireAdmin } from "@/lib/auth/staff"
 import { ACQUISITION_OPTIONS, DOCUMENT_SLOT_OPTIONS, DOCUMENT_TYPE_LABELS, TYPE_OPTIONS } from "@/lib/types/property"
 
+import { startReview } from "./actions"
+import { StartReviewButton } from "./start-review-button"
+
 export const metadata: Metadata = {
     title: "Property review",
 }
@@ -37,9 +40,8 @@ function formatDate(value: string | null) {
     return value ? dateFormat.format(new Date(value)) : "—"
 }
 
-// Read-only for now: the review actions come with the next step of the build order (docs/admin.md, section 9)
-// TODO: wire "Start review" and the checkpoint controls to start_review and update_checkpoint as server actions.
-// Each action calls requireAdmin() itself: a server action is a public endpoint, whatever page shows its button.
+// The review actions live in ./actions.ts, and each calls requireAdmin() itself (docs/admin.md, section 9)
+// TODO: wire the checkpoint controls to update_checkpoint.
 export default async function PropertyReviewPage({ params }: PageProps<"/admin/properties/[id]">) {
     const { supabase } = await requireAdmin()
     const { id } = await params
@@ -60,6 +62,12 @@ export default async function PropertyReviewPage({ params }: PageProps<"/admin/p
                     <Badge variant="outline">{labelFor(PROPERTY_STATUS_LABELS, property.status)}</Badge>
                 </div>
                 <p className="text-data mt-1 text-sm text-muted-foreground">{property.prop_id}</p>
+                {/* Only a convenience: start_review refuses any property that isn't submitted */}
+                {property.status === "submitted" ? (
+                    <div className="mt-4">
+                        <StartReviewButton action={startReview.bind(null, property.id)} />
+                    </div>
+                ) : null}
             </header>
 
             <Section title="Owner">
