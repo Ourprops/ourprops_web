@@ -3,9 +3,11 @@
 begin;
 create extension if not exists pgtap with schema extensions;
 
-select plan(9);
+select plan(10);
 
--- every privilege anon or authenticated still holds on the tables that should be closed to them
+-- every privilege anon or authenticated still holds on the tables that should be closed to them.
+-- the admin console reads checkpoints, overlap flags and the audit log as a signed-in user, so
+-- authenticated keeps select on those three (checked below); a policy limits it to admins.
 create temporary table leftover_privileges as
 select tables.name as table_name, roles.name as role_name, privileges.name as privilege
 from unnest(array['audit_logs', 'data_room_access_requests', 'notifications', 'property_checkpoints',
@@ -17,8 +19,20 @@ where has_table_privilege(roles.name, 'public.' || tables.name, privileges.name)
        and has_any_column_privilege(roles.name, 'public.' || tables.name, privileges.name));
 
 select is_empty(
-  $$ select * from leftover_privileges $$,
-  'anon and authenticated hold no privileges on the review, audit and other unused tables'
+  $$ select * from leftover_privileges
+     where not (role_name = 'authenticated' and privilege = 'SELECT'
+                and table_name in ('audit_logs', 'property_checkpoints', 'property_overlap_flags')) $$,
+  'anon and authenticated hold no privileges on the review, audit and other unused tables, beyond the admin reads'
+);
+
+select ok(
+  not exists (
+    select 1 from pg_policies
+    where schemaname = 'public'
+      and tablename in ('audit_logs', 'property_checkpoints', 'property_overlap_flags')
+      and (cmd <> 'SELECT' or qual not like '%staff_role()%')
+  ),
+  'the only policies on checkpoints, overlap flags and the audit log are admin reads'
 );
 
 select ok(
@@ -78,10 +92,10 @@ select lives_ok(
   'a user can still save a boundary that overlaps another property'
 );
 
-select throws_ok(
-  $$ select count(*) from public.property_overlap_flags $$,
-  '42501', null,
-  'users can''t read overlap flags, which would reveal whose land overlaps theirs'
+select is(
+  (select count(*) from public.property_overlap_flags),
+  0::bigint,
+  'owners read no overlap flags, which would reveal whose land overlaps theirs'
 );
 
 reset role;
