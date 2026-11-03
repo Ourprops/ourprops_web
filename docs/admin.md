@@ -337,10 +337,13 @@ The `property-documents` bucket accepts files by their declared type and nothing
 
 How it works:
 
-1. **Check the type.** After upload, compare the file's first bytes with its declared type. A mismatch marks the document `rejected` for review and it is never converted.
-2. **Convert in isolation.** A converter (for example LibreOffice behind Gotenberg) turns the file into a PDF. Converting means the converter parses the untrusted file, so it runs in its own container with no network access except to receive the file and return the PDF, no service-role key and no access to the database. Macros are never run.
-3. **Store the PDF next to the original**, at a separate path, and record it on `property_documents` (`preview_path`, `preview_status` of `pending`, `ready` or `failed`).
-4. **Admins read only the viewable copy.** The admin storage policy allows original PDFs and images and the converted PDFs, never the original Word, HEIC or TIFF file. Until a conversion is `ready`, the console shows "being prepared" instead of a link.
+This happens the first time an admin opens a document, not when it is uploaded. The app never sees an upload finish (the browser sends the file straight to storage), so converting on upload would need a webhook or a call from the browser, and either can be lost without anyone noticing. Converting on demand means a failure shows up in front of the admin, who can try again, and only documents that get reviewed are converted.
+
+1. **Check the type.** Before the console shows any document for the first time, the server compares the file's first bytes with its declared type. On a mismatch the console shows neither the file nor a conversion and says why; the admin rejects the document with `review_document`.
+2. **Read the original narrowly.** A server action checks `requireAdmin()`, reads the document's row as the admin (so row level security decides which documents they can reach), then downloads only that file with the service role. This is the one place the console uses the service role, and only to read. The admin's own session can't read any original until it has passed the check, and never a Word, HEIC or TIFF original.
+3. **Convert in isolation.** A converter (LibreOffice behind Gotenberg) turns the file into a PDF. Converting means the converter parses the untrusted file, so it runs in its own container with no network access except to receive the file and return the PDF, no service-role key and no access to the database. Macros are never run.
+4. **Store the PDF in its own bucket**, `property-document-previews`, at `{property_id}/{property_document_id}.pdf`. The bucket takes only PDFs and owners have no policy on it, so nothing an owner uploads can sit at a preview's path. The admin's session writes it, only at the path of a document that needs converting and hasn't been converted, and `record_document_preview` records the outcome on `property_documents` (`preview_path`, and `preview_status` of `ready`, `failed` or `type_mismatch`, empty until the document is first opened). `failed` can be tried again; the other two are final, and a mismatch is audited. Later opens use the stored outcome. Done: `20261103140000_document_previews.sql`, tests in `supabase/tests/document_previews.test.sql`.
+5. **Admins read only the viewable copy.** The admin storage policies allow original PDFs and images once they are `ready`, and converted PDFs once they are recorded, never the original Word, HEIC or TIFF file. For an original, both the type the owner recorded and the type the file was stored with must be viewable, because the stored type is what the browser is given. While a conversion runs, the console shows "Preparing document…"; if it fails, it says so and offers to try again.
 
 A malware scan of the original is still worth adding, but conversion and in-browser viewing close the main risk (macros running on an admin's machine), so the console can ship before it. Never open documents on a machine that holds service-role keys.
 
@@ -348,10 +351,13 @@ Converted PDFs are what admins review, so if a conversion loses something (unusu
 
 ### Where the converter runs
 
-Self-hosted Gotenberg on a container service that scales to zero (Google Cloud Run or Fly.io). Supabase Edge Functions can't run LibreOffice, so the converter has to live somewhere else either way.
+Self-hosted Gotenberg on Google Cloud Run, which scales to zero. Supabase Edge Functions can't run LibreOffice, so the converter has to live somewhere outside Supabase either way.
 
-- **Flow:** a storage upload triggers an edge function, which downloads the file, posts it to Gotenberg, receives the PDF and stores it. Gotenberg only receives requests, so it runs with outbound network access blocked and holds no Supabase credentials. Callers authenticate with a shared secret or the platform's identity check.
-- **Cost:** volume is low, so a container that sleeps when idle costs close to nothing.
+- **Flow:** the admin's server action (above) posts the file to Gotenberg and receives the PDF. There is no edge function or webhook. Gotenberg only receives requests, so it runs with outbound traffic routed into a VPC with no NAT, and holds no Supabase credentials.
+- **Who can call it:** Cloud Run's IAM check, not a shared secret, so requests without credentials are refused before they reach Gotenberg. The app holds a key for a Google service account that may only invoke the converter.
+- **Limiting a compromised instance:** a file that exploits LibreOffice could tamper with later conversions in the same instance, for example altering a PDF an admin is about to approve. Concurrency is set to 1 and Gotenberg restarts LibreOffice after every conversion, so nothing carries over from one file to the next.
+- **Cost:** volume is low, so Cloud Run's free tier should cover it. A budget alert catches surprises. Check the free tier's current limits and which regions it covers before choosing a region.
+- **First open is slower:** a cold instance with LibreOffice takes several seconds to start. Only admins wait, and only on the first open of each document.
 - **Why not a conversion service:** it would be another company processing ownership documents, which has to be disclosed under Ghana's Data Protection Act and justified as a transfer abroad. Running one Docker image is a small price to avoid that. If nobody can run it, a service with a data-processing agreement is the fallback, recorded under Known risks.
 
 ## 8. Screens for V1
@@ -367,7 +373,7 @@ Later: partner verifiers, admin management, registering on someone else's behalf
 ## 9. Build order
 
 1. **Foundation.** `staff_role()` (admin only, with the `aal2` check); admin read grants and policies on tables (the old blanket grants are already revoked); the `/admin` gate in `proxy.ts` and the layout; `/account/security`; and the script that grants the first admin only after a factor is verified. Done: the admin reads are in `20261029130000_admin_review_reads.sql`, and `requireAdmin()` (`lib/auth/staff.ts`) asks the database's `staff_role()`. It runs in the layout and again in each page, because a layout doesn't re-run when the admin moves between pages.
-2. **Document safety.** Type check, isolated conversion to PDF, `preview_path` and `preview_status`, and the admin storage policy that allows only viewable files (section 7).
+2. **Document safety.** Type check and conversion to PDF the first time an admin opens a document, Gotenberg on Cloud Run, `preview_path` and `preview_status`, and the admin storage policies that allow reading only viewable files and writing only previews (section 7).
 3. **Read-only console.** Queue and property page, with documents opened through signed URLs. Done except opening documents and the map, which wait for step 2 (`app/admin/page.tsx`, `app/admin/properties/[id]/page.tsx`, queries in `lib/admin/review.ts`).
 4. **Review actions.** Done in the database, with tests:
    - `start_review` and `update_checkpoint` (`20261029140000_start_review_update_checkpoint.sql`, `supabase/tests/admin_review.test.sql`), wired to the property page as server actions (`app/admin/properties/[id]/actions.ts`);
@@ -382,6 +388,14 @@ Later: partner verifiers, admin management, registering on someone else's behalf
    Second part done (`20261103130000_owner_changes.sql`, tests in `supabase/tests/owner_changes.test.sql`): while changes are requested, the owner edits their answers and boundary in the registration flow's "changes" mode (no documents screen, no delete, and review saves and returns to the property page instead of submitting). `request_changes` keeps a copy of the answers in `properties.answers_at_request`; `resubmit_property` writes the names of the changed answers to the audit log and resets checkpoints as in the table above, except that a flagged checkpoint stays flagged. A new boundary also re-runs the overlap trigger, which deletes and re-detects the property's flags, resolved ones included.
 6. **Identity documents.** The `identity_documents` migration is written (tests in `supabase/tests/identity_documents.test.sql`), but it keeps the number and the photo. A follow-up migration adds `document_number_hmac` with the Vault key, moves the unique check onto it, and lets `file_path` and `document_number` be cleared once verified; `review_identity_document` and `release_identity_document` come with it, each paired with a server action that deletes the photo through the Storage API once the function has committed. Then `/account/identity` and the dashboard card.
 
+### To do
+
+- [ ] **Step 2, document safety.** Converter decided: Gotenberg on Cloud Run, called when an admin first opens a document (section 7). Still to decide: who looks after the Cloud Run project. The migration is done (`20261103140000_document_previews.sql`). Still to build: the server action (first-byte check, service-role read, converter call, storing and recording) and the Cloud Run service. A converted PDF is left behind when an owner takes back a requested document after an admin opened it; SQL can't delete storage files, so cleaning these up waits for a server-side delete. Until then admins accept or reject documents they can't open, so no real approval is possible.
+- [ ] **Step 6, identity documents.** Build `/account/identity`, the fingerprint migration, and `review_identity_document` and `release_identity_document`. Then offer "Ask for identity" on the admin page: `request_changes` already supports it, but the form hides it because owners have nowhere to add the document.
+- [ ] **Changing how they got the property.** In changes mode, an owner who switches to an answer that needs a document can't upload it unless the admin asked for that document. Decide whether the acquisition screen should take that upload.
+- [ ] **`record_encumbrance` doesn't lock the property row,** unlike the other review functions, so an approval at the same moment could miss a blocking encumbrance that was just recorded. A one-line fix.
+- [ ] **Click through the whole review in a browser:** start review, request changes, change answers as the owner, resubmit, approve, expire, reopen. Nothing in steps 4 and 5 has been tried outside the tests.
+
 ### Testing
 
 - **Each function:** test as an owner, a partner verifier (who must get nothing in V1), an admin without MFA, and an admin with MFA. Also test the invalid transitions (for example approving a draft). These are the RLS tests `docs/architecture.md` asks for.
@@ -390,7 +404,7 @@ Later: partner verifiers, admin management, registering on someone else's behalf
 - **Owner changes:** an upload with no open request is refused; an upload into a request fulfils it; resubmitting with an open request is refused; a boundary change resets exactly the three boundary checkpoints.
 - **Identity documents:** an expired document, a file in another user's folder, a number already on another account and a change to a verified document are each refused; a user can't mark their own document verified or see anyone else's; document numbers never reach the audit log. Verifying a document deletes its photo and number and keeps a fingerprint, and a second account saving the same number is still refused afterwards. The refusal doesn't say which account holds the number. `release_identity_document` is admin-only, needs a reason, writes the audit log, lets the other owner save the number afterwards and, when the released document was verified, sends that account's active properties back to review.
 - **Identity and classification at approval:** approval is refused when the owner's identity isn't verified (and `identity_verified` can't be waived), and when the ownership type or structure isn't set. `resubmit_property` is refused when identity was asked for and no document is saved.
-- **Documents:** an admin can't create a signed URL for an original Word file, only for its converted PDF.
+- **Documents:** an admin can't create a signed URL for an original Word, HEIC or TIFF file, only for its converted PDF; an admin can write to a preview path but not over an original; an owner can't write a preview or set `preview_status`; the server action refuses non-admins before reading anything with the service role, and refuses a file whose first bytes don't match its declared type.
 - **How to run them:** SQL tests that run inside a transaction and roll back work against the local database. Route handlers keep the mocked-client tests the app already uses (`__tests__/property-*-api.test.ts`).
 
 ## 10. Decisions
@@ -404,7 +418,7 @@ Decided for V1 (2026-10-17):
 5. **Word documents:** admins see them only as converted PDFs.
 6. **What owners see:** outcomes and next steps in plain words; never internal notes, admin names or other owners' data. Notifications only for changes requested, approved and suspended (section 5).
 7. **Suspended properties:** come back only through `reopen_review` and full approval; the public page says "not currently verified" while suspended (section 5).
-8. **Converter:** self-hosted Gotenberg with outbound network blocked (section 7).
+8. **Converter:** self-hosted Gotenberg with outbound network blocked (section 7). On Google Cloud Run, behind its IAM check, called by the admin's server action the first time a document is opened; the service role only reads that one original (2026-11-03).
 9. **Identity:** a Ghana Card or a passport, once per owner, with a photo and no selfie; reminded on the dashboard, never asked for during registration (section 5). Changed by decision 10.
 
 Decided 2026-10-27, to keep V1 simple:
