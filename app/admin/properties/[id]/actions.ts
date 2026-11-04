@@ -1,8 +1,10 @@
 "use server"
 
 import { refresh } from "next/cache"
+import { z } from "zod"
 
 import { actionErrorMessage, type ActionState } from "@/lib/action-errors"
+import { DOCUMENT_ERRORS, type DocumentView, openDocument } from "@/lib/admin/document-preview"
 import { requireAdmin } from "@/lib/auth/staff"
 import {
     changeRequestSchema,
@@ -123,6 +125,18 @@ export async function reviewDocument(documentId: string, _previous: ActionState,
         verification_status: parsed.data.status,
         note: parsed.data.note,
     })
+}
+
+// Opens a document: checks and converts it on first open, then returns a short-lived URL for the viewer.
+// Nothing on the page changes, so there is no refresh.
+export async function openPropertyDocument(documentId: string): Promise<DocumentView> {
+    const { supabase } = await requireAdmin()
+
+    if (!z.uuid().safeParse(documentId).success) {
+        return { error: DOCUMENT_ERRORS.notFound }
+    }
+
+    return openDocument(supabase, documentId)
 }
 
 // Moves an overlap flag to investigating, or resolves it. The note is internal.

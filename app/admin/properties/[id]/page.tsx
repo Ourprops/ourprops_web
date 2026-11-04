@@ -35,6 +35,7 @@ import {
 import {
     approveProperty,
     classifyProperty,
+    openPropertyDocument,
     recordEncumbrance,
     reopenReview,
     requestChanges,
@@ -47,6 +48,7 @@ import {
 } from "./actions"
 import { BoundaryMap } from "./boundary-map"
 import { CheckpointForm } from "./checkpoint-form"
+import { DocumentViewer } from "./document-viewer"
 import { ChoiceField, NoteField, TextField, YesNoField } from "./fields"
 
 export const metadata: Metadata = {
@@ -510,8 +512,9 @@ function Documents({ documents, editable }: { documents: PropertyForReview["docu
                     <tbody className="divide-y divide-border">
                         {documents.map((document) => (
                             <tr key={document.id}>
-                                {/* Opening files waits for the document safety step (docs/admin.md, section 7) */}
-                                <td className="py-2 pr-3 break-all">{document.file_name}</td>
+                                <td className="py-2 pr-3">
+                                    <DocumentViewer fileName={document.file_name} open={openPropertyDocument.bind(null, document.id)} />
+                                </td>
                                 <td className="py-2 pr-3">
                                     {DOCUMENT_SLOT_OPTIONS.find((option) => option.value === document.slot)?.title ?? "—"}
                                 </td>

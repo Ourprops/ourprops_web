@@ -1,7 +1,8 @@
 // Where uploaded property documents are kept. The bucket is private: the storage policies let a user read the files of
 // their own properties, and add or remove files only while the property is a draft.
-// Set up in supabase/migrations/20261014140000_property_documents_bucket.sql and widened in
-// 20261014160000_property_documents_word_files.sql; keep the limits below in step with the bucket.
+// Set up in supabase/migrations/20261014140000_property_documents_bucket.sql, widened in
+// 20261014160000_property_documents_word_files.sql and narrowed in 20261104130000_no_heic.sql; keep the limits below
+// in step with the bucket.
 
 export const PROPERTY_DOCUMENTS_BUCKET = "property-documents"
 
@@ -10,9 +11,11 @@ export const MAX_DOCUMENT_BYTES = 20 * 1024 * 1024
 
 /**
  * The kinds of file the bucket takes. Ownership documents in Ghana usually arrive as PDFs, photos taken on a phone
- * (including iPhone HEIC photos and pictures saved from WhatsApp), scans from an office scanner (often TIFF), or Word
- * files typed up by a lawyer or typist, including ones made in WPS Office or LibreOffice.
+ * (including pictures saved from WhatsApp), scans from an office scanner (often TIFF), or Word files typed up by a
+ * lawyer or typist, including ones made in WPS Office or LibreOffice.
  * Macro-enabled Word files (.docm) are left out, as macros can run code when a reviewer opens the file.
+ * HEIC is left out because the converter can't read it (docs/admin.md, section 7). As HEIC isn't in the file input's
+ * `accept`, iPhones send a JPEG instead.
  * The bucket trusts the declared type and doesn't look inside files: see "Known risks" in docs/architecture.md.
  */
 export const DOCUMENT_MIME_TYPES = [
@@ -23,14 +26,12 @@ export const DOCUMENT_MIME_TYPES = [
     "image/jpeg",
     "image/png",
     "image/webp",
-    "image/heic",
-    "image/heif",
     "image/tiff",
 ] as const
 
 export type DocumentMimeType = (typeof DOCUMENT_MIME_TYPES)[number]
 
-// Browsers often report no type, or a generic one, for HEIC photos and for Word files on Android,
+// Browsers often report no type, or a generic one, for Word files on Android,
 // so the extension is used when the reported type isn't one the bucket takes
 const MIME_TYPES_BY_EXTENSION: Record<string, DocumentMimeType> = {
     pdf: "application/pdf",
@@ -41,8 +42,6 @@ const MIME_TYPES_BY_EXTENSION: Record<string, DocumentMimeType> = {
     jpeg: "image/jpeg",
     png: "image/png",
     webp: "image/webp",
-    heic: "image/heic",
-    heif: "image/heif",
     tif: "image/tiff",
     tiff: "image/tiff",
 }
@@ -55,7 +54,7 @@ export const DOCUMENT_FILE_ACCEPT = [
 
 /** What the user may upload, in words */
 export const ACCEPTED_DOCUMENTS =
-    "a PDF, a Word document (DOC, DOCX or ODT), or a photo or scan (JPEG, PNG, HEIC, WebP or TIFF)"
+    "a PDF, a Word document (DOC, DOCX or ODT), or a photo or scan (JPEG, PNG, WebP or TIFF)"
 
 /** The file's type as the bucket expects it, or what the browser reported when it isn't one the bucket takes */
 export function documentMimeType(file: { name: string; type: string }): string {

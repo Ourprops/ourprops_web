@@ -4,7 +4,7 @@
 begin;
 create extension if not exists pgtap with schema extensions;
 
-select plan(26);
+select plan(28);
 
 -- Ama is an owner, Kofi is an admin with a verified authenticator app.
 insert into auth.users (id, email) values
@@ -23,7 +23,8 @@ insert into public.properties (id, submitted_by, status, name, slug, property_ty
   ('aaaaaaaa-0000-0000-0000-000000000002', '11111111-1111-1111-1111-111111111111', 'draft',
    'Plot at Adenta', 'plot-at-adenta', 'land', 'Greater Accra', 'Adenta', 'inheritance');
 
--- in review: a PDF, a Word file, a HEIC photo, and a "PDF" whose file was stored as a Word document.
+-- in review: a PDF, a Word file, a TIFF scan, a "PDF" whose file was stored as a Word document, and a HEIC photo
+-- uploaded before HEIC stopped being taken.
 -- in the draft: a PDF.
 insert into public.property_documents (id, property_id, uploaded_by, slot, file_path, file_name, file_size_bytes, mime_type) values
   ('dddddddd-0000-0000-0000-000000000001', 'aaaaaaaa-0000-0000-0000-000000000001', '11111111-1111-1111-1111-111111111111', 'ownership',
@@ -32,9 +33,11 @@ insert into public.property_documents (id, property_id, uploaded_by, slot, file_
    'aaaaaaaa-0000-0000-0000-000000000001/dddddddd-0000-0000-0000-000000000002/deed.docx', 'deed.docx', 1000,
    'application/vnd.openxmlformats-officedocument.wordprocessingml.document'),
   ('dddddddd-0000-0000-0000-000000000003', 'aaaaaaaa-0000-0000-0000-000000000001', '11111111-1111-1111-1111-111111111111', 'site_plan',
-   'aaaaaaaa-0000-0000-0000-000000000001/dddddddd-0000-0000-0000-000000000003/plan.heic', 'plan.heic', 1000, 'image/heic'),
+   'aaaaaaaa-0000-0000-0000-000000000001/dddddddd-0000-0000-0000-000000000003/plan.tiff', 'plan.tiff', 1000, 'image/tiff'),
   ('dddddddd-0000-0000-0000-000000000004', 'aaaaaaaa-0000-0000-0000-000000000001', '11111111-1111-1111-1111-111111111111', 'supporting',
    'aaaaaaaa-0000-0000-0000-000000000001/dddddddd-0000-0000-0000-000000000004/letter.pdf', 'letter.pdf', 1000, 'application/pdf'),
+  ('dddddddd-0000-0000-0000-000000000006', 'aaaaaaaa-0000-0000-0000-000000000001', '11111111-1111-1111-1111-111111111111', 'site_plan',
+   'aaaaaaaa-0000-0000-0000-000000000001/dddddddd-0000-0000-0000-000000000006/photo.heic', 'photo.heic', 1000, 'image/heic'),
   ('dddddddd-0000-0000-0000-000000000005', 'aaaaaaaa-0000-0000-0000-000000000002', '11111111-1111-1111-1111-111111111111', 'ownership',
    'aaaaaaaa-0000-0000-0000-000000000002/dddddddd-0000-0000-0000-000000000005/draft.pdf', 'draft.pdf', 1000, 'application/pdf');
 insert into storage.objects (bucket_id, name, metadata) values
@@ -42,7 +45,9 @@ insert into storage.objects (bucket_id, name, metadata) values
    '{"mimetype": "application/pdf"}'),
   ('property-documents', 'aaaaaaaa-0000-0000-0000-000000000001/dddddddd-0000-0000-0000-000000000002/deed.docx',
    '{"mimetype": "application/vnd.openxmlformats-officedocument.wordprocessingml.document"}'),
-  ('property-documents', 'aaaaaaaa-0000-0000-0000-000000000001/dddddddd-0000-0000-0000-000000000003/plan.heic',
+  ('property-documents', 'aaaaaaaa-0000-0000-0000-000000000001/dddddddd-0000-0000-0000-000000000003/plan.tiff',
+   '{"mimetype": "image/tiff"}'),
+  ('property-documents', 'aaaaaaaa-0000-0000-0000-000000000001/dddddddd-0000-0000-0000-000000000006/photo.heic',
    '{"mimetype": "image/heic"}'),
   ('property-documents', 'aaaaaaaa-0000-0000-0000-000000000001/dddddddd-0000-0000-0000-000000000004/letter.pdf',
    '{"mimetype": "application/msword"}'),
@@ -155,7 +160,18 @@ select is(
    where name = 'aaaaaaaa-0000-0000-0000-000000000001/dddddddd-0000-0000-0000-000000000002/deed.docx'),
   0, 'an admin still can''t read the original Word file');
 
--- a HEIC photo: a failed conversion can be tried again; a mismatch is final and audited
+-- a HEIC photo from before: it can't be converted or shown, so it can't be ready
+
+select throws_ok(
+  $$ select public.record_document_preview('dddddddd-0000-0000-0000-000000000006', 'ready') $$,
+  '23514', 'This type of document can''t be shown.', 'a HEIC photo can''t be marked ready');
+select throws_ok(
+  $$ insert into storage.objects (bucket_id, name, owner_id)
+     values ('property-document-previews', 'aaaaaaaa-0000-0000-0000-000000000001/dddddddd-0000-0000-0000-000000000006.pdf',
+             '22222222-2222-2222-2222-222222222222') $$,
+  '42501', null, 'an admin can''t store a preview for a HEIC photo');
+
+-- a TIFF scan: a failed conversion can be tried again; a mismatch is final and audited
 
 select lives_ok(
   $$ select public.record_document_preview('dddddddd-0000-0000-0000-000000000003', 'failed') $$,
