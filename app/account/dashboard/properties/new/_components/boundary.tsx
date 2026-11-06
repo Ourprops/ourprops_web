@@ -59,6 +59,7 @@ export default function Boundary({ mapsApiKey }: BoundaryProps) {
     const boundary = useNewPropertyStore((state) => state.boundary)
     const setBoundary = useNewPropertyStore((state) => state.setBoundary)
     const handleNext = useNewPropertyStore((state) => state.handleNext)
+    const mode = useNewPropertyStore((state) => state.mode)
     const { mutate: saveDraft } = useHandleSaveDraft()
 
     // Drawing is the default; a draft saved with a pin reopens on the pin
@@ -145,18 +146,21 @@ export default function Boundary({ mapsApiKey }: BoundaryProps) {
                 ))}
             </div>
 
-            {/* The same checklist item as on the documents screen, so a plan added here shows there too */}
-            <ul className="mt-4">
-                <SlotItem
-                    option={SITE_PLAN_OPTION}
-                    loading={documents.isPending}
-                    documents={documents.data?.filter((document) => document.slot === "site_plan") ?? []}
-                    uploads={sitePlans.uploads}
-                    linkedDocumentId={linkedDocumentId}
-                    onAdd={(files) => sitePlans.addFiles("site_plan", files)}
-                    onDismissUpload={sitePlans.dismissUpload}
-                />
-            </ul>
+            {/* The same checklist item as on the documents screen, so a plan added here shows there too.
+                While changing a submitted property, documents go through the requests on its page instead. */}
+            {mode === "draft" && (
+                <ul className="mt-4">
+                    <SlotItem
+                        option={SITE_PLAN_OPTION}
+                        loading={documents.isPending}
+                        documents={documents.data?.filter((document) => document.slot === "site_plan") ?? []}
+                        uploads={sitePlans.uploads}
+                        linkedDocumentId={linkedDocumentId}
+                        onAdd={(files) => sitePlans.addFiles("site_plan", files)}
+                        onDismissUpload={sitePlans.dismissUpload}
+                    />
+                </ul>
+            )}
 
             {mapsApiKey ? (
                 <APIProvider apiKey={mapsApiKey} region="GH" language="en">

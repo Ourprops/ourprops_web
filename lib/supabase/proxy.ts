@@ -46,7 +46,7 @@ export async function updateSession(request: NextRequest) {
     const isOnboarding = pathname === '/account/onboarding' || pathname.startsWith('/account/onboarding/')
     // Signed-in pages that also need onboarding finished
     const isAppPage =
-        pathname === '/account/dashboard' || pathname.startsWith('/account/dashboard/')
+        pathname === '/account/dashboard' || pathname.startsWith('/account/dashboard/') || pathname === '/account/identity'
     // Only a convenience: the database refuses non-admins and admins without a second factor (staff_role())
     const isAdminPage = pathname === '/admin' || pathname.startsWith('/admin/')
 

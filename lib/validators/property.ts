@@ -328,9 +328,14 @@ export const submitSchema = z.strictObject({
 })
 
 // A draft as stored on the server, returned after each save and used to resume registration
+// The statuses in which the owner can still change their answers: a draft, or a property an admin has asked them
+// to change (docs/admin.md, section 5)
+export const EDITABLE_STATUSES = ["draft", "action_required"] as const
+
 export const savedDraftSchema = draftSchema.extend({
   id: propertyIdSchema,
   updatedAt: z.string(),
+  status: z.enum(EDITABLE_STATUSES),
 })
 
 export type SavedDraft = z.infer<typeof savedDraftSchema>

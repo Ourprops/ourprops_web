@@ -5,8 +5,10 @@ import { CloudCheck, Trash2 } from "lucide-react"
 import { useState } from "react"
 
 import { Button } from "@/components/ui/button"
+import type { FlowMode } from "@/stores/new-property-store"
 
 type ExitAlertProps = {
+    mode?: FlowMode
     open: boolean
     onClose: () => void
     onLeave: () => void
@@ -17,7 +19,7 @@ type ExitAlertProps = {
     deleteError?: string
 }
 
-export default function ExitAlert({ open, onClose, onLeave, onDelete, deleting = false, deleteError }: ExitAlertProps) {
+export default function ExitAlert({ mode = "draft", open, onClose, onLeave, onDelete, deleting = false, deleteError }: ExitAlertProps) {
     // Deleting can't be undone, so it takes a second, explicit step
     const [confirmingDelete, setConfirmingDelete] = useState(false)
 
@@ -77,10 +79,21 @@ export default function ExitAlert({ open, onClose, onLeave, onDelete, deleting =
                                 <CloudCheck size={20} aria-hidden />
                             </span>
 
-                            <AlertDialog.Title className="text-heading mt-5 text-foreground">Leave registration?</AlertDialog.Title>
+                            <AlertDialog.Title className="text-heading mt-5 text-foreground">
+                                {mode === "changes" ? "Stop changing your answers?" : "Leave registration?"}
+                            </AlertDialog.Title>
                             <AlertDialog.Description className="mt-2 text-[15px] leading-relaxed text-copy">
-                                Don&apos;t worry, we save your progress as a draft as you go. You can come back any time
-                                to finish registering this property.
+                                {mode === "changes" ? (
+                                    <>
+                                        Your changes are saved as you go. When you&apos;ve also uploaded what we asked
+                                        for, send the property back for review from its page.
+                                    </>
+                                ) : (
+                                    <>
+                                        Don&apos;t worry, we save your progress as a draft as you go. You can come back
+                                        any time to finish registering this property.
+                                    </>
+                                )}
                             </AlertDialog.Description>
 
                             <div className="mt-7 flex flex-col gap-2">

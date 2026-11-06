@@ -1,6 +1,6 @@
 import { describe, expect, test } from 'vitest'
 
-import { documentMimeType, propertyDocumentPath } from '../lib/storage/property-documents'
+import { DOCUMENT_MIME_TYPES, documentMimeType, propertyDocumentPath } from '../lib/storage/property-documents'
 
 const PROPERTY_ID = '3f1c2b4a-5d6e-4f70-8a9b-0c1d2e3f4a5b'
 const DOCUMENT_ID = '9a8b7c6d-5e4f-4a3b-8c2d-1e0f9a8b7c6d'
@@ -33,9 +33,14 @@ describe('documentMimeType', () => {
         ['a Word file Android reports as generic data', 'Indenture.docx', 'application/octet-stream', 'application/vnd.openxmlformats-officedocument.wordprocessingml.document'],
         ['a LibreOffice file with no type', 'Agreement.odt', '', 'application/vnd.oasis.opendocument.text'],
         ['a scan', 'Site plan.TIF', '', 'image/tiff'],
-        ['an iPhone photo with no type', 'IMG_2041.HEIC', '', 'image/heic'],
     ])('works out the type of %s', (_, name, type, expected) => {
         expect(documentMimeType({ name, type })).toBe(expected)
+    })
+
+    test("doesn't take a HEIC photo, which the converter can't read", () => {
+        expect(documentMimeType({ name: 'IMG_2041.HEIC', type: 'image/heic' })).toBe('image/heic')
+        expect(documentMimeType({ name: 'IMG_2041.HEIC', type: '' })).toBe('')
+        expect(DOCUMENT_MIME_TYPES).not.toContain('image/heic')
     })
 
     test("leaves a type the bucket doesn't take as reported, so it is refused", () => {

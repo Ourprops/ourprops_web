@@ -18,7 +18,7 @@
 
 do $$
 declare
-  target_email text := 'person@example.com';
+  target_email text := 'joel@gmail.com';
   new_role     text := 'admin';            -- 'admin', 'partner_verifier', or 'owner' to remove access
   granted_by   text := 'Your Name';        -- the SQL editor has no signed-in user, so say who ran this
   target_id    uuid;

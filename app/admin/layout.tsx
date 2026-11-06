@@ -23,6 +23,14 @@ export default async function AdminLayout({ children }: LayoutProps<"/admin">) {
                         <BrandMark className="size-7" />
                         <span>OurProps admin</span>
                     </Link>
+                    <nav className="ml-auto flex items-center gap-4 text-sm">
+                        <Link href="/admin" className="text-muted-foreground hover:text-foreground">
+                            Review queue
+                        </Link>
+                        <Link href="/admin/identity" className="text-muted-foreground hover:text-foreground">
+                            Identity documents
+                        </Link>
+                    </nav>
                 </div>
             </header>
             <main className="mx-auto max-w-6xl px-4 py-8 sm:px-6">{children}</main>

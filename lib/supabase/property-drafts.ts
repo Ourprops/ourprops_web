@@ -7,6 +7,7 @@ import {
     acquisitionMethodSchema,
     boundarySchema,
     boundarySourceSchema,
+    EDITABLE_STATUSES,
     propertyIdSchema,
     propertyTypeSchema,
     regionSchema,
@@ -17,12 +18,15 @@ import {
     type SavedDraft,
 } from "@/lib/validators/property"
 
-// Reads and writes property drafts as the signed-in user. Row level security limits each user to their own drafts.
+// Reads and writes property drafts as the signed-in user. Row level security limits each user to their own drafts,
+// and to their properties an admin has asked them to change, which the same flow edits.
+// Creating, submitting and deleting are for drafts only.
 
-const DRAFT_COLUMNS = "id, name, property_type, description, region, district_municipality, city_town, address, digital_address, landmark, acquisition_method, acquisition_metadata, updated_at, property_boundaries(boundary_geojson, source)"
+const DRAFT_COLUMNS = "id, status, name, property_type, description, region, district_municipality, city_town, address, digital_address, landmark, acquisition_method, acquisition_metadata, updated_at, property_boundaries(boundary_geojson, source)"
 
 type DraftRow = {
     id: string
+    status: (typeof EDITABLE_STATUSES)[number]
     name: string | null
     property_type: string | null
     description: string | null
@@ -123,6 +127,7 @@ function rowToSavedDraft(row: DraftRow): SavedDraft {
     return {
         id: row.id,
         updatedAt: row.updated_at,
+        status: row.status,
         details: {
             name: row.name ?? undefined,
             // Older rows may hold a type the form no longer offers; leave it unset so the user picks again
@@ -155,6 +160,7 @@ function boundaryArgs(id: string, boundary: BoundaryDraft) {
     }
 }
 
+/** A draft, or a property waiting on the owner's changes, as the registration flow edits it */
 export async function getDraft(supabase: SupabaseClient, id: string) {
     if (!propertyIdSchema.safeParse(id).success) return null
 
@@ -162,7 +168,7 @@ export async function getDraft(supabase: SupabaseClient, id: string) {
         .from("properties")
         .select(DRAFT_COLUMNS)
         .eq("id", id)
-        .eq("status", "draft")
+        .in("status", EDITABLE_STATUSES)
         .maybeSingle<DraftRow>()
 
     if (error) throw error
@@ -197,7 +203,10 @@ export async function createDraft(supabase: SupabaseClient, userId: string, draf
     return { ...saved, boundary: draft.boundary }
 }
 
-/** Returns null when there is no draft with this id that the user can edit */
+/**
+ * Returns null when there is no property with this id that the user can edit: their draft, or their property an
+ * admin has asked them to change. Row level security allows exactly those two.
+ */
 export async function updateDraft(supabase: SupabaseClient, id: string, draft: Draft) {
     if (!propertyIdSchema.safeParse(id).success) return null
 
@@ -216,7 +225,7 @@ export async function updateDraft(supabase: SupabaseClient, id: string, draft: D
     const query = Object.values(row).some((value) => value !== undefined)
         ? properties.update(row).select(DRAFT_COLUMNS)
         : properties.select(DRAFT_COLUMNS)
-    const { data, error } = await query.eq("id", id).eq("status", "draft").maybeSingle<DraftRow>()
+    const { data, error } = await query.eq("id", id).in("status", EDITABLE_STATUSES).maybeSingle<DraftRow>()
 
     if (error) throw error
     return data ? rowToSavedDraft(data) : null

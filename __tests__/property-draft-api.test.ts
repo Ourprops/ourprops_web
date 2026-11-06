@@ -12,6 +12,7 @@ const USER_ID = '11111111-1111-4111-8111-111111111111'
 // A saved row as Supabase returns it
 const ROW = {
     id: DRAFT_ID,
+    status: 'draft',
     name: 'East Legon house',
     property_type: 'residential',
     description: null,
@@ -39,7 +40,7 @@ let user: { id: string } | null = { id: USER_ID }
 
 function builder(table: string) {
     const chain: Record<string, unknown> = {}
-    for (const method of ['insert', 'update', 'delete', 'select', 'eq']) {
+    for (const method of ['insert', 'update', 'delete', 'select', 'eq', 'in']) {
         chain[method] = (...args: unknown[]) => {
             query.calls.push({ method, args })
             return chain
@@ -108,6 +109,7 @@ const VALID_BODY = {
 const SAVED_DRAFT = {
     id: DRAFT_ID,
     updatedAt: ROW.updated_at,
+    status: 'draft',
     details: { name: 'East Legon house', type: 'residential', description: undefined },
     location: {
         region: 'Greater Accra',
@@ -204,13 +206,15 @@ describe('POST /api/property/draft', () => {
 })
 
 describe('PATCH /api/property/draft/[id]', () => {
-    test('updates only that draft, and only while it is still a draft', async () => {
+    test('updates only that property, and only while the owner can still change it', async () => {
         const response = await patch(DRAFT_ID, VALID_BODY)
 
         expect(response.status).toBe(200)
         expect(await response.json()).toEqual(JSON.parse(JSON.stringify(SAVED_DRAFT)))
         expect(callsTo('update')[0][0]).toMatchObject({ name: 'East Legon house', city_town: 'East Legon' })
-        expect(callsTo('eq')).toEqual([['id', DRAFT_ID], ['status', 'draft']])
+        expect(callsTo('eq')).toEqual([['id', DRAFT_ID]])
+        // A draft, or a property an admin has asked them to change; never one in review or active
+        expect(callsTo('in')).toEqual([['status', ['draft', 'action_required']]])
     })
 
     test('leaves out fields the draft does not mention, so they are not overwritten', async () => {
@@ -332,7 +336,8 @@ describe('saving the boundary', () => {
         expect(response.status).toBe(200)
         expect(callsTo('rpc')).toHaveLength(1)
         expect(callsTo('update')).toEqual([])
-        expect(callsTo('eq')).toEqual([['id', DRAFT_ID], ['status', 'draft']])
+        expect(callsTo('eq')).toEqual([['id', DRAFT_ID]])
+        expect(callsTo('in')).toEqual([['status', ['draft', 'action_required']]])
     })
 
     test.each([

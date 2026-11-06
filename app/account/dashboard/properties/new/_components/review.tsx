@@ -1,6 +1,7 @@
 "use client"
 
 import { ArrowRight, CircleAlert, Pencil, TriangleAlert } from "lucide-react"
+import { useRouter } from "next/navigation"
 import { useState, type ReactNode } from "react"
 
 import BrandLoader from "@/components/brand-loader"
@@ -9,7 +10,7 @@ import { Checkbox } from "@/components/ui/checkbox"
 import { Field, FieldContent, FieldError, FieldLabel, FieldTitle } from "@/components/ui/field"
 import { Spinner } from "@/components/ui/spinner"
 import { polygonArea, toAcres } from "@/lib/geo"
-import { useDraftDocuments, useSubmitDraft } from "@/lib/queries/property"
+import { useDraftDocuments, useHandleSaveDraft, useSubmitDraft } from "@/lib/queries/property"
 import { ACQUISITION_OPTIONS, DOCUMENT_SLOT_OPTIONS, DOCUMENT_TYPE_LABELS, TYPE_OPTIONS } from "@/lib/types/property"
 import { cn } from "@/lib/utils"
 import {
@@ -84,6 +85,7 @@ export default function Review() {
     const boundary = useNewPropertyStore((state) => state.boundary)
     const acquisition = useNewPropertyStore((state) => state.acquisition)
     const editFromReview = useNewPropertyStore((state) => state.editFromReview)
+    const mode = useNewPropertyStore((state) => state.mode)
     const documents = useDraftDocuments()
     const submit = useSubmitDraft()
     const [confirmed, setConfirmed] = useState(false)
@@ -92,7 +94,8 @@ export default function Review() {
 
     const answers = { details, location, boundary, acquisition }
     const required = missingRequired(answers)
-    const gaps = findGaps(answers, documents.data)
+    // While changing a submitted property, documents go through the requests on its page, not this flow
+    const gaps = findGaps(answers, documents.data).filter((gap) => mode === "draft" || gap.screen !== "documents")
     const declarationError = attempted && !confirmed ? DECLARATION_ERROR : undefined
 
     function handleSubmit() {
@@ -108,7 +111,9 @@ export default function Review() {
         <section className="mx-auto w-full max-w-xl px-5 py-10 md:py-14">
             <h1 className="text-heading text-foreground md:text-2xl">Check your answers</h1>
             <p className="mt-2 text-[15px] leading-relaxed text-copy">
-                Make sure everything is right before you send the property for review.
+                {mode === "changes"
+                    ? "Make sure everything is right. Your changes are saved as you go."
+                    : "Make sure everything is right before you send the property for review."}
             </p>
 
             {gaps.length > 0 && (
@@ -140,7 +145,7 @@ export default function Review() {
             <div className="mt-8 overflow-hidden rounded-xl border border-border bg-card shadow-xs">
                 <div className="flex items-center justify-between gap-3 border-b border-border bg-background px-4 py-2 text-muted-foreground sm:px-5">
                     <span className="text-eyebrow text-[10px]">Property record</span>
-                    <span className="text-data shrink-0 text-[11px]">Draft</span>
+                    <span className="text-data shrink-0 text-[11px]">{mode === "changes" ? "Changes" : "Draft"}</span>
                 </div>
 
                 <div className="divide-y divide-border">
@@ -189,7 +194,7 @@ export default function Review() {
                         <AcquisitionRows acquisition={acquisition} />
                     </Section>
 
-                    <Section title="Documents" screen="documents">
+                    <Section title="Documents" screen="documents" editable={mode === "draft"}>
                         {documents.isPending ? (
                             <p role="status" className="flex items-center gap-2 py-2 text-sm text-muted-foreground">
                                 <Spinner aria-hidden /> Loading your documents…
@@ -214,70 +219,127 @@ export default function Review() {
                 </div>
             </div>
 
-            <Field data-invalid={!!declarationError} className="mt-8">
-                <p id={`${DECLARATION_ID}-statement`} className="text-[15px] leading-relaxed font-medium text-foreground">
-                    {SUBMISSION_DECLARATION}
-                </p>
-                <FieldLabel htmlFor={DECLARATION_ID} className="bg-card">
-                    <Field orientation="horizontal" className="items-center gap-3 p-3.5!">
-                        <Checkbox
-                            id={DECLARATION_ID}
-                            checked={confirmed}
-                            onCheckedChange={setConfirmed}
-                            aria-invalid={!!declarationError}
-                            aria-describedby={`${DECLARATION_ID}-statement`}
-                        />
-                        <FieldContent>
-                            <FieldTitle>I confirm</FieldTitle>
-                        </FieldContent>
+            {mode === "changes" ? (
+                <ChangesFooter required={required} />
+            ) : (
+                <>
+                    <Field data-invalid={!!declarationError} className="mt-8">
+                        <p id={`${DECLARATION_ID}-statement`} className="text-[15px] leading-relaxed font-medium text-foreground">
+                            {SUBMISSION_DECLARATION}
+                        </p>
+                        <FieldLabel htmlFor={DECLARATION_ID} className="bg-card">
+                            <Field orientation="horizontal" className="items-center gap-3 p-3.5!">
+                                <Checkbox
+                                    id={DECLARATION_ID}
+                                    checked={confirmed}
+                                    onCheckedChange={setConfirmed}
+                                    aria-invalid={!!declarationError}
+                                    aria-describedby={`${DECLARATION_ID}-statement`}
+                                />
+                                <FieldContent>
+                                    <FieldTitle>I confirm</FieldTitle>
+                                </FieldContent>
+                            </Field>
+                        </FieldLabel>
+                        <FieldError errors={declarationError ? [{ message: declarationError }] : undefined} />
                     </Field>
-                </FieldLabel>
-                <FieldError errors={declarationError ? [{ message: declarationError }] : undefined} />
-            </Field>
 
-            <div className="mt-8 flex flex-col gap-3">
-                {required.length > 0 ? (
-                    <p role="alert" className="flex gap-2 text-sm text-destructive">
-                        <CircleAlert size={16} className="mt-0.5 shrink-0" aria-hidden />
-                        Add {listOf(required)} before you submit.
-                    </p>
-                ) : (
-                    <p className="text-sm leading-relaxed text-copy">
-                        Once you submit, your answers and documents are locked while a reviewer checks them.
-                    </p>
-                )}
-                {submit.error && (
-                    <p role="alert" className="flex gap-2 text-sm text-destructive">
-                        <CircleAlert size={16} className="mt-0.5 shrink-0" aria-hidden />
-                        {submit.error.message}
-                    </p>
-                )}
-                <div className="flex justify-end">
-                    <Button
-                        type="button"
-                        onClick={handleSubmit}
-                        disabled={required.length > 0 || submit.isPending}
-                        className="pressable h-12 w-full rounded-lg bg-secondary px-8 text-[15px] text-secondary-foreground hover:bg-secondary/90 sm:w-auto"
-                    >
-                        {submit.isPending ? "Submitting…" : "Submit for review"}
-                        {!submit.isPending && <ArrowRight size={16} aria-hidden />}
-                    </Button>
-                </div>
-            </div>
+                    <div className="mt-8 flex flex-col gap-3">
+                        {required.length > 0 ? (
+                            <p role="alert" className="flex gap-2 text-sm text-destructive">
+                                <CircleAlert size={16} className="mt-0.5 shrink-0" aria-hidden />
+                                Add {listOf(required)} before you submit.
+                            </p>
+                        ) : (
+                            <p className="text-sm leading-relaxed text-copy">
+                                Once you submit, your answers and documents are locked while a reviewer checks them.
+                            </p>
+                        )}
+                        {submit.error && (
+                            <p role="alert" className="flex gap-2 text-sm text-destructive">
+                                <CircleAlert size={16} className="mt-0.5 shrink-0" aria-hidden />
+                                {submit.error.message}
+                            </p>
+                        )}
+                        <div className="flex justify-end">
+                            <Button
+                                type="button"
+                                onClick={handleSubmit}
+                                disabled={required.length > 0 || submit.isPending}
+                                className="pressable h-12 w-full rounded-lg bg-secondary px-8 text-[15px] text-secondary-foreground hover:bg-secondary/90 sm:w-auto"
+                            >
+                                {submit.isPending ? "Submitting…" : "Submit for review"}
+                                {!submit.isPending && <ArrowRight size={16} aria-hidden />}
+                            </Button>
+                        </div>
+                    </div>
 
-            {/* Gone when the confirmation screen replaces this one, or when the submit fails and the error shows */}
-            {submit.isPending && <BrandLoader overlay message="Submitting your property" />}
+                    {/* Gone when the confirmation screen replaces this one, or when the submit fails and the error shows */}
+                    {submit.isPending && <BrandLoader overlay message="Submitting your property" />}
+                </>
+            )}
         </section>
+    )
+}
+
+// While changing a submitted property: no declaration or submit here. The owner sends it back from the property's
+// page, once they have also uploaded what was asked for, so this saves and goes there.
+function ChangesFooter({ required }: { required: string[] }) {
+    const propertyId = useNewPropertyStore((state) => state.propertyId)
+    const save = useHandleSaveDraft()
+    const router = useRouter()
+
+    async function handleDone() {
+        try {
+            await save.mutateAsync()
+            router.push(`/account/dashboard/properties/${propertyId}`)
+        } catch {
+            // The error shows below, and the user can try again
+        }
+    }
+
+    return (
+        <div className="mt-8 flex flex-col gap-3">
+            {required.length > 0 ? (
+                <p role="alert" className="flex gap-2 text-sm text-destructive">
+                    <CircleAlert size={16} className="mt-0.5 shrink-0" aria-hidden />
+                    Add {listOf(required)} before you go back.
+                </p>
+            ) : (
+                <p className="text-sm leading-relaxed text-copy">
+                    Then send the property back for review from its page, once you&apos;ve uploaded what we asked for.
+                </p>
+            )}
+            {save.error && (
+                <p role="alert" className="flex gap-2 text-sm text-destructive">
+                    <CircleAlert size={16} className="mt-0.5 shrink-0" aria-hidden />
+                    {save.error.message}
+                </p>
+            )}
+            <div className="flex justify-end">
+                <Button
+                    type="button"
+                    onClick={handleDone}
+                    disabled={required.length > 0 || save.isPending}
+                    className="pressable h-12 w-full rounded-lg bg-secondary px-8 text-[15px] text-secondary-foreground hover:bg-secondary/90 sm:w-auto"
+                >
+                    {save.isPending ? "Saving…" : "Save and go back"}
+                    {!save.isPending && <ArrowRight size={16} aria-hidden />}
+                </Button>
+            </div>
+        </div>
     )
 }
 
 type SectionProps = {
     title: string
     screen: Screen
+    /** Whether the section has an Edit button; documents can't be changed from here while changing a property */
+    editable?: boolean
     children: ReactNode
 }
 
-function Section({ title, screen, children }: SectionProps) {
+function Section({ title, screen, editable = true, children }: SectionProps) {
     const editFromReview = useNewPropertyStore((state) => state.editFromReview)
     const id = `review-${screen}`
 
@@ -287,16 +349,18 @@ function Section({ title, screen, children }: SectionProps) {
                 <h2 id={id} className="text-[15px] font-semibold text-foreground">
                     {title}
                 </h2>
-                <Button
-                    type="button"
-                    variant="ghost"
-                    size="sm"
-                    onClick={() => editFromReview(screen)}
-                    className="pressable -mr-2 gap-1.5 text-primary"
-                >
-                    <Pencil size={14} aria-hidden />
-                    Edit{" "}<span className="sr-only">{title.toLowerCase()}</span>
-                </Button>
+                {editable && (
+                    <Button
+                        type="button"
+                        variant="ghost"
+                        size="sm"
+                        onClick={() => editFromReview(screen)}
+                        className="pressable -mr-2 gap-1.5 text-primary"
+                    >
+                        <Pencil size={14} aria-hidden />
+                        Edit{" "}<span className="sr-only">{title.toLowerCase()}</span>
+                    </Button>
+                )}
             </div>
             <dl className="mt-2 divide-y divide-border">{children}</dl>
         </section>
