@@ -45,7 +45,10 @@ insert into public.property_overlap_flags (id, property_id, conflicting_property
 
 insert into public.identity_documents (profile_id, document_type, issuing_country, document_number, expires_on, file_path, verification_status)
 values ('11111111-1111-1111-1111-111111111111', 'ghana_card', 'GH', 'GHA-123456789-0', current_date + 365,
-        '11111111-1111-1111-1111-111111111111/card.jpg', 'verified');
+        '11111111-1111-1111-1111-111111111111/card.jpg', 'unreviewed');
+-- verified the way review_identity_document leaves it: the number is gone, the fingerprint stays
+update public.identity_documents set verification_status = 'verified', document_number = null
+  where profile_id = '11111111-1111-1111-1111-111111111111';
 
 set local role authenticated;
 

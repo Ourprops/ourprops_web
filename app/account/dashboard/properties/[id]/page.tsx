@@ -77,9 +77,14 @@ export default async function OwnPropertyPage({ params }: PageProps<"/account/da
                         </ul>
                     ) : null}
 
-                    {/* /account/identity comes with build step 6; until then the console doesn't ask for it */}
                     {property.identity_requested ? (
-                        <p className="text-sm text-copy">We also need your identity document. Contact us and we&apos;ll help you add it.</p>
+                        <p className="text-sm text-copy">
+                            We also need your identity document.{" "}
+                            <Link href="/account/identity" className="font-medium text-primary hover:underline">
+                                Add your Ghana Card or passport
+                            </Link>
+                            , then send the property back for review.
+                        </p>
                     ) : null}
 
                     <ActionForm action={resubmitProperty.bind(null, property.id)} submitLabel="Send back for review" />

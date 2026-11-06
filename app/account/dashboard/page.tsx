@@ -1,8 +1,11 @@
 import Link from "next/link"
 import { redirect } from "next/navigation"
 
+import { getOwnIdentityDocument } from "@/lib/supabase/identity-documents"
 import { OWNER_STATUS_LABELS, listOwnProperties } from "@/lib/supabase/owner-properties"
 import { createClient } from "@/lib/supabase/server"
+
+import { IdentityCard } from "./identity-card"
 
 // A plain list for now, so owners can find a property that needs something from them
 export default async function DashboardPage() {
@@ -11,10 +14,15 @@ export default async function DashboardPage() {
     const ownerId = data?.claims?.sub
     if (!ownerId) redirect("/account/login")
 
-    const properties = await listOwnProperties(supabase, ownerId)
+    const [properties, identity] = await Promise.all([
+        listOwnProperties(supabase, ownerId),
+        getOwnIdentityDocument(supabase, ownerId),
+    ])
 
     return (
         <main className="mx-auto grid max-w-2xl gap-6 px-4 py-8 sm:px-6">
+            <IdentityCard status={identity?.verification_status ?? null} />
+
             <div className="flex flex-wrap items-center justify-between gap-3">
                 <h1 className="text-heading text-primary">Your properties</h1>
                 <Link href="/account/dashboard/properties/new" className="text-sm font-medium text-primary hover:underline">

@@ -65,7 +65,7 @@ describe('proxy', () => {
             session.nextLevel = null
         })
 
-        test.each(['/admin', '/admin/properties/abc', '/account/security', '/account/dashboard'])(
+        test.each(['/admin', '/admin/properties/abc', '/account/security', '/account/dashboard', '/account/identity'])(
             'sends %s to the login page',
             async (path) => {
                 expect(await redirectFor(path)).toBe('/account/login')
@@ -84,7 +84,7 @@ describe('proxy', () => {
             expect(await redirectFor('/account/login')).toBe('/account/security')
         })
 
-        test.each(['/admin', '/account/dashboard', '/account/onboarding'])(
+        test.each(['/admin', '/account/dashboard', '/account/onboarding', '/account/identity'])(
             'sends %s to the security page until the code is entered',
             async (path) => {
                 signInAs({ role: 'admin', hasApp: true })
@@ -142,9 +142,14 @@ describe('proxy', () => {
             expect(await redirectFor('/account/dashboard')).toBeNull()
         })
 
+        test('lets an owner through to the identity page', async () => {
+            expect(await redirectFor('/account/identity')).toBeNull()
+        })
+
         test('still sends users who have not finished onboarding to onboarding', async () => {
             session.profile = { onboarding_complete: false, role: 'owner' }
             expect(await redirectFor('/account/dashboard')).toBe('/account/onboarding')
+            expect(await redirectFor('/account/identity')).toBe('/account/onboarding')
         })
     })
 })
