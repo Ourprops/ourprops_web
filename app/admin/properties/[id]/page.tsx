@@ -21,6 +21,7 @@ import {
     labelFor,
 } from "@/lib/admin/labels"
 import { getPropertyForReview, type PropertyForReview } from "@/lib/admin/review"
+import { SECTION_IDS, blockerAnchor, checkpointAnchor, reviewProgress, type ReviewProgress } from "@/lib/admin/review-summary"
 import { requireAdmin } from "@/lib/auth/staff"
 import { cn } from "@/lib/utils"
 import { ACQUISITION_OPTIONS, DOCUMENT_SLOT_OPTIONS, DOCUMENT_TYPE_LABELS, TYPE_OPTIONS } from "@/lib/types/property"
@@ -35,12 +36,15 @@ import {
 import {
     approveProperty,
     classifyProperty,
+    openOwnerIdentityPhoto,
     openPropertyDocument,
     recordEncumbrance,
     reopenReview,
     requestChanges,
     resolveOverlap,
+    retryIdentityPhotoDeletion,
     reviewDocument,
+    reviewIdentityDocument,
     startReview,
     suspendProperty,
     updateCheckpoint,
@@ -85,9 +89,11 @@ export default async function PropertyReviewPage({ params }: PageProps<"/admin/p
     if (!review) notFound()
 
     const { property } = review
+    const progress = reviewProgress(review)
+    const identityStatus = review.identity ? labelFor(IDENTITY_STATUS_LABELS, review.identity.verification_status) : "None saved"
 
     return (
-        <div className="space-y-8">
+        <div className="space-y-6">
             <header>
                 <Link href="/admin" className="text-sm text-copy hover:text-primary">
                     ← Review queue
@@ -96,126 +102,318 @@ export default async function PropertyReviewPage({ params }: PageProps<"/admin/p
                     <h1 className="text-heading text-primary">{property.name ?? "Untitled property"}</h1>
                     <Badge variant="outline">{labelFor(PROPERTY_STATUS_LABELS, property.status)}</Badge>
                 </div>
-                <p className="text-data mt-1 text-sm text-muted-foreground">{property.prop_id}</p>
-                <div className="mt-4">
-                    <StatusActions property={property} blockers={review.blockers} requests={review.requests} />
-                </div>
+                <p className="mt-1 text-sm text-muted-foreground">
+                    <span className="text-data">{property.prop_id}</span>
+                    {property.owner ? ` · ${property.owner.full_name}` : null}
+                </p>
             </header>
 
-            <Section title="Owner">
-                <Fields
-                    rows={[
-                        ["Name", property.owner?.full_name],
-                        ["Phone", property.owner?.phone_number],
-                        ["Identity document", review.identity ? labelFor(IDENTITY_DOCUMENT_LABELS, review.identity.document_type) : "None saved"],
-                        ["Identity status", review.identity ? labelFor(IDENTITY_STATUS_LABELS, review.identity.verification_status) : "—"],
-                        ["Issued by", review.identity?.issuing_country],
-                        ["Expires", review.identity ? formatDate(review.identity.expires_on) : null],
-                    ]}
-                />
-            </Section>
+            {/* Wide screens: the evidence on the left and the decision beside it, in view while scrolling.
+                Phones: the decision first, as before. */}
+            <div className="grid gap-6 lg:grid-cols-[minmax(0,1fr)_20rem] lg:items-start">
+                <aside
+                    aria-label="Decision"
+                    className="lg:sticky lg:top-20 lg:order-last lg:max-h-[calc(100vh-6rem)] lg:overflow-y-auto"
+                >
+                    <DecisionPanel review={review} progress={progress} identityStatus={identityStatus} />
+                </aside>
 
-            <Section title="The owner's answers">
-                <Fields
-                    rows={[
-                        ["Type", TYPE_OPTIONS.find((option) => option.value === property.property_type)?.title ?? property.property_type],
-                        ["Description", property.description],
-                        ["Region", property.region],
-                        ["District", property.district_municipality],
-                        ["City or town", property.city_town],
-                        ["Address", property.address],
-                        ["Digital address", property.digital_address],
-                        ["Landmark", property.landmark],
-                        [
-                            "How they got it",
-                            ACQUISITION_OPTIONS.find((option) => option.value === property.acquisition_method)?.title ??
-                                property.acquisition_method,
-                        ],
-                        [
-                            "Ownership type",
-                            property.ownership_type ? labelFor(OWNERSHIP_TYPE_LABELS, property.ownership_type) : "Not classified yet",
-                        ],
-                        [
-                            "Ownership structure",
-                            property.ownership_structure
-                                ? labelFor(OWNERSHIP_STRUCTURE_LABELS, property.ownership_structure)
-                                : "Not classified yet",
-                        ],
-                        [
-                            "Boundary",
-                            property.property_boundaries
-                                ? `${labelFor(BOUNDARY_SOURCE_LABELS, property.property_boundaries.source)}${
-                                      property.property_boundaries.area_sqm
-                                          ? `, ${Math.round(property.property_boundaries.area_sqm).toLocaleString("en-GB")} m²`
-                                          : ""
-                                  }`
-                                : "None",
-                        ],
-                    ]}
-                />
-                {property.status === "under_review" ? (
-                    <details className="mt-4">
-                        <summary className="cursor-pointer text-sm text-primary">Classify the ownership</summary>
-                        <ActionForm action={classifyProperty.bind(null, property.id)} submitLabel="Save" className="mt-3">
-                            <ChoiceField
-                                id="ownership-type"
-                                name="ownership_type"
-                                label="Ownership type"
-                                options={OWNERSHIP_TYPE_LABELS}
-                                defaultValue={property.ownership_type}
-                            />
-                            <ChoiceField
-                                id="ownership-structure"
-                                name="ownership_structure"
-                                label="Ownership structure"
-                                options={OWNERSHIP_STRUCTURE_LABELS}
-                                defaultValue={property.ownership_structure}
-                            />
-                        </ActionForm>
-                    </details>
-                ) : null}
-            </Section>
+                <div className="grid min-w-0 gap-6">
+                    <Section id={SECTION_IDS.owner} title="Owner and identity" meta={identityStatus}>
+                        <Fields
+                            rows={[
+                                ["Name", property.owner?.full_name],
+                                ["Phone", property.owner?.phone_number],
+                                [
+                                    "Identity document",
+                                    review.identity ? labelFor(IDENTITY_DOCUMENT_LABELS, review.identity.document_type) : "None saved",
+                                ],
+                                ["Issued by", review.identity?.issuing_country],
+                                ["Expires", review.identity ? formatDate(review.identity.expires_on) : null],
+                            ]}
+                        />
+                        {review.identity && property.owner ? (
+                            <IdentityReview identity={review.identity} profileId={property.owner.id} />
+                        ) : null}
+                    </Section>
 
-            <Section title="Map">
-                <PropertyMap review={review} />
-            </Section>
+                    <Section id={SECTION_IDS.answers} title="The owner's answers">
+                        <Fields
+                            rows={[
+                                ["Type", TYPE_OPTIONS.find((option) => option.value === property.property_type)?.title ?? property.property_type],
+                                ["Description", property.description],
+                                ["Region", property.region],
+                                ["District", property.district_municipality],
+                                ["City or town", property.city_town],
+                                ["Address", property.address],
+                                ["Digital address", property.digital_address],
+                                ["Landmark", property.landmark],
+                                [
+                                    "How they got it",
+                                    ACQUISITION_OPTIONS.find((option) => option.value === property.acquisition_method)?.title ??
+                                        property.acquisition_method,
+                                ],
+                                [
+                                    "Ownership type",
+                                    property.ownership_type ? labelFor(OWNERSHIP_TYPE_LABELS, property.ownership_type) : "Not classified yet",
+                                ],
+                                [
+                                    "Ownership structure",
+                                    property.ownership_structure
+                                        ? labelFor(OWNERSHIP_STRUCTURE_LABELS, property.ownership_structure)
+                                        : "Not classified yet",
+                                ],
+                                [
+                                    "Boundary",
+                                    property.property_boundaries
+                                        ? `${labelFor(BOUNDARY_SOURCE_LABELS, property.property_boundaries.source)}${
+                                              property.property_boundaries.area_sqm
+                                                  ? `, ${Math.round(property.property_boundaries.area_sqm).toLocaleString("en-GB")} m²`
+                                                  : ""
+                                          }`
+                                        : "None",
+                                ],
+                            ]}
+                        />
+                        {property.status === "under_review" ? (
+                            <details className="mt-4">
+                                <summary className="cursor-pointer text-sm text-primary">Classify the ownership</summary>
+                                <ActionForm action={classifyProperty.bind(null, property.id)} submitLabel="Save" className="mt-3">
+                                    <ChoiceField
+                                        id="ownership-type"
+                                        name="ownership_type"
+                                        label="Ownership type"
+                                        options={OWNERSHIP_TYPE_LABELS}
+                                        defaultValue={property.ownership_type}
+                                    />
+                                    <ChoiceField
+                                        id="ownership-structure"
+                                        name="ownership_structure"
+                                        label="Ownership structure"
+                                        options={OWNERSHIP_STRUCTURE_LABELS}
+                                        defaultValue={property.ownership_structure}
+                                    />
+                                </ActionForm>
+                            </details>
+                        ) : null}
+                    </Section>
 
-            <Section title="Checkpoints">
-                <Checkpoints
-                    checkpoints={review.checkpoints}
-                    propertyId={property.id}
-                    editable={property.status === "under_review"}
-                />
-            </Section>
+                    <Section id={SECTION_IDS.map} title="Map">
+                        <PropertyMap review={review} />
+                    </Section>
 
-            <Section title="Documents">
-                <Documents documents={review.documents} editable={property.status === "under_review"} />
-            </Section>
+                    <Section
+                        id={SECTION_IDS.documents}
+                        title="Documents"
+                        meta={
+                            review.documents.length === 0
+                                ? undefined
+                                : progress.documentsToReview > 0
+                                  ? `${progress.documentsToReview} to review`
+                                  : "All reviewed"
+                        }
+                    >
+                        <Documents documents={review.documents} editable={property.status === "under_review"} />
+                    </Section>
 
-            <Section title="Encumbrances">
-                <Encumbrances encumbrances={review.encumbrances} propertyId={property.id} />
-            </Section>
+                    <Section
+                        id={SECTION_IDS.checkpoints}
+                        title="Checkpoints"
+                        meta={review.checkpoints.length > 0 ? `${progress.checkpointsDone} of ${progress.checkpointsTotal} done` : undefined}
+                    >
+                        <Checkpoints
+                            checkpoints={review.checkpoints}
+                            propertyId={property.id}
+                            editable={property.status === "under_review"}
+                        />
+                    </Section>
 
-            <Section title="Overlaps">
-                <Overlaps overlaps={review.overlaps} />
-            </Section>
+                    <Section id={SECTION_IDS.encumbrances} title="Encumbrances">
+                        <Encumbrances encumbrances={review.encumbrances} propertyId={property.id} />
+                    </Section>
 
-            <Section title="History">
-                <History history={review.history} />
-            </Section>
+                    <Section
+                        id={SECTION_IDS.overlaps}
+                        title="Overlaps"
+                        meta={progress.openOverlaps > 0 ? `${progress.openOverlaps} open` : undefined}
+                    >
+                        <Overlaps overlaps={review.overlaps} />
+                    </Section>
+
+                    <Section id={SECTION_IDS.history} title="History">
+                        <History history={review.history} />
+                    </Section>
+                </div>
+            </div>
         </div>
     )
+}
+
+// Beside the evidence: where the review stands, what still stops approval (each a link to where it is dealt with),
+// and what the admin can do with the property as a whole
+function DecisionPanel({
+    review,
+    progress,
+    identityStatus,
+}: {
+    review: PropertyForReview
+    progress: ReviewProgress
+    identityStatus: string
+}) {
+    const { property } = review
+    const percent = Math.round((progress.checkpointsDone / progress.checkpointsTotal) * 100)
+
+    return (
+        <div className="grid gap-5 rounded-xl border border-border bg-card p-4">
+            <h2 className="text-eyebrow text-muted-foreground">Decision</h2>
+
+            {review.checkpoints.length > 0 ? (
+                <dl className="grid gap-2 text-sm">
+                    <div>
+                        <div className="flex items-baseline justify-between gap-2">
+                            <dt>
+                                <a href={`#${SECTION_IDS.checkpoints}`} className="hover:text-primary">
+                                    Checkpoints done
+                                </a>
+                            </dt>
+                            <dd className="text-data">
+                                {progress.checkpointsDone} of {progress.checkpointsTotal}
+                            </dd>
+                        </div>
+                        <div
+                            role="progressbar"
+                            aria-label="Checkpoints done"
+                            aria-valuenow={progress.checkpointsDone}
+                            aria-valuemin={0}
+                            aria-valuemax={progress.checkpointsTotal}
+                            className="mt-1.5 h-1.5 overflow-hidden rounded-full bg-muted"
+                        >
+                            <div className="h-full rounded-full bg-success" style={{ width: `${percent}%` }} />
+                        </div>
+                    </div>
+                    <SummaryRow href={`#${SECTION_IDS.documents}`} label="Documents to review" value={String(progress.documentsToReview)} />
+                    <SummaryRow href={`#${SECTION_IDS.owner}`} label="Identity" value={identityStatus} />
+                    {progress.openOverlaps > 0 ? (
+                        <SummaryRow href={`#${SECTION_IDS.overlaps}`} label="Open overlaps" value={String(progress.openOverlaps)} />
+                    ) : null}
+                </dl>
+            ) : null}
+
+            {property.status === "under_review" ? (
+                review.blockers.length > 0 ? (
+                    <div className="grid gap-1.5 text-sm">
+                        <p className="font-medium">Before it can be approved</p>
+                        <ul className="grid gap-1">
+                            {review.blockers.map((blocker) => {
+                                const anchor = blockerAnchor(blocker)
+                                return (
+                                    <li key={blocker} className="flex gap-2 text-copy">
+                                        <span aria-hidden className="mt-1.5 size-1.5 shrink-0 rounded-full bg-warning" />
+                                        {anchor ? (
+                                            <a href={`#${anchor}`} className="hover:text-primary hover:underline">
+                                                {blocker}
+                                            </a>
+                                        ) : (
+                                            <span>{blocker}</span>
+                                        )}
+                                    </li>
+                                )
+                            })}
+                        </ul>
+                    </div>
+                ) : (
+                    <p className="flex items-center gap-2 text-sm font-medium text-success">
+                        <Check size={16} aria-hidden /> Ready to approve
+                    </p>
+                )
+            ) : null}
+
+            <StatusActions
+                property={property}
+                requests={review.requests}
+                blocked={review.blockers.length > 0}
+                identityVerified={review.identity?.verification_status === "verified"}
+            />
+        </div>
+    )
+}
+
+function SummaryRow({ href, label, value }: { href: string; label: string; value: string }) {
+    return (
+        <div className="flex items-baseline justify-between gap-2">
+            <dt>
+                <a href={href} className="hover:text-primary">
+                    {label}
+                </a>
+            </dt>
+            <dd className="text-right">{value}</dd>
+        </div>
+    )
+}
+
+// The owner's identity document: the photo and the review while it waits, and the photo's deletion if that failed.
+// Identity is reviewed once per owner, whichever of their properties the admin is looking at.
+function IdentityReview({ identity, profileId }: { identity: NonNullable<PropertyForReview["identity"]>; profileId: string }) {
+    if (identity.verification_status === "unreviewed") {
+        return (
+            <div className="mt-4 grid gap-3">
+                <DocumentViewer
+                    fileName="Open the identity document"
+                    description="The owner's photo of their document. It is deleted once you verify it."
+                    open={openOwnerIdentityPhoto.bind(null, profileId)}
+                />
+                <details>
+                    <summary className="cursor-pointer text-sm text-primary">Review the identity document</summary>
+                    <ActionForm action={reviewIdentityDocument.bind(null, profileId)} submitLabel="Save" className="mt-3">
+                        <ChoiceField
+                            id="identity-status"
+                            name="status"
+                            label="Outcome"
+                            options={{ verified: "Verified: the name matches and it is in date", rejected: "Rejected" }}
+                        />
+                        <NoteField
+                            id="identity-note"
+                            name="note"
+                            label="Note to the owner"
+                            hint="Needed when rejecting, so they know what to send instead. The owner sees it."
+                        />
+                        <p className="text-xs text-muted-foreground">
+                            Verifying deletes the number and the photo. Write anything you need to remember in the identity checkpoint&apos;s
+                            internal note first.
+                        </p>
+                    </ActionForm>
+                </details>
+            </div>
+        )
+    }
+
+    if (identity.verification_status === "verified" && identity.has_photo) {
+        return (
+            <div className="mt-4 grid gap-2">
+                <p className="text-sm text-warning">The document is verified, but its photo hasn&apos;t been deleted yet.</p>
+                <ActionForm action={retryIdentityPhotoDeletion.bind(null, profileId)} submitLabel="Delete the photo" variant="outline" />
+            </div>
+        )
+    }
+
+    if (identity.verification_status === "rejected" && identity.review_note) {
+        return <p className="mt-4 text-xs text-muted-foreground">Owner sees: {identity.review_note}</p>
+    }
+
+    return null
 }
 
 // What the admin can do with the property as a whole in its current status
 function StatusActions({
     property,
-    blockers,
     requests,
+    blocked,
+    identityVerified,
 }: {
     property: PropertyForReview["property"]
-    blockers: string[]
     requests: PropertyForReview["requests"]
+    blocked: boolean
+    identityVerified: boolean
 }) {
     if (property.status === "submitted") {
         return <ActionForm action={startReview.bind(null, property.id)} submitLabel="Start review" />
@@ -223,22 +421,8 @@ function StatusActions({
 
     if (property.status === "under_review") {
         return (
-            <div className="grid gap-2">
-                {blockers.length > 0 ? (
-                    <div className="text-sm">
-                        <p className="font-medium">Before it can be approved:</p>
-                        <ul className="mt-1 list-disc pl-5 text-copy">
-                            {blockers.map((blocker) => (
-                                <li key={blocker}>{blocker}</li>
-                            ))}
-                        </ul>
-                    </div>
-                ) : null}
-                <ActionForm
-                    action={approveProperty.bind(null, property.id)}
-                    submitLabel="Approve"
-                    disabled={blockers.length > 0}
-                />
+            <div className="grid gap-3">
+                <ActionForm action={approveProperty.bind(null, property.id)} submitLabel="Approve" disabled={blocked} />
                 <details>
                     <summary className="cursor-pointer text-sm text-primary">Ask the owner for documents</summary>
                     <ActionForm
@@ -247,14 +431,9 @@ function StatusActions({
                         variant="outline"
                         className="mt-3"
                     >
-                        <NoteField
-                            id="changes-message"
-                            name="message"
-                            label="Message to the owner"
-                            hint="Shown to the owner under “We need something from you”."
-                        />
+                        {/* What to ask for first, then the message, which every request needs */}
                         <fieldset className="grid gap-3">
-                            <legend className="text-sm font-medium">Documents to ask for</legend>
+                            <legend className="text-sm font-medium">What to ask for</legend>
                             {DOCUMENT_SLOT_OPTIONS.map((option) => (
                                 <div key={option.value} className="grid gap-1.5">
                                     <label className="flex items-center gap-2 text-sm">
@@ -269,7 +448,20 @@ function StatusActions({
                                     />
                                 </div>
                             ))}
+                            {identityVerified ? null : (
+                                <label className="flex items-center gap-2 text-sm">
+                                    <input type="checkbox" name="identity" className="size-4 accent-primary" />
+                                    Their identity document (a Ghana Card or passport)
+                                </label>
+                            )}
                         </fieldset>
+                        <NoteField
+                            id="changes-message"
+                            name="message"
+                            label="Message to the owner"
+                            hint="Shown to the owner under “We need something from you”, whatever you ask for."
+                            required
+                        />
                     </ActionForm>
                 </details>
             </div>
@@ -297,13 +489,14 @@ function StatusActions({
 
     if (property.status === "active") {
         return (
-            <div className="grid gap-3">
+            <div className="grid gap-3 text-sm">
+                <p className="text-copy">Live, and shown as verified. Pausing it takes it out of the public listing until it is reviewed again.</p>
                 {/* Expiring is a suspension with this reason (docs/admin.md, section 5, "Expiring a property") */}
                 <ActionForm action={suspendProperty.bind(null, property.id)} submitLabel="Expire" variant="outline">
                     <input type="hidden" name="reason" value="Verification expired" />
                 </ActionForm>
-                <details>
-                    <summary className="cursor-pointer text-sm text-primary">Suspend for another reason</summary>
+                <details className="border-t border-border pt-3">
+                    <summary className="cursor-pointer text-destructive">Suspend for another reason</summary>
                     <ActionForm
                         action={suspendProperty.bind(null, property.id)}
                         submitLabel="Suspend"
@@ -383,10 +576,17 @@ function PropertyMap({ review }: { review: PropertyForReview }) {
     )
 }
 
-function Section({ title, children }: { title: string; children: React.ReactNode }) {
+// One part of the evidence. The id is what the decision panel links to; scroll-mt keeps the title clear of the
+// sticky header when a link jumps here.
+function Section({ id, title, meta, children }: { id: string; title: string; meta?: string; children: React.ReactNode }) {
     return (
-        <section className="rounded-xl border border-border bg-card p-4 sm:p-5">
-            <h2 className="text-eyebrow mb-3 text-muted-foreground">{title}</h2>
+        <section id={id} aria-labelledby={`${id}-title`} className="scroll-mt-20 rounded-xl border border-border bg-card p-4 sm:p-5">
+            <div className="mb-3 flex flex-wrap items-baseline justify-between gap-2">
+                <h2 id={`${id}-title`} className="text-eyebrow text-muted-foreground">
+                    {title}
+                </h2>
+                {meta ? <span className="text-xs text-muted-foreground">{meta}</span> : null}
+            </div>
             {children}
         </section>
     )
@@ -457,7 +657,11 @@ function Checkpoints({
     return (
         <ul className="divide-y divide-border">
             {sorted.map((checkpoint) => (
-                <li key={checkpoint.checkpoint_key} className="py-3 first:pt-0 last:pb-0">
+                <li
+                    key={checkpoint.checkpoint_key}
+                    id={checkpointAnchor(checkpoint.checkpoint_key)}
+                    className="scroll-mt-20 py-3 first:pt-0 last:pb-0"
+                >
                     <div className="flex flex-wrap items-center justify-between gap-2">
                         <span className="font-medium">{labelFor(CHECKPOINT_LABELS, checkpoint.checkpoint_key)}</span>
                         <CheckpointStatus status={checkpoint.status} />
@@ -497,74 +701,70 @@ function Documents({ documents, editable }: { documents: PropertyForReview["docu
         value ? (DOCUMENT_TYPE_LABELS as Record<string, string>)[value] ?? value : "—"
 
     return (
-        <div className="grid gap-4">
-            <div className="overflow-x-auto">
-                <table className="w-full min-w-xl text-left text-sm">
-                    <thead className="text-muted-foreground">
-                        <tr>
-                            <th className="pb-2 font-normal">File</th>
-                            <th className="pb-2 font-normal">Checklist item</th>
-                            <th className="pb-2 font-normal">Owner says</th>
-                            <th className="pb-2 font-normal">Final type</th>
-                            <th className="pb-2 font-normal">Status</th>
-                        </tr>
-                    </thead>
-                    <tbody className="divide-y divide-border">
-                        {documents.map((document) => (
-                            <tr key={document.id}>
-                                <td className="py-2 pr-3">
-                                    <DocumentViewer fileName={document.file_name} open={openPropertyDocument.bind(null, document.id)} />
-                                </td>
-                                <td className="py-2 pr-3">
-                                    {DOCUMENT_SLOT_OPTIONS.find((option) => option.value === document.slot)?.title ?? "—"}
-                                </td>
-                                <td className="py-2 pr-3">{typeLabel(document.declared_type)}</td>
-                                <td className="py-2 pr-3">
-                                    {document.document_type === "other" ? "Not set" : typeLabel(document.document_type)}
-                                </td>
-                                <td className="py-2">
-                                    {labelFor(DOCUMENT_STATUS_LABELS, document.verification_status)}
-                                    {document.review_note ? (
-                                        <p className="text-xs text-muted-foreground">Owner sees: {document.review_note}</p>
-                                    ) : null}
-                                </td>
-                            </tr>
-                        ))}
-                    </tbody>
-                </table>
-            </div>
-            {/* Below the table rather than in it, so each form has the page's width */}
-            {editable
-                ? documents.map((document) => (
-                      <details key={document.id}>
-                          <summary className="cursor-pointer text-sm text-primary break-all">Review {document.file_name}</summary>
-                          <ActionForm action={reviewDocument.bind(null, document.id)} submitLabel="Save" className="mt-3">
-                              <ChoiceField
-                                  id={`document-${document.id}-type`}
-                                  name="document_type"
-                                  label="Final type"
-                                  options={DOCUMENT_TYPE_LABELS}
-                                  defaultValue={document.document_type ?? document.declared_type}
-                              />
-                              <ChoiceField
-                                  id={`document-${document.id}-status`}
-                                  name="status"
-                                  label="Outcome"
-                                  options={pick(DOCUMENT_STATUS_LABELS, DOCUMENT_OUTCOMES)}
-                                  defaultValue={document.verification_status}
-                              />
-                              <NoteField
-                                  id={`document-${document.id}-note`}
-                                  name="note"
-                                  label="Owner sees"
-                                  hint="Needed to reject it: say what to send instead."
-                                  defaultValue={document.review_note}
-                              />
-                          </ActionForm>
-                      </details>
-                  ))
-                : null}
-        </div>
+        <ul className="divide-y divide-border">
+            {documents.map((document) => (
+                <li key={document.id} className="py-3 first:pt-0 last:pb-0">
+                    {/* The name takes what's left beside the status, and wraps inside it */}
+                    <div className="flex items-start justify-between gap-3">
+                        <DocumentViewer fileName={document.file_name} open={openPropertyDocument.bind(null, document.id)} />
+                        <DocumentStatus status={document.verification_status} />
+                    </div>
+                    <p className="mt-1 text-xs text-muted-foreground">
+                        {DOCUMENT_SLOT_OPTIONS.find((option) => option.value === document.slot)?.title ?? "No checklist item"} · Owner
+                        says {typeLabel(document.declared_type)} · Final type{" "}
+                        {document.document_type === "other" ? "not set" : typeLabel(document.document_type)}
+                    </p>
+                    {document.review_note ? <p className="mt-1 text-sm text-copy">Owner sees: {document.review_note}</p> : null}
+                    {editable ? (
+                        <details className="mt-2">
+                            <summary className="cursor-pointer text-sm text-primary">Review</summary>
+                            <ActionForm action={reviewDocument.bind(null, document.id)} submitLabel="Save" className="mt-3">
+                                <ChoiceField
+                                    id={`document-${document.id}-type`}
+                                    name="document_type"
+                                    label="Final type"
+                                    options={DOCUMENT_TYPE_LABELS}
+                                    defaultValue={document.document_type ?? document.declared_type}
+                                />
+                                <ChoiceField
+                                    id={`document-${document.id}-status`}
+                                    name="status"
+                                    label="Outcome"
+                                    options={pick(DOCUMENT_STATUS_LABELS, DOCUMENT_OUTCOMES)}
+                                    defaultValue={document.verification_status}
+                                />
+                                <NoteField
+                                    id={`document-${document.id}-note`}
+                                    name="note"
+                                    label="Owner sees"
+                                    hint="Needed to reject it: say what to send instead."
+                                    defaultValue={document.review_note}
+                                />
+                            </ActionForm>
+                        </details>
+                    ) : null}
+                </li>
+            ))}
+        </ul>
+    )
+}
+
+// A document's outcome, in the checkpoints' tones: waiting, accepted, rejected or replaced
+const DOCUMENT_STATUS_TONES: Record<string, string> = {
+    unreviewed: "in_progress",
+    accepted: "verified",
+    rejected: "flagged",
+    superseded: "waived",
+}
+
+function DocumentStatus({ status }: { status: string }) {
+    const { icon: Icon, className } = CHECKPOINT_STATUS_STYLES[DOCUMENT_STATUS_TONES[status] ?? "unverified"]
+
+    return (
+        <span className={cn("inline-flex shrink-0 items-center gap-1 rounded-full px-2 py-0.5 text-xs font-medium", className)}>
+            <Icon size={12} strokeWidth={2.5} aria-hidden />
+            {labelFor(DOCUMENT_STATUS_LABELS, status)}
+        </span>
     )
 }
 
@@ -759,27 +959,50 @@ function describe(entry: PropertyForReview["history"][number]) {
     return null
 }
 
+// Newest first; the latest few are shown, the rest folded away
+const LATEST_HISTORY = 5
+
 function History({ history }: { history: PropertyForReview["history"] }) {
     if (history.length === 0) {
         return <Empty>Nothing recorded yet.</Empty>
     }
 
+    const older = history.slice(LATEST_HISTORY)
+
     return (
-        <ol className="space-y-3 text-sm">
-            {history.map((entry) => {
-                const detail = describe(entry)
-                return (
-                    <li key={entry.id}>
-                        <div className="flex flex-wrap gap-x-2">
-                            <span className="font-medium">{labelFor(AUDIT_ACTION_LABELS, entry.action)}</span>
-                            <span className="text-muted-foreground">
-                                {entry.actor?.full_name ?? "System"} · {dateTimeFormat.format(new Date(entry.created_at))}
-                            </span>
-                        </div>
-                        {detail ? <p className="text-copy">{detail}</p> : null}
-                    </li>
-                )
-            })}
-        </ol>
+        <div className="grid gap-3">
+            <ol className="space-y-3 text-sm">
+                {history.slice(0, LATEST_HISTORY).map((entry) => (
+                    <HistoryEntry key={entry.id} entry={entry} />
+                ))}
+            </ol>
+            {older.length > 0 ? (
+                <details>
+                    <summary className="cursor-pointer text-sm text-primary">
+                        Show {older.length} older {older.length === 1 ? "entry" : "entries"}
+                    </summary>
+                    <ol className="mt-3 space-y-3 text-sm">
+                        {older.map((entry) => (
+                            <HistoryEntry key={entry.id} entry={entry} />
+                        ))}
+                    </ol>
+                </details>
+            ) : null}
+        </div>
+    )
+}
+
+function HistoryEntry({ entry }: { entry: PropertyForReview["history"][number] }) {
+    const detail = describe(entry)
+    return (
+        <li>
+            <div className="flex flex-wrap gap-x-2">
+                <span className="font-medium">{labelFor(AUDIT_ACTION_LABELS, entry.action)}</span>
+                <span className="text-muted-foreground">
+                    {entry.actor?.full_name ?? "System"} · {dateTimeFormat.format(new Date(entry.created_at))}
+                </span>
+            </div>
+            {detail ? <p className="text-copy">{detail}</p> : null}
+        </li>
     )
 }

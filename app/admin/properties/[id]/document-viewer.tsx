@@ -9,13 +9,19 @@ import type { DocumentView } from "@/lib/admin/document-preview"
 
 type Props = {
     fileName: string
+    // Under the title; says how the file is shown
+    description?: string
     // openPropertyDocument with the document's id bound by the page
     open: () => Promise<DocumentView>
 }
 
 // Opens one document in a side panel. The first open of a Word or TIFF file converts it, which can take a while on a
 // cold converter, so the panel says so. The URL is signed for a few minutes, so each open asks for a new one.
-export function DocumentViewer({ fileName, open }: Props) {
+export function DocumentViewer({
+    fileName,
+    description = "Shown as a PDF or an image. Word files and scans are converted first; the original is never opened.",
+    open,
+}: Props) {
     const [isOpen, setIsOpen] = useState(false)
     const [view, setView] = useState<DocumentView | null>(null)
     const [pending, startTransition] = useTransition()
@@ -32,15 +38,21 @@ export function DocumentViewer({ fileName, open }: Props) {
 
     return (
         <Sheet open={isOpen} onOpenChange={onOpenChange}>
-            <Button type="button" variant="link" className="h-auto p-0 text-left break-all whitespace-normal" onClick={() => onOpenChange(true)}>
-                {fileName}
+            {/* The button's base classes don't let it shrink or wrap; a long file name would push the row wider than the
+                page. Here it shrinks, wraps anywhere, and stops at two lines: the panel's title has the whole name. */}
+            <Button
+                type="button"
+                variant="link"
+                title={fileName}
+                className="h-auto max-w-full min-w-0 shrink justify-start p-0 text-left whitespace-normal"
+                onClick={() => onOpenChange(true)}
+            >
+                <span className="line-clamp-2 wrap-anywhere">{fileName}</span>
             </Button>
             <SheetContent side="right" className="w-full data-[side=right]:sm:max-w-4xl">
                 <SheetHeader>
-                    <SheetTitle className="break-all pr-8">{fileName}</SheetTitle>
-                    <SheetDescription>
-                        Shown as a PDF or an image. Word files and scans are converted first; the original is never opened.
-                    </SheetDescription>
+                    <SheetTitle className="pr-8 wrap-anywhere">{fileName}</SheetTitle>
+                    <SheetDescription>{description}</SheetDescription>
                 </SheetHeader>
                 <div className="flex min-h-0 flex-1 flex-col gap-3 px-4 pb-4">
                     {pending || !view ? (

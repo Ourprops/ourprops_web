@@ -86,7 +86,7 @@ export function RequestUpload({ propertyId, slot, uploads }: Props) {
                 <ul className="grid gap-1 text-sm">
                     {uploads.map((document) => (
                         <li key={document.id} className="flex flex-wrap items-center gap-2">
-                            <span className="break-all">{document.file_name}</span>
+                            <span className="min-w-0 wrap-anywhere">{document.file_name}</span>
                             <Button type="button" size="xs" variant="ghost" disabled={busy} onClick={() => remove(document.id)}>
                                 Remove
                             </Button>

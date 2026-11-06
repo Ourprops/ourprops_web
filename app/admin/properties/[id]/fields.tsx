@@ -91,20 +91,24 @@ export function NoteField({
     label,
     hint,
     defaultValue,
+    required = false,
 }: {
     id: string
     name: string
     label: string
     hint?: string
     defaultValue?: string | null
+    // The browser stops the form and points here while it's empty; the action and the database check again
+    required?: boolean
 }) {
     return (
-        <FormField id={id} label={label} hint={hint}>
+        <FormField id={id} label={required ? `${label} (required)` : label} hint={hint}>
             <Textarea
                 id={id}
                 name={name}
                 defaultValue={defaultValue ?? ""}
                 maxLength={MAX_NOTE_LENGTH}
+                required={required}
                 aria-describedby={hint ? `${id}-hint` : undefined}
             />
         </FormField>

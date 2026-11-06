@@ -101,19 +101,37 @@ export const encumbranceRecordSchema = z.object({
   note: noteSchema,
 })
 
-// The owner sees the message and every note. Identity can't be asked for from the console yet: owners have
-// nowhere to add the document until /account/identity exists (build order, step 6), so a document is required.
-export const changeRequestSchema = z.object({
-  propertyId,
-  message: noteSchema.trim().min(1, "Write the message the owner will see"),
-  documents: z
-    .array(
+// The owner sees the message and every note. A request asks for documents, the owner's identity document, or both.
+export const changeRequestSchema = z
+  .object({
+    propertyId,
+    message: noteSchema.trim().min(1, "Write the message the owner will see"),
+    documents: z.array(
       z.object({
         slot: z.enum(DOCUMENT_SLOTS, { error: "Choose checklist items from the list" }),
         note: noteSchema.trim().min(1, "Say what to send for each item you ask for"),
       })
-    )
-    .min(1, "Ask for at least one document"),
+    ),
+    identity: z.boolean(),
+  })
+  .refine((request) => request.documents.length > 0 || request.identity, {
+    error: "Ask for at least one document, or for the owner's identity document",
+  })
+
+// release_identity_document needs a reason, which goes in the audit log and the reopened properties' history
+export const identityReleaseSchema = z.object({
+  profileId: z.uuid({ error: "Identity document not found." }),
+  reason: noteSchema.trim().min(1, "Say why the document is released, for example how the owner proved it is theirs"),
+})
+
+// What review_identity_document lets an admin set; 'unreviewed' is where every document starts
+export const IDENTITY_OUTCOMES = ["verified", "rejected"] as const
+
+// The owner sees the note; review_identity_document requires one for a rejection
+export const identityReviewSchema = z.object({
+  profileId: z.uuid({ error: "Identity document not found." }),
+  status: z.enum(IDENTITY_OUTCOMES, { error: "Choose verified or rejected" }),
+  note: noteSchema,
 })
 
 export const encumbranceUpdateSchema = z.object({

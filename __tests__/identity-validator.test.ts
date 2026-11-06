@@ -1,7 +1,7 @@
 import { describe, expect, test } from 'vitest'
 
 import { identityFilePath, identityMimeType, IDENTITY_FILE_ACCEPT } from '../lib/storage/identity-documents'
-import { identityDocumentSchema } from '../lib/validators/identity'
+import { formatGhanaCardDigits, ghanaCardDigits, identityDocumentSchema } from '../lib/validators/identity'
 import { countryOptions } from '../lib/countries'
 
 const PROFILE = '11111111-1111-4111-8111-111111111111'
@@ -95,5 +95,24 @@ describe('countryOptions', () => {
         expect(options[0]).toEqual(['GH', 'Ghana'])
         expect(options.length).toBe(249)
         expect(options.find(([code]) => code === 'GB')?.[1]).toBe('United Kingdom')
+    })
+})
+
+describe('the Ghana Card field', () => {
+    test.each([
+        ['typed digits', '1234567890', '1234567890'],
+        ['the number as printed, pasted', 'GHA-123456789-0', '1234567890'],
+        ['lower case with spaces', ' gha 123 456 789 0', '1234567890'],
+        ['too many digits', '12345678901', '1234567890'],
+        ['letters typed by mistake', '12a3', '123'],
+    ])('keeps the digits from %s', (_, typed, digits) => {
+        expect(ghanaCardDigits(typed)).toBe(digits)
+    })
+
+    test('adds the dash only with the last digit, so deleting never gets stuck on it', () => {
+        expect(formatGhanaCardDigits('123456789')).toBe('123456789')
+        expect(formatGhanaCardDigits('1234567890')).toBe('123456789-0')
+        // backspace from "123456789-0" leaves "123456789-", which is nine digits again
+        expect(formatGhanaCardDigits(ghanaCardDigits('123456789-'))).toBe('123456789')
     })
 })

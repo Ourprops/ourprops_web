@@ -212,6 +212,12 @@ const ACTIONS = [
         },
     },
     {
+        name: 'requestChanges for the identity document only',
+        call: () => requestChanges(PROPERTY, null, form({ message: 'Please add your Ghana Card.', identity: 'on' })),
+        fn: 'request_changes',
+        args: { property_id: PROPERTY, message: 'Please add your Ghana Card.', documents: [], identity: true },
+    },
+    {
         name: 'recordEncumbrance',
         call: () =>
             recordEncumbrance(
@@ -269,7 +275,7 @@ describe('the other review actions', () => {
         ['reopenReview with a made-up checkpoint', () => reopenReview(PROPERTY, null, form({ note: 'Why', checkpoints: ['made_up'] })), 'Choose checkpoints from the list'],
         ['recordEncumbrance without saying whether it blocks', () => recordEncumbrance(PROPERTY, null, form({ kind: 'mortgage', reference: 'LC/1' })), 'Say whether it blocks activation'],
         ['recordEncumbrance with a blank reference', () => recordEncumbrance(PROPERTY, null, form({ kind: 'mortgage', reference: '   ', blocks_activation: 'no' })), 'Enter the suit number or registry reference'],
-        ['requestChanges with nothing ticked', () => requestChanges(PROPERTY, null, form({ message: 'Please send' })), 'Ask for at least one document'],
+        ['requestChanges with nothing ticked', () => requestChanges(PROPERTY, null, form({ message: 'Please send' })), "Ask for at least one document, or for the owner's identity document"],
         ['requestChanges without a message', () => requestChanges(PROPERTY, null, form({ message: '  ', slots: ['site_plan'], note_site_plan: 'Clearer' })), 'Write the message the owner will see'],
         ['requestChanges with a ticked item but no note', () => requestChanges(PROPERTY, null, form({ message: 'Please send', slots: ['site_plan'] })), 'Say what to send for each item you ask for'],
         ['requestChanges for an item that isn\'t on the checklist', () => requestChanges(PROPERTY, null, form({ message: 'Please send', slots: ['photos'], note_photos: 'x' })), 'Choose checklist items from the list'],

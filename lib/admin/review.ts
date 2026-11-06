@@ -170,6 +170,10 @@ export type PropertyForReview = {
         expires_on: string
         verification_status: string
         verified_at: string | null
+        // The note the owner sees, on a rejected document
+        review_note: string | null
+        // Whether a photo is still in storage: true while waiting for review, and after verifying until it is deleted
+        has_photo: boolean
     } | null
     documents: {
         id: string
@@ -253,7 +257,7 @@ export async function getPropertyForReview(supabase: SupabaseClient, id: string)
         row.owner
             ? supabase
                   .from("identity_documents")
-                  .select("document_type, issuing_country, expires_on, verification_status, verified_at")
+                  .select("document_type, issuing_country, expires_on, verification_status, verified_at, review_note, file_path")
                   .eq("profile_id", row.owner.id)
                   .maybeSingle()
             : Promise.resolve({ data: null, error: null }),
@@ -320,7 +324,12 @@ export async function getPropertyForReview(supabase: SupabaseClient, id: string)
 
     return {
         property: row,
-        identity: (identity.data ?? null) as PropertyForReview["identity"],
+        // The path itself stays here: the page only needs to know whether there is a photo
+        identity: identity.data
+            ? (({ file_path, ...rest }) => ({ ...rest, has_photo: file_path !== null }))(
+                  identity.data as Omit<NonNullable<PropertyForReview["identity"]>, "has_photo"> & { file_path: string | null }
+              )
+            : null,
         documents: (documents.data ?? []) as PropertyForReview["documents"],
         checkpoints: (checkpoints.data ?? []) as unknown as PropertyForReview["checkpoints"],
         encumbrances: (encumbrances.data ?? []) as unknown as PropertyForReview["encumbrances"],

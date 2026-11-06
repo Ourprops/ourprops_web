@@ -5,6 +5,7 @@ import { z } from "zod"
 
 import { actionErrorMessage, type ActionState } from "@/lib/action-errors"
 import { DOCUMENT_ERRORS, type DocumentView, openDocument } from "@/lib/admin/document-preview"
+import { IDENTITY_ERRORS, deleteIdentityPhoto, openIdentityPhoto } from "@/lib/admin/identity-review"
 import { requireAdmin } from "@/lib/auth/staff"
 import {
     changeRequestSchema,
@@ -13,6 +14,7 @@ import {
     documentReviewSchema,
     encumbranceRecordSchema,
     encumbranceUpdateSchema,
+    identityReviewSchema,
     overlapResolutionSchema,
     reopenSchema,
     suspensionSchema,
@@ -139,6 +141,57 @@ export async function openPropertyDocument(documentId: string): Promise<Document
     return openDocument(supabase, documentId)
 }
 
+// Opens the owner's identity photo while it waits for review. Nothing on the page changes, so there is no refresh.
+export async function openOwnerIdentityPhoto(profileId: string): Promise<DocumentView> {
+    const { supabase } = await requireAdmin()
+
+    if (!z.uuid().safeParse(profileId).success) {
+        return { error: IDENTITY_ERRORS.notFound }
+    }
+
+    return openIdentityPhoto(supabase, profileId)
+}
+
+// Verifies or rejects the owner's identity document. Verifying clears the number in the database and then deletes the
+// photo; if the deletion fails, the document is still verified and the page offers to try again.
+export async function reviewIdentityDocument(profileId: string, _previous: ActionState, formData: FormData): Promise<ActionState> {
+    const { supabase } = await requireAdmin()
+
+    const parsed = identityReviewSchema.safeParse({
+        profileId,
+        status: formData.get("status"),
+        note: text(formData, "note"),
+    })
+    if (!parsed.success) {
+        return { error: parsed.error.issues[0].message }
+    }
+
+    const reviewed = await callReviewFunction(supabase, "review_identity_document", {
+        profile_id: parsed.data.profileId,
+        verification_status: parsed.data.status,
+        note: parsed.data.note,
+    })
+    if (reviewed || parsed.data.status !== "verified") {
+        return reviewed
+    }
+
+    return (await deleteIdentityPhoto(supabase, parsed.data.profileId)) ? null : { error: IDENTITY_ERRORS.photoNotDeleted }
+}
+
+// Tries again to delete a verified document's photo, after a first attempt failed
+// eslint-disable-next-line @typescript-eslint/no-unused-vars -- useActionState passes the previous state first
+export async function retryIdentityPhotoDeletion(profileId: string, _previous: ActionState): Promise<ActionState> {
+    const { supabase } = await requireAdmin()
+
+    if (!z.uuid().safeParse(profileId).success) {
+        return { error: IDENTITY_ERRORS.notFound }
+    }
+
+    const deleted = await deleteIdentityPhoto(supabase, profileId)
+    refresh()
+    return deleted ? null : { error: IDENTITY_ERRORS.photoNotDeleted }
+}
+
 // Moves an overlap flag to investigating, or resolves it. The note is internal.
 export async function resolveOverlap(flagId: string, _previous: ActionState, formData: FormData): Promise<ActionState> {
     const { supabase } = await requireAdmin()
@@ -218,6 +271,7 @@ export async function requestChanges(propertyId: string, _previous: ActionState,
             slot,
             note: typeof slot === "string" ? text(formData, `note_${slot}`) : "",
         })),
+        identity: formData.get("identity") === "on",
     })
     if (!parsed.success) {
         return { error: parsed.error.issues[0].message }
@@ -227,7 +281,7 @@ export async function requestChanges(propertyId: string, _previous: ActionState,
         property_id: parsed.data.propertyId,
         message: parsed.data.message,
         documents: parsed.data.documents,
-        identity: false,
+        identity: parsed.data.identity,
     })
 }
 

@@ -1,9 +1,11 @@
-import { render, screen } from '@testing-library/react'
-import { describe, expect, test } from 'vitest'
+import { cleanup, render, screen } from '@testing-library/react'
+import { afterEach, describe, expect, test } from 'vitest'
 
 import { IdentityCard } from '../app/account/dashboard/identity-card'
 
 describe('IdentityCard', () => {
+    afterEach(cleanup)
+
     test('asks an owner with no document to verify, linking to the identity page', () => {
         render(<IdentityCard status={null} />)
         expect(screen.getByRole('link', { name: /Verify your identity/ }).getAttribute('href')).toBe('/account/identity')

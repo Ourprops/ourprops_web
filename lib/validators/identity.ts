@@ -15,6 +15,19 @@ export const IDENTITY_STATUS_LABELS: Record<string, string> = {
 
 const spaceless = (value: string) => value.replace(/\s/g, "").toUpperCase()
 
+/** The 10 digits of a Ghana Card number from whatever was typed or pasted: with or without GHA, dashes or spaces */
+export function ghanaCardDigits(value: string): string {
+    return value.toUpperCase().replace(/^\s*GHA/, "").replace(/\D/g, "").slice(0, 10)
+}
+
+/**
+ * The digits as they appear after GHA- on the card: nine, then a dash and the last. The dash appears only with the
+ * tenth digit, so deleting never gets stuck on it.
+ */
+export function formatGhanaCardDigits(digits: string): string {
+    return digits.length > 9 ? `${digits.slice(0, 9)}-${digits.slice(9)}` : digits
+}
+
 // A Ghana Card number is GHA-, nine digits, a dash and a check digit. People often leave the dashes out.
 const ghanaCardNumber = z
     .string()
@@ -33,6 +46,11 @@ const expiresOn = z.iso.date({ error: "Enter the expiry date." }).refine((value)
     error: "This document has expired. Add one that is still valid.",
 })
 
+const passportCountry = z
+    .string()
+    .transform((value) => value.toUpperCase())
+    .refine((value) => COUNTRY_CODES.includes(value), { error: "Choose the country that issued the passport." })
+
 const filePath = z.string().min(1, { error: "Upload a photo or scan of the document." })
 
 export const identityDocumentSchema = z.discriminatedUnion(
@@ -48,10 +66,7 @@ export const identityDocumentSchema = z.discriminatedUnion(
         }),
         z.object({
             documentType: z.literal("passport"),
-            issuingCountry: z
-                .string()
-                .transform((value) => value.toUpperCase())
-                .refine((value) => COUNTRY_CODES.includes(value), { error: "Choose the country that issued the passport." }),
+            issuingCountry: passportCountry,
             documentNumber: passportNumber,
             expiresOn,
             filePath,
@@ -61,3 +76,22 @@ export const identityDocumentSchema = z.discriminatedUnion(
 )
 
 export type IdentityDocumentInput = z.output<typeof identityDocumentSchema>
+
+// What an admin types to find the account holding a document, with the same rules as the owner's form, so a number
+// is normalised the same way it was when it was saved
+export const identityLookupSchema = z.discriminatedUnion(
+    "documentType",
+    [
+        z.object({
+            documentType: z.literal("ghana_card"),
+            issuingCountry: z.unknown().optional().transform(() => "GH"),
+            documentNumber: ghanaCardNumber,
+        }),
+        z.object({
+            documentType: z.literal("passport"),
+            issuingCountry: passportCountry,
+            documentNumber: passportNumber,
+        }),
+    ],
+    { error: "Choose a Ghana Card or a passport." }
+)
