@@ -101,11 +101,17 @@ export const encumbranceRecordSchema = z.object({
   note: noteSchema,
 })
 
+// What the owner sees above the list when the admin leaves the message empty: each item's note says what to send, so
+// a general message is optional
+export const DEFAULT_CHANGES_MESSAGE =
+  "We need a few more things before we can carry on checking your property. Everything we need is listed below."
+
 // The owner sees the message and every note. A request asks for documents, the owner's identity document, or both.
+// Each document asked for needs its note, which the owner sees beside its upload; the message falls back to the default.
 export const changeRequestSchema = z
   .object({
     propertyId,
-    message: noteSchema.trim().min(1, "Write the message the owner will see"),
+    message: noteSchema.trim().transform((message) => message || DEFAULT_CHANGES_MESSAGE),
     documents: z.array(
       z.object({
         slot: z.enum(DOCUMENT_SLOTS, { error: "Choose checklist items from the list" }),

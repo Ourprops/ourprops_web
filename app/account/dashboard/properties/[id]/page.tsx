@@ -2,12 +2,25 @@ import type { Metadata } from "next"
 import Link from "next/link"
 import { notFound, redirect } from "next/navigation"
 
+import { BadgeCheck, CircleCheck, FileText, LockKeyhole, MapPin } from "lucide-react"
+
 import { ActionForm } from "@/components/action-form"
-import { OWNER_STATUS_LABELS, getOwnProperty } from "@/lib/supabase/owner-properties"
+import { ChecklistMark } from "@/components/checklist-mark"
+import { OwnerShell } from "@/components/owner/owner-shell"
+import { PropertyProgress } from "@/components/owner/property-progress"
+import { ShareRecord } from "@/components/owner/share-record"
+import { buttonVariants } from "@/components/ui/button"
+import { changeRequestChecklist } from "@/lib/change-requests"
+import { getOwnIdentityDocument } from "@/lib/supabase/identity-documents"
+import { STATUS_EXPLAINED } from "@/lib/owner/dashboard"
+import { listRecentNotifications } from "@/lib/supabase/notifications"
+import { getOwnProperty } from "@/lib/supabase/owner-properties"
+import { getOwnProfile } from "@/lib/supabase/profile"
 import { createClient } from "@/lib/supabase/server"
 import { DOCUMENT_SLOT_OPTIONS } from "@/lib/types/property"
 import { documentSlotSchema } from "@/lib/validators/property"
 
+import { Updates } from "../../updates"
 import { resubmitProperty } from "./actions"
 import { RequestUpload } from "./request-upload"
 
@@ -30,66 +43,212 @@ export default async function OwnPropertyPage({ params }: PageProps<"/account/da
     // A draft is still being filled in, in the registration flow
     if (property.status === "draft") redirect(`/account/dashboard/properties/new?draft=${property.id}`)
 
+    const [profile, notifications] = await Promise.all([
+        getOwnProfile(supabase, ownerId),
+        listRecentNotifications(supabase, 5, property.id),
+    ])
+
+    // What we asked for, ticked off as it arrives, so the last step (sending it back) is plain to see
+    const checklist =
+        property.status === "action_required"
+            ? changeRequestChecklist({
+                  openRequests: property.openRequests,
+                  documents: property.documents,
+                  identityRequested: property.identity_requested,
+                  identityStatus: (await getOwnIdentityDocument(supabase, ownerId))?.verification_status ?? null,
+              })
+            : null
+
+    const explained = STATUS_EXPLAINED[property.status] ?? { label: property.status, next: "" }
+    const place = [property.city_town, property.district_municipality, property.region].filter(Boolean).join(", ")
+    const decided = property.documents.filter((document) => document.verification_status !== "unreviewed").length
+
     return (
-        <main className="mx-auto grid max-w-2xl gap-6 px-4 py-8 sm:px-6">
-            <Link href="/account/dashboard" className="text-sm text-copy hover:text-primary">
+        <OwnerShell fullName={profile?.full_name ?? "Account"}>
+            <Link href="/account/dashboard" className="w-fit text-sm text-copy hover:text-primary">
                 ← Your properties
             </Link>
 
-            <header>
-                <h1 className="text-heading text-primary">{property.name ?? "Untitled property"}</h1>
-                <p className="mt-1 text-copy">{OWNER_STATUS_LABELS[property.status] ?? property.status}</p>
-                {property.status === "suspended" && property.suspension_reason ? (
-                    <p className="mt-1 text-copy">{property.suspension_reason}</p>
-                ) : null}
+            <header className="grid gap-4 rounded-xl border border-border bg-card p-4 sm:p-5">
+                <div className="grid gap-1">
+                    <h1 className="text-heading text-primary wrap-anywhere">{property.name ?? "Untitled property"}</h1>
+                    <p className="flex flex-wrap items-center gap-x-3 gap-y-1 text-sm text-copy">
+                        {place ? (
+                            <span className="flex items-center gap-1">
+                                <MapPin size={14} aria-hidden /> {place}
+                            </span>
+                        ) : null}
+                        <span>
+                            Reference <span className="text-data font-medium text-foreground">{property.prop_id}</span>
+                        </span>
+                    </p>
+                </div>
+                <PropertyProgress status={property.status} size="md" />
+                <div className="grid gap-0.5">
+                    <p className="font-medium">{explained.label}</p>
+                    <p className="text-sm text-copy">{explained.next}</p>
+                    {property.status === "suspended" && property.suspension_reason ? (
+                        <p className="mt-1 rounded-lg bg-muted/50 p-3 text-sm text-copy">{property.suspension_reason}</p>
+                    ) : null}
+                </div>
             </header>
 
-            {property.status === "action_required" ? (
-                <section className="grid gap-4 rounded-xl border border-border bg-card p-4 sm:p-5">
-                    {property.changes_requested_message ? <p>{property.changes_requested_message}</p> : null}
-
-                    {/* The registration flow, in its changes mode: answers and boundary only */}
-                    <Link
-                        href={`/account/dashboard/properties/new?draft=${property.id}`}
-                        className="w-fit text-sm font-medium text-primary hover:underline"
-                    >
-                        Change your answers or boundary
-                    </Link>
-
-                    {property.openRequests.length > 0 ? (
-                        <ul className="grid gap-4">
-                            {property.openRequests.map((request) => {
-                                const slot = documentSlotSchema.parse(request.slot)
-                                return (
-                                    <li key={request.id} className="grid gap-2 border-t border-border pt-4 first:border-t-0 first:pt-0">
-                                        <p className="font-medium">
-                                            {DOCUMENT_SLOT_OPTIONS.find((option) => option.value === slot)?.title ?? slot}
-                                        </p>
-                                        <p className="text-sm text-copy">{request.note}</p>
-                                        <RequestUpload
-                                            propertyId={property.id}
-                                            slot={slot}
-                                            uploads={property.uploads.filter((upload) => upload.slot === slot)}
-                                        />
-                                    </li>
-                                )
-                            })}
-                        </ul>
-                    ) : null}
-
-                    {property.identity_requested ? (
+            {property.status === "active" ? (
+                <section className="grid gap-4 rounded-xl border border-success bg-card p-4 sm:p-5">
+                    <div className="grid gap-1">
+                        <h2 className="flex items-center gap-2 font-medium">
+                            <BadgeCheck className="size-5 text-success" aria-hidden /> Verified by OurProps
+                        </h2>
                         <p className="text-sm text-copy">
-                            We also need your identity document.{" "}
-                            <Link href="/account/identity" className="font-medium text-primary hover:underline">
-                                Add your Ghana Card or passport
-                            </Link>
-                            , then send the property back for review.
+                            Our team has checked the evidence for this property. Share its public record with buyers, tenants or family,
+                            so they can see what we checked. Your documents stay private.
                         </p>
-                    ) : null}
-
-                    <ActionForm action={resubmitProperty.bind(null, property.id)} submitLabel="Send back for review" />
+                        <p className="text-xs text-muted-foreground">
+                            Verified is OurProps&apos; review status. It isn&apos;t a guarantee of legal title, and doesn&apos;t replace a
+                            Lands Commission search or legal advice.
+                        </p>
+                    </div>
+                    <div className="flex flex-wrap gap-2">
+                        <Link href={`/record/${property.prop_id}`} className={buttonVariants({ className: "h-10" })}>
+                            View public record
+                        </Link>
+                        <ShareRecord path={`/record/${property.prop_id}`} name={property.name ?? "My property"} />
+                    </div>
                 </section>
             ) : null}
-        </main>
+
+            {property.status === "action_required" && checklist ? (
+                <section className="grid gap-5 rounded-xl border border-warning bg-card p-4 sm:p-5">
+                    <div className="grid gap-2">
+                        <h2 className="font-medium">We need something from you</h2>
+                        {property.changes_requested_message ? (
+                            <p className="rounded-lg bg-muted/50 p-3 text-sm text-copy">{property.changes_requested_message}</p>
+                        ) : null}
+                    </div>
+
+                    <ol className="grid gap-3">
+                        {checklist.items.map((item) => (
+                            <li key={item.kind === "document" ? item.id : "identity"} className="flex gap-3 rounded-lg border border-border p-3">
+                                <ChecklistMark done={item.done} />
+                                <div className="grid min-w-0 flex-1 gap-1.5">
+                                    {item.kind === "document" ? (
+                                        <>
+                                            <p className="font-medium">
+                                                {DOCUMENT_SLOT_OPTIONS.find((option) => option.value === item.slot)?.title ?? "A document"}
+                                            </p>
+                                            <p className="text-sm text-copy">{item.note}</p>
+                                            <RequestUpload
+                                                propertyId={property.id}
+                                                slot={documentSlotSchema.parse(item.slot)}
+                                                uploads={property.uploads.filter((upload) => upload.slot === item.slot)}
+                                            />
+                                        </>
+                                    ) : (
+                                        <>
+                                            <p className="font-medium">Your identity document</p>
+                                            {item.status === "verified" ? (
+                                                <p className="text-sm text-success">Verified. Nothing more to do here.</p>
+                                            ) : item.status === "unreviewed" ? (
+                                                <p className="text-sm text-copy">Sent. We&apos;re checking it.</p>
+                                            ) : (
+                                                <>
+                                                    <p className="text-sm text-copy">
+                                                        {item.status === "rejected"
+                                                            ? "We couldn't accept the one you sent. Please send it again."
+                                                            : "Your Ghana Card, or your passport if you live abroad."}
+                                                    </p>
+                                                    <Link
+                                                        href="/account/identity"
+                                                        className={buttonVariants({ variant: "outline", className: "h-10 w-fit" })}
+                                                    >
+                                                        {item.status === "rejected" ? "Send it again" : "Add your identity document"}
+                                                    </Link>
+                                                </>
+                                            )}
+                                        </>
+                                    )}
+                                </div>
+                            </li>
+                        ))}
+                    </ol>
+
+                    {/* The registration flow, in its changes mode: answers and boundary only */}
+                    <p className="text-sm text-copy">
+                        Need to correct something you told us?{" "}
+                        <Link href={`/account/dashboard/properties/new?draft=${property.id}`} className="font-medium text-primary hover:underline">
+                            Change your answers or boundary
+                        </Link>
+                    </p>
+
+                    <div className="grid gap-3 border-t border-border pt-4">
+                        <p className="text-sm">
+                            {checklist.complete ? (
+                                <span className="flex items-center gap-2 font-medium text-success">
+                                    <CircleCheck className="size-4" aria-hidden />
+                                    Everything we asked for is here. Send it back so we can carry on checking.
+                                </span>
+                            ) : (
+                                <span className="text-copy">When everything above is done, send your property back to us.</span>
+                            )}
+                        </p>
+                        <ActionForm action={resubmitProperty.bind(null, property.id)} submitLabel="Send back for review" />
+                    </div>
+                </section>
+            ) : null}
+
+            {property.documents.length > 0 ? (
+                <section aria-labelledby="documents-title" className="grid gap-3">
+                    <div className="flex flex-wrap items-baseline justify-between gap-2">
+                        <h2 id="documents-title" className="font-medium">
+                            Documents you sent
+                        </h2>
+                        <span className="text-xs text-muted-foreground">
+                            {decided} of {property.documents.length} checked
+                        </span>
+                    </div>
+                    <ul className="divide-y divide-border rounded-xl border border-border bg-card">
+                        {property.documents.map((document) => (
+                            <li key={document.id} className="grid gap-1 px-4 py-3">
+                                <div className="flex items-start justify-between gap-3">
+                                    <span className="flex min-w-0 items-start gap-2">
+                                        <FileText size={16} className="mt-0.5 shrink-0 text-muted-foreground" aria-hidden />
+                                        <span className="min-w-0 text-sm wrap-anywhere">{document.file_name}</span>
+                                    </span>
+                                    <DocumentOutcome status={document.verification_status} />
+                                </div>
+                                <p className="pl-6 text-xs text-muted-foreground">
+                                    {DOCUMENT_SLOT_OPTIONS.find((option) => option.value === document.slot)?.title ?? "Other document"} · Sent{" "}
+                                    {dateFormat.format(new Date(document.created_at))}
+                                </p>
+                                {document.review_note && document.verification_status !== "accepted" ? (
+                                    <p className="pl-6 text-sm text-copy">{document.review_note}</p>
+                                ) : null}
+                            </li>
+                        ))}
+                    </ul>
+                    <p className="flex items-start gap-2 text-xs text-muted-foreground">
+                        <LockKeyhole size={14} className="mt-0.5 shrink-0" aria-hidden />
+                        Only our verification team sees these. They are never on the public record.
+                    </p>
+                </section>
+            ) : null}
+
+            <Updates notifications={notifications} />
+        </OwnerShell>
     )
+}
+
+const dateFormat = new Intl.DateTimeFormat("en-GB", { day: "numeric", month: "short", year: "numeric" })
+
+// A document's review, in the owner's words
+const OUTCOMES: Record<string, { label: string; className: string }> = {
+    unreviewed: { label: "Waiting to be checked", className: "bg-muted text-copy" },
+    accepted: { label: "Accepted", className: "bg-success-soft text-success" },
+    rejected: { label: "Not accepted", className: "bg-destructive/10 text-destructive" },
+    superseded: { label: "Replaced", className: "bg-muted text-muted-foreground" },
+}
+
+function DocumentOutcome({ status }: { status: string }) {
+    const { label, className } = OUTCOMES[status] ?? OUTCOMES.unreviewed
+    return <span className={`shrink-0 rounded-full px-2 py-0.5 text-xs font-medium ${className}`}>{label}</span>
 }

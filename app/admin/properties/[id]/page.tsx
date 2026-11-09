@@ -21,6 +21,8 @@ import {
     labelFor,
 } from "@/lib/admin/labels"
 import { getPropertyForReview, type PropertyForReview } from "@/lib/admin/review"
+import { ChecklistMark } from "@/components/checklist-mark"
+import { changeRequestChecklist, type IdentityStatus } from "@/lib/change-requests"
 import { SECTION_IDS, blockerAnchor, checkpointAnchor, reviewProgress, type ReviewProgress } from "@/lib/admin/review-summary"
 import { requireAdmin } from "@/lib/auth/staff"
 import { cn } from "@/lib/utils"
@@ -53,6 +55,7 @@ import {
 import { BoundaryMap } from "./boundary-map"
 import { CheckpointForm } from "./checkpoint-form"
 import { DocumentViewer } from "./document-viewer"
+import { RequestItems } from "./request-items"
 import { ChoiceField, NoteField, TextField, YesNoField } from "./fields"
 
 export const metadata: Metadata = {
@@ -331,8 +334,9 @@ function DecisionPanel({
             <StatusActions
                 property={property}
                 requests={review.requests}
+                documents={review.documents}
+                identityStatus={(review.identity?.verification_status ?? null) as IdentityStatus}
                 blocked={review.blockers.length > 0}
-                identityVerified={review.identity?.verification_status === "verified"}
             />
         </div>
     )
@@ -407,14 +411,17 @@ function IdentityReview({ identity, profileId }: { identity: NonNullable<Propert
 function StatusActions({
     property,
     requests,
+    documents,
+    identityStatus,
     blocked,
-    identityVerified,
 }: {
     property: PropertyForReview["property"]
     requests: PropertyForReview["requests"]
+    documents: PropertyForReview["documents"]
+    identityStatus: IdentityStatus
     blocked: boolean
-    identityVerified: boolean
 }) {
+    const identityVerified = identityStatus === "verified"
     if (property.status === "submitted") {
         return <ActionForm action={startReview.bind(null, property.id)} submitLabel="Start review" />
     }
@@ -431,36 +438,12 @@ function StatusActions({
                         variant="outline"
                         className="mt-3"
                     >
-                        {/* What to ask for first, then the message, which every request needs */}
-                        <fieldset className="grid gap-3">
-                            <legend className="text-sm font-medium">What to ask for</legend>
-                            {DOCUMENT_SLOT_OPTIONS.map((option) => (
-                                <div key={option.value} className="grid gap-1.5">
-                                    <label className="flex items-center gap-2 text-sm">
-                                        <input type="checkbox" name="slots" value={option.value} className="size-4 accent-primary" />
-                                        {option.title}
-                                    </label>
-                                    <NoteField
-                                        id={`changes-note-${option.value}`}
-                                        name={`note_${option.value}`}
-                                        label="What to send, and why"
-                                        hint="The owner sees this."
-                                    />
-                                </div>
-                            ))}
-                            {identityVerified ? null : (
-                                <label className="flex items-center gap-2 text-sm">
-                                    <input type="checkbox" name="identity" className="size-4 accent-primary" />
-                                    Their identity document (a Ghana Card or passport)
-                                </label>
-                            )}
-                        </fieldset>
+                        <RequestItems offerIdentity={!identityVerified} />
                         <NoteField
                             id="changes-message"
                             name="message"
-                            label="Message to the owner"
-                            hint="Shown to the owner under “We need something from you”, whatever you ask for."
-                            required
+                            label="Message to the owner (optional)"
+                            hint="Shown above the list. Leave it empty and they see: “We need a few more things before we can carry on checking your property. Everything we need is listed below.”"
                         />
                     </ActionForm>
                 </details>
@@ -469,20 +452,52 @@ function StatusActions({
     }
 
     if (property.status === "action_required") {
-        const open = requests.filter((request) => request.fulfilled_at === null)
+        // What was asked for, ticked off as it arrives; the same rule the owner's page uses
+        const checklist = changeRequestChecklist({
+            openRequests: requests.filter((request) => request.fulfilled_at === null),
+            documents,
+            identityRequested: property.identity_requested,
+            identityStatus,
+        })
         return (
-            <div className="grid gap-2 text-sm">
-                <p>
-                    <span className="text-muted-foreground">Waiting on the owner:</span> {property.changes_requested_message ?? "—"}
-                </p>
-                <ul className="list-disc pl-5 text-copy">
-                    {open.map((request) => (
-                        <li key={request.id}>
-                            {DOCUMENT_SLOT_OPTIONS.find((option) => option.value === request.slot)?.title ?? request.slot}: {request.note}
+            <div className="grid gap-3 text-sm">
+                <p className="font-medium">Waiting on the owner</p>
+                {property.changes_requested_message ? (
+                    <p className="rounded-lg bg-muted/50 p-2.5 text-copy">{property.changes_requested_message}</p>
+                ) : null}
+                <ul className="grid gap-2">
+                    {checklist.items.map((item) => (
+                        <li key={item.kind === "document" ? item.id : "identity"} className="flex gap-2">
+                            <ChecklistMark done={item.done} className="size-4" />
+                            <span className="min-w-0">
+                                {item.kind === "document" ? (
+                                    <>
+                                        {DOCUMENT_SLOT_OPTIONS.find((option) => option.value === item.slot)?.title ?? item.slot}
+                                        <span className="text-muted-foreground">: {item.done ? "uploaded" : item.note}</span>
+                                    </>
+                                ) : (
+                                    <>
+                                        Identity document
+                                        <span className="text-muted-foreground">
+                                            : {identityStatus === "verified"
+                                                ? "verified"
+                                                : identityStatus === "unreviewed"
+                                                  ? "sent, review it under Owner and identity"
+                                                  : identityStatus === "rejected"
+                                                    ? "rejected, waiting for a new one"
+                                                    : "not added yet"}
+                                        </span>
+                                    </>
+                                )}
+                            </span>
                         </li>
                     ))}
-                    {property.identity_requested ? <li>Their identity document</li> : null}
                 </ul>
+                <p className={checklist.complete ? "text-success" : "text-copy"}>
+                    {checklist.complete
+                        ? "Everything asked for has arrived. The owner still has to press “Send back for review” before you can carry on."
+                        : "The owner sends it back once everything is in. You can review their identity document meanwhile."}
+                </p>
             </div>
         )
     }

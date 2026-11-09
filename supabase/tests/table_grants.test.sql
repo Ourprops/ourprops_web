@@ -3,11 +3,12 @@
 begin;
 create extension if not exists pgtap with schema extensions;
 
-select plan(10);
+select plan(11);
 
 -- every privilege anon or authenticated still holds on the tables that should be closed to them.
 -- the admin console reads checkpoints, overlap flags and the audit log as a signed-in user, so
--- authenticated keeps select on those three (checked below); a policy limits it to admins.
+-- authenticated keeps select on those three (checked below); a policy limits it to admins. owners read their own
+-- notifications, so authenticated has select on those too, limited by a policy to the recipient.
 create temporary table leftover_privileges as
 select tables.name as table_name, roles.name as role_name, privileges.name as privilege
 from unnest(array['audit_logs', 'data_room_access_requests', 'notifications', 'property_checkpoints',
@@ -21,7 +22,7 @@ where has_table_privilege(roles.name, 'public.' || tables.name, privileges.name)
 select is_empty(
   $$ select * from leftover_privileges
      where not (role_name = 'authenticated' and privilege = 'SELECT'
-                and table_name in ('audit_logs', 'property_checkpoints', 'property_overlap_flags')) $$,
+                and table_name in ('audit_logs', 'property_checkpoints', 'property_overlap_flags', 'notifications')) $$,
   'anon and authenticated hold no privileges on the review, audit and other unused tables, beyond the admin reads'
 );
 
@@ -33,6 +34,16 @@ select ok(
       and (cmd <> 'SELECT' or qual not like '%staff_role()%')
   ),
   'the only policies on checkpoints, overlap flags and the audit log are admin reads'
+);
+
+select ok(
+  (select count(*) from pg_policies where schemaname = 'public' and tablename = 'notifications') = 1
+  and exists (
+    select 1 from pg_policies
+    where schemaname = 'public' and tablename = 'notifications' and policyname = 'notifications_select_own'
+      and cmd = 'SELECT' and qual = '(recipient_id = ( SELECT auth.uid() AS uid))'
+  ),
+  'the only policy on notifications lets an owner read their own'
 );
 
 select ok(

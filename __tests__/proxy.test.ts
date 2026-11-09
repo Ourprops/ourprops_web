@@ -65,7 +65,7 @@ describe('proxy', () => {
             session.nextLevel = null
         })
 
-        test.each(['/admin', '/admin/properties/abc', '/account/security', '/account/dashboard', '/account/identity'])(
+        test.each(['/admin', '/admin/properties/abc', '/account/security', '/account/dashboard', '/account/identity', '/account/details'])(
             'sends %s to the login page',
             async (path) => {
                 expect(await redirectFor(path)).toBe('/account/login')
