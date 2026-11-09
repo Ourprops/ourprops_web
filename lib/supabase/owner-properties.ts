@@ -45,6 +45,8 @@ export type OwnProperty = {
     openRequests: { id: string; slot: string; note: string; created_at: string }[]
     // Documents uploaded since a request for their checklist item: the ones the owner can still take back
     uploads: { id: string; slot: string; file_name: string }[]
+    // Every document's checklist item and upload time, for working out which requests have been answered
+    documents: { slot: string; created_at: string }[]
 }
 
 type DocumentRow = { id: string; slot: string; file_name: string; created_at: string }
@@ -81,7 +83,15 @@ export async function getOwnProperty(supabase: SupabaseClient, ownerId: string, 
     const openRequests = (requests.data ?? []) as OwnProperty["openRequests"]
     const uploads = requestedUploads(openRequests, (documents.data ?? []) as DocumentRow[])
 
-    return { ...(property as Omit<OwnProperty, "openRequests" | "uploads">), openRequests, uploads }
+
+    const documentRows = (documents.data ?? []) as DocumentRow[]
+
+    return {
+        ...(property as Omit<OwnProperty, "openRequests" | "uploads" | "documents">),
+        openRequests,
+        uploads,
+        documents: documentRows.map(({ slot, created_at }) => ({ slot, created_at })),
+    }
 }
 
 /**

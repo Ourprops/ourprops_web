@@ -2,7 +2,13 @@ import type { Metadata } from "next"
 import Link from "next/link"
 import { notFound, redirect } from "next/navigation"
 
+import { CircleCheck } from "lucide-react"
+
 import { ActionForm } from "@/components/action-form"
+import { ChecklistMark } from "@/components/checklist-mark"
+import { buttonVariants } from "@/components/ui/button"
+import { changeRequestChecklist } from "@/lib/change-requests"
+import { getOwnIdentityDocument } from "@/lib/supabase/identity-documents"
 import { OWNER_STATUS_LABELS, getOwnProperty } from "@/lib/supabase/owner-properties"
 import { createClient } from "@/lib/supabase/server"
 import { DOCUMENT_SLOT_OPTIONS } from "@/lib/types/property"
@@ -30,6 +36,17 @@ export default async function OwnPropertyPage({ params }: PageProps<"/account/da
     // A draft is still being filled in, in the registration flow
     if (property.status === "draft") redirect(`/account/dashboard/properties/new?draft=${property.id}`)
 
+    // What we asked for, ticked off as it arrives, so the last step (sending it back) is plain to see
+    const checklist =
+        property.status === "action_required"
+            ? changeRequestChecklist({
+                  openRequests: property.openRequests,
+                  documents: property.documents,
+                  identityRequested: property.identity_requested,
+                  identityStatus: (await getOwnIdentityDocument(supabase, ownerId))?.verification_status ?? null,
+              })
+            : null
+
     return (
         <main className="mx-auto grid max-w-2xl gap-6 px-4 py-8 sm:px-6">
             <Link href="/account/dashboard" className="text-sm text-copy hover:text-primary">
@@ -44,50 +61,82 @@ export default async function OwnPropertyPage({ params }: PageProps<"/account/da
                 ) : null}
             </header>
 
-            {property.status === "action_required" ? (
-                <section className="grid gap-4 rounded-xl border border-border bg-card p-4 sm:p-5">
-                    {property.changes_requested_message ? <p>{property.changes_requested_message}</p> : null}
+            {property.status === "action_required" && checklist ? (
+                <section className="grid gap-5 rounded-xl border border-warning bg-card p-4 sm:p-5">
+                    <div className="grid gap-2">
+                        <h2 className="font-medium">We need something from you</h2>
+                        {property.changes_requested_message ? (
+                            <p className="rounded-lg bg-muted/50 p-3 text-sm text-copy">{property.changes_requested_message}</p>
+                        ) : null}
+                    </div>
+
+                    <ol className="grid gap-3">
+                        {checklist.items.map((item) => (
+                            <li key={item.kind === "document" ? item.id : "identity"} className="flex gap-3 rounded-lg border border-border p-3">
+                                <ChecklistMark done={item.done} />
+                                <div className="grid min-w-0 flex-1 gap-1.5">
+                                    {item.kind === "document" ? (
+                                        <>
+                                            <p className="font-medium">
+                                                {DOCUMENT_SLOT_OPTIONS.find((option) => option.value === item.slot)?.title ?? "A document"}
+                                            </p>
+                                            <p className="text-sm text-copy">{item.note}</p>
+                                            <RequestUpload
+                                                propertyId={property.id}
+                                                slot={documentSlotSchema.parse(item.slot)}
+                                                uploads={property.uploads.filter((upload) => upload.slot === item.slot)}
+                                            />
+                                        </>
+                                    ) : (
+                                        <>
+                                            <p className="font-medium">Your identity document</p>
+                                            {item.status === "verified" ? (
+                                                <p className="text-sm text-success">Verified. Nothing more to do here.</p>
+                                            ) : item.status === "unreviewed" ? (
+                                                <p className="text-sm text-copy">Sent. We&apos;re checking it.</p>
+                                            ) : (
+                                                <>
+                                                    <p className="text-sm text-copy">
+                                                        {item.status === "rejected"
+                                                            ? "We couldn't accept the one you sent. Please send it again."
+                                                            : "Your Ghana Card, or your passport if you live abroad."}
+                                                    </p>
+                                                    <Link
+                                                        href="/account/identity"
+                                                        className={buttonVariants({ variant: "outline", className: "h-10 w-fit" })}
+                                                    >
+                                                        {item.status === "rejected" ? "Send it again" : "Add your identity document"}
+                                                    </Link>
+                                                </>
+                                            )}
+                                        </>
+                                    )}
+                                </div>
+                            </li>
+                        ))}
+                    </ol>
 
                     {/* The registration flow, in its changes mode: answers and boundary only */}
-                    <Link
-                        href={`/account/dashboard/properties/new?draft=${property.id}`}
-                        className="w-fit text-sm font-medium text-primary hover:underline"
-                    >
-                        Change your answers or boundary
-                    </Link>
+                    <p className="text-sm text-copy">
+                        Need to correct something you told us?{" "}
+                        <Link href={`/account/dashboard/properties/new?draft=${property.id}`} className="font-medium text-primary hover:underline">
+                            Change your answers or boundary
+                        </Link>
+                    </p>
 
-                    {property.openRequests.length > 0 ? (
-                        <ul className="grid gap-4">
-                            {property.openRequests.map((request) => {
-                                const slot = documentSlotSchema.parse(request.slot)
-                                return (
-                                    <li key={request.id} className="grid gap-2 border-t border-border pt-4 first:border-t-0 first:pt-0">
-                                        <p className="font-medium">
-                                            {DOCUMENT_SLOT_OPTIONS.find((option) => option.value === slot)?.title ?? slot}
-                                        </p>
-                                        <p className="text-sm text-copy">{request.note}</p>
-                                        <RequestUpload
-                                            propertyId={property.id}
-                                            slot={slot}
-                                            uploads={property.uploads.filter((upload) => upload.slot === slot)}
-                                        />
-                                    </li>
-                                )
-                            })}
-                        </ul>
-                    ) : null}
-
-                    {property.identity_requested ? (
-                        <p className="text-sm text-copy">
-                            We also need your identity document.{" "}
-                            <Link href="/account/identity" className="font-medium text-primary hover:underline">
-                                Add your Ghana Card or passport
-                            </Link>
-                            , then send the property back for review.
+                    <div className="grid gap-3 border-t border-border pt-4">
+                        <p className="text-sm">
+                            {checklist.complete ? (
+                                <span className="flex items-center gap-2 font-medium text-success">
+                                    <CircleCheck className="size-4" aria-hidden />
+                                    Everything we asked for is here. Send it back so we can carry on checking.
+                                </span>
+                            ) : (
+                                <span className="text-copy">When everything above is done, send your property back to us.</span>
+                            )}
                         </p>
-                    ) : null}
-
-                    <ActionForm action={resubmitProperty.bind(null, property.id)} submitLabel="Send back for review" />
+                        <ActionForm action={resubmitProperty.bind(null, property.id)} submitLabel="Send back for review" />
+                    </div>
                 </section>
             ) : null}
         </main>

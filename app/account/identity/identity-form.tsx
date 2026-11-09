@@ -34,6 +34,8 @@ export function IdentityForm({ profileId }: { profileId: string }) {
     const [documentType, setDocumentType] = useState<DocumentType>("ghana_card")
     const [file, setFile] = useState<File | null>(null)
     const [error, setError] = useState<string | null>(null)
+    // What the owner is waiting on: the photo going up is the slow part on a phone connection, so it gets its own words
+    const [stage, setStage] = useState<"uploading" | "saving">("uploading")
     const [pending, startTransition] = useTransition()
     const countries = useMemo(() => countryOptions(), [])
 
@@ -57,6 +59,7 @@ export function IdentityForm({ profileId }: { profileId: string }) {
         if (!file) return
 
         startTransition(async () => {
+            setStage("uploading")
             const mimeType = identityMimeType(file)
             const storage = createClient().storage.from(IDENTITY_DOCUMENTS_BUCKET)
             const path = identityFilePath(profileId, mimeType)
@@ -67,6 +70,7 @@ export function IdentityForm({ profileId }: { profileId: string }) {
                 return
             }
 
+            setStage("saving")
             formData.set("file_path", path)
             const result = await saveIdentityDocument(formData)
             if (result?.error) {
@@ -77,82 +81,85 @@ export function IdentityForm({ profileId }: { profileId: string }) {
     }
 
     return (
-        <form onSubmit={submit} className="grid gap-6">
-            <fieldset className="grid gap-2">
-                <legend className="mb-2 text-sm font-medium">Which document will you use?</legend>
-                <div className="grid gap-3 sm:grid-cols-2">
-                    {CHOICES.map(({ value, title, text, icon: Icon }) => (
-                        <label
-                            key={value}
-                            className={cn(
-                                "flex cursor-pointer items-start gap-3 rounded-xl border p-4 transition-colors has-[:focus-visible]:ring-3 has-[:focus-visible]:ring-ring/50",
-                                documentType === value ? "border-primary bg-primary/5" : "border-border hover:bg-muted/50"
-                            )}
-                        >
-                            <input
-                                type="radio"
-                                name="document_type"
-                                value={value}
-                                checked={documentType === value}
-                                onChange={() => setDocumentType(value)}
-                                className="sr-only"
+        <form onSubmit={submit} className="grid gap-6" aria-busy={pending}>
+            {/* Locked while saving, so nothing changes under the upload. On success the page shows what was sent. */}
+            <fieldset disabled={pending} className="grid min-w-0 gap-6">
+                <fieldset className="grid gap-2">
+                    <legend className="mb-2 text-sm font-medium">Which document will you use?</legend>
+                    <div className="grid gap-3 sm:grid-cols-2">
+                        {CHOICES.map(({ value, title, text, icon: Icon }) => (
+                            <label
+                                key={value}
+                                className={cn(
+                                    "flex cursor-pointer items-start gap-3 rounded-xl border p-4 transition-colors has-[:focus-visible]:ring-3 has-[:focus-visible]:ring-ring/50",
+                                    documentType === value ? "border-primary bg-primary/5" : "border-border hover:bg-muted/50"
+                                )}
+                            >
+                                <input
+                                    type="radio"
+                                    name="document_type"
+                                    value={value}
+                                    checked={documentType === value}
+                                    onChange={() => setDocumentType(value)}
+                                    className="sr-only"
+                                />
+                                <Icon className={cn("mt-0.5 size-5 shrink-0", documentType === value ? "text-primary" : "text-muted-foreground")} aria-hidden />
+                                <span className="grid gap-0.5">
+                                    <span className="font-medium">{title}</span>
+                                    <span className="text-xs text-muted-foreground">{text}</span>
+                                </span>
+                            </label>
+                        ))}
+                    </div>
+                </fieldset>
+
+                {documentType === "ghana_card" ? (
+                    <GhanaCardInput />
+                ) : (
+                    <>
+                        <div className="grid gap-1.5">
+                            <Label htmlFor="issuing_country">Country that issued it</Label>
+                            <select id="issuing_country" name="issuing_country" defaultValue="GH" className={selectClassName}>
+                                {countries.map(([code, name]) => (
+                                    <option key={code} value={code}>
+                                        {name}
+                                    </option>
+                                ))}
+                            </select>
+                        </div>
+                        <div className="grid gap-1.5">
+                            <Label htmlFor="document_number">Passport number</Label>
+                            <Input
+                                id="document_number"
+                                name="document_number"
+                                required
+                                autoComplete="off"
+                                autoCapitalize="characters"
+                                spellCheck={false}
+                                aria-describedby="document_number-hint"
+                                className="text-data h-11 text-base tracking-wide uppercase sm:w-72"
                             />
-                            <Icon className={cn("mt-0.5 size-5 shrink-0", documentType === value ? "text-primary" : "text-muted-foreground")} aria-hidden />
-                            <span className="grid gap-0.5">
-                                <span className="font-medium">{title}</span>
-                                <span className="text-xs text-muted-foreground">{text}</span>
-                            </span>
-                        </label>
-                    ))}
+                            <p id="document_number-hint" className="text-xs text-muted-foreground">
+                                On the photo page, usually at the top right.
+                            </p>
+                        </div>
+                    </>
+                )}
+
+                <div className="grid gap-1.5">
+                    <Label htmlFor="expires_on">Expiry date</Label>
+                    <Input id="expires_on" name="expires_on" type="date" required className="h-11 w-full text-base sm:w-56 sm:text-sm" />
+                    <p className="text-xs text-muted-foreground">
+                        {documentType === "ghana_card" ? "On the front, under “Date of Expiry”." : "On the photo page, under “Date of expiry”."}
+                    </p>
                 </div>
+
+                <PhotoPicker
+                    label={documentType === "ghana_card" ? "Photo of the front of your card" : "Photo of your passport's photo page"}
+                    file={file}
+                    onChange={setFile}
+                />
             </fieldset>
-
-            {documentType === "ghana_card" ? (
-                <GhanaCardInput />
-            ) : (
-                <>
-                    <div className="grid gap-1.5">
-                        <Label htmlFor="issuing_country">Country that issued it</Label>
-                        <select id="issuing_country" name="issuing_country" defaultValue="GH" className={selectClassName}>
-                            {countries.map(([code, name]) => (
-                                <option key={code} value={code}>
-                                    {name}
-                                </option>
-                            ))}
-                        </select>
-                    </div>
-                    <div className="grid gap-1.5">
-                        <Label htmlFor="document_number">Passport number</Label>
-                        <Input
-                            id="document_number"
-                            name="document_number"
-                            required
-                            autoComplete="off"
-                            autoCapitalize="characters"
-                            spellCheck={false}
-                            aria-describedby="document_number-hint"
-                            className="text-data h-11 text-base tracking-wide uppercase sm:w-72"
-                        />
-                        <p id="document_number-hint" className="text-xs text-muted-foreground">
-                            On the photo page, usually at the top right.
-                        </p>
-                    </div>
-                </>
-            )}
-
-            <div className="grid gap-1.5">
-                <Label htmlFor="expires_on">Expiry date</Label>
-                <Input id="expires_on" name="expires_on" type="date" required className="h-11 w-full text-base sm:w-56 sm:text-sm" />
-                <p className="text-xs text-muted-foreground">
-                    {documentType === "ghana_card" ? "On the front, under “Date of Expiry”." : "On the photo page, under “Date of expiry”."}
-                </p>
-            </div>
-
-            <PhotoPicker
-                label={documentType === "ghana_card" ? "Photo of the front of your card" : "Photo of your passport's photo page"}
-                file={file}
-                onChange={setFile}
-            />
 
             <div className="grid gap-3">
                 {error ? (
@@ -162,7 +169,7 @@ export function IdentityForm({ profileId }: { profileId: string }) {
                 ) : null}
                 <Button type="submit" size="lg" disabled={pending} className="h-11 w-full sm:w-fit sm:px-6">
                     {pending ? <Spinner /> : null}
-                    {pending ? "Saving…" : "Save my document"}
+                    {!pending ? "Send my document" : stage === "uploading" ? "Uploading your photo…" : "Saving your details…"}
                 </Button>
             </div>
         </form>

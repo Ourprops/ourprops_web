@@ -14,7 +14,7 @@ import {
     updateEncumbrance,
 } from '../app/admin/properties/[id]/actions'
 import { actionErrorMessage, GENERIC_ACTION_ERROR } from '../lib/action-errors'
-import { MAX_NOTE_LENGTH } from '../lib/validators/admin'
+import { DEFAULT_CHANGES_MESSAGE, MAX_NOTE_LENGTH } from '../lib/validators/admin'
 
 const PROPERTY = 'aaaaaaaa-0000-4000-8000-000000000001'
 
@@ -212,6 +212,17 @@ const ACTIONS = [
         },
     },
     {
+        name: 'requestChanges with no message, which falls back to the default',
+        call: () => requestChanges(PROPERTY, null, form({ message: '  ', slots: ['site_plan'], note_site_plan: 'Clearer' })),
+        fn: 'request_changes',
+        args: {
+            property_id: PROPERTY,
+            message: DEFAULT_CHANGES_MESSAGE,
+            documents: [{ slot: 'site_plan', note: 'Clearer' }],
+            identity: false,
+        },
+    },
+    {
         name: 'requestChanges for the identity document only',
         call: () => requestChanges(PROPERTY, null, form({ message: 'Please add your Ghana Card.', identity: 'on' })),
         fn: 'request_changes',
@@ -276,7 +287,6 @@ describe('the other review actions', () => {
         ['recordEncumbrance without saying whether it blocks', () => recordEncumbrance(PROPERTY, null, form({ kind: 'mortgage', reference: 'LC/1' })), 'Say whether it blocks activation'],
         ['recordEncumbrance with a blank reference', () => recordEncumbrance(PROPERTY, null, form({ kind: 'mortgage', reference: '   ', blocks_activation: 'no' })), 'Enter the suit number or registry reference'],
         ['requestChanges with nothing ticked', () => requestChanges(PROPERTY, null, form({ message: 'Please send' })), "Ask for at least one document, or for the owner's identity document"],
-        ['requestChanges without a message', () => requestChanges(PROPERTY, null, form({ message: '  ', slots: ['site_plan'], note_site_plan: 'Clearer' })), 'Write the message the owner will see'],
         ['requestChanges with a ticked item but no note', () => requestChanges(PROPERTY, null, form({ message: 'Please send', slots: ['site_plan'] })), 'Say what to send for each item you ask for'],
         ['requestChanges for an item that isn\'t on the checklist', () => requestChanges(PROPERTY, null, form({ message: 'Please send', slots: ['photos'], note_photos: 'x' })), 'Choose checklist items from the list'],
         ['updateEncumbrance with an unknown status', () => updateEncumbrance(ENCUMBRANCE, null, form({ blocks_activation: 'no', status: 'closed' })), 'Choose open or resolved'],
