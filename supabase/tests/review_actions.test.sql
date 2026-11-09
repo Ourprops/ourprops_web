@@ -4,7 +4,7 @@
 begin;
 create extension if not exists pgtap with schema extensions;
 
-select plan(82);
+select plan(83);
 
 -- Ama and Yaw are owners. Kofi is an admin and Efua a partner verifier, both with a verified authenticator app.
 -- set up as superuser, because users can't make themselves staff, write documents' review fields or flags.
@@ -292,9 +292,14 @@ select throws_ok($$ select public.approve_property('aaaaaaaa-0000-0000-0000-0000
 reset role;
 select results_eq(
   $$ select recipient_id, type, body not like '%Kofi%' from public.notifications
-     where entity_id = 'aaaaaaaa-0000-0000-0000-000000000001' $$,
+     where entity_id = 'aaaaaaaa-0000-0000-0000-000000000001' and type = 'property.approved' $$,
   $$ values ('11111111-1111-1111-1111-111111111111'::uuid, 'property.approved'::text, true) $$,
   'the owner is told it is verified, without the admin''s name');
+select results_eq(
+  $$ select title from public.notifications
+     where entity_id = 'aaaaaaaa-0000-0000-0000-000000000001' and type = 'property.under_review' $$,
+  $$ values ('We''ve started checking your property'::text) $$,
+  'the owner was told when the review started');
 set local role authenticated;
 
 -- suspend_property

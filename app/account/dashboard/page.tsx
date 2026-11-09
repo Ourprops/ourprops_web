@@ -2,10 +2,12 @@ import Link from "next/link"
 import { redirect } from "next/navigation"
 
 import { getOwnIdentityDocument } from "@/lib/supabase/identity-documents"
+import { listRecentNotifications } from "@/lib/supabase/notifications"
 import { OWNER_STATUS_LABELS, listOwnProperties } from "@/lib/supabase/owner-properties"
 import { createClient } from "@/lib/supabase/server"
 
 import { IdentityCard } from "./identity-card"
+import { Updates } from "./updates"
 
 // A plain list for now, so owners can find a property that needs something from them
 export default async function DashboardPage() {
@@ -14,13 +16,16 @@ export default async function DashboardPage() {
     const ownerId = data?.claims?.sub
     if (!ownerId) redirect("/account/login")
 
-    const [properties, identity] = await Promise.all([
+    const [properties, identity, notifications] = await Promise.all([
         listOwnProperties(supabase, ownerId),
         getOwnIdentityDocument(supabase, ownerId),
+        listRecentNotifications(supabase),
     ])
 
     return (
         <main className="mx-auto grid max-w-2xl gap-6 px-4 py-8 sm:px-6">
+            <Updates notifications={notifications} />
+
             <IdentityCard status={identity?.verification_status ?? null} />
 
             <div className="flex flex-wrap items-center justify-between gap-3">
