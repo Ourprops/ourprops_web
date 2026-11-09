@@ -3,8 +3,10 @@ import { BadgeCheck, CircleCheck, LockKeyhole } from "lucide-react"
 import Link from "next/link"
 import { redirect } from "next/navigation"
 
+import { OwnerShell } from "@/components/owner/owner-shell"
 import { buttonVariants } from "@/components/ui/button"
 import { getOwnIdentityDocument } from "@/lib/supabase/identity-documents"
+import { getOwnProfile } from "@/lib/supabase/profile"
 import { createClient } from "@/lib/supabase/server"
 import { IDENTITY_DOCUMENT_TYPES } from "@/lib/validators/identity"
 
@@ -27,7 +29,8 @@ export default async function IdentityPage() {
     const profileId = data?.claims?.sub
     if (!profileId) redirect("/account/login")
 
-    const [document, waiting] = await Promise.all([
+    const [profile, document, waiting] = await Promise.all([
+        getOwnProfile(supabase, profileId),
         getOwnIdentityDocument(supabase, profileId),
         // Properties we asked for this document for: they go back to review only when the owner sends them back
         supabase
@@ -40,9 +43,9 @@ export default async function IdentityPage() {
     ])
 
     return (
-        <main className="mx-auto grid max-w-2xl gap-6 px-4 py-8 sm:px-6">
-            <Link href="/account/dashboard" className="w-fit text-sm text-primary hover:underline">
-                Back to your properties
+        <OwnerShell fullName={profile?.full_name ?? "Account"}>
+            <Link href="/account/dashboard" className="w-fit text-sm text-copy hover:text-primary">
+                ← Your properties
             </Link>
             <div className="grid gap-2">
                 <h1 className="text-heading text-primary">Verify your identity</h1>
@@ -127,7 +130,7 @@ export default async function IdentityPage() {
                     only the type of document, the country, the expiry date and when we checked it.
                 </p>
             )}
-        </main>
+        </OwnerShell>
     )
 }
 

@@ -42,7 +42,7 @@ export function Updates({ notifications }: { notifications: OwnNotification[] })
     return (
         <section aria-labelledby="updates-title" className="grid gap-3">
             <h2 id="updates-title" className="font-medium">
-                Updates
+                Recent updates
             </h2>
             <ul className="divide-y divide-border rounded-xl border border-border bg-card">
                 {notifications.map((notification) => {

@@ -13,12 +13,11 @@ export type OwnNotification = {
 }
 
 /** The signed-in user's latest notifications, newest first. Row level security limits them to their own. */
-export async function listRecentNotifications(supabase: Supabase, limit = 5): Promise<OwnNotification[]> {
-    const { data, error } = await supabase
-        .from("notifications")
-        .select("id, type, title, body, action_url, read_at, created_at")
-        .order("created_at", { ascending: false })
-        .limit(limit)
+export async function listRecentNotifications(supabase: Supabase, limit = 5, propertyId?: string): Promise<OwnNotification[]> {
+    let query = supabase.from("notifications").select("id, type, title, body, action_url, read_at, created_at")
+    // One property's updates only, for its own page
+    if (propertyId) query = query.eq("entity_type", "property").eq("entity_id", propertyId)
+    const { data, error } = await query.order("created_at", { ascending: false }).limit(limit)
     if (error) throw error
     return (data ?? []) as OwnNotification[]
 }

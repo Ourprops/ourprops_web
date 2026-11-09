@@ -2,18 +2,25 @@ import type { Metadata } from "next"
 import Link from "next/link"
 import { notFound, redirect } from "next/navigation"
 
-import { CircleCheck } from "lucide-react"
+import { BadgeCheck, CircleCheck, FileText, LockKeyhole, MapPin } from "lucide-react"
 
 import { ActionForm } from "@/components/action-form"
 import { ChecklistMark } from "@/components/checklist-mark"
+import { OwnerShell } from "@/components/owner/owner-shell"
+import { PropertyProgress } from "@/components/owner/property-progress"
+import { ShareRecord } from "@/components/owner/share-record"
 import { buttonVariants } from "@/components/ui/button"
 import { changeRequestChecklist } from "@/lib/change-requests"
 import { getOwnIdentityDocument } from "@/lib/supabase/identity-documents"
-import { OWNER_STATUS_LABELS, getOwnProperty } from "@/lib/supabase/owner-properties"
+import { STATUS_EXPLAINED } from "@/lib/owner/dashboard"
+import { listRecentNotifications } from "@/lib/supabase/notifications"
+import { getOwnProperty } from "@/lib/supabase/owner-properties"
+import { getOwnProfile } from "@/lib/supabase/profile"
 import { createClient } from "@/lib/supabase/server"
 import { DOCUMENT_SLOT_OPTIONS } from "@/lib/types/property"
 import { documentSlotSchema } from "@/lib/validators/property"
 
+import { Updates } from "../../updates"
 import { resubmitProperty } from "./actions"
 import { RequestUpload } from "./request-upload"
 
@@ -36,6 +43,11 @@ export default async function OwnPropertyPage({ params }: PageProps<"/account/da
     // A draft is still being filled in, in the registration flow
     if (property.status === "draft") redirect(`/account/dashboard/properties/new?draft=${property.id}`)
 
+    const [profile, notifications] = await Promise.all([
+        getOwnProfile(supabase, ownerId),
+        listRecentNotifications(supabase, 5, property.id),
+    ])
+
     // What we asked for, ticked off as it arrives, so the last step (sending it back) is plain to see
     const checklist =
         property.status === "action_required"
@@ -47,19 +59,63 @@ export default async function OwnPropertyPage({ params }: PageProps<"/account/da
               })
             : null
 
+    const explained = STATUS_EXPLAINED[property.status] ?? { label: property.status, next: "" }
+    const place = [property.city_town, property.district_municipality, property.region].filter(Boolean).join(", ")
+    const decided = property.documents.filter((document) => document.verification_status !== "unreviewed").length
+
     return (
-        <main className="mx-auto grid max-w-2xl gap-6 px-4 py-8 sm:px-6">
-            <Link href="/account/dashboard" className="text-sm text-copy hover:text-primary">
+        <OwnerShell fullName={profile?.full_name ?? "Account"}>
+            <Link href="/account/dashboard" className="w-fit text-sm text-copy hover:text-primary">
                 ← Your properties
             </Link>
 
-            <header>
-                <h1 className="text-heading text-primary">{property.name ?? "Untitled property"}</h1>
-                <p className="mt-1 text-copy">{OWNER_STATUS_LABELS[property.status] ?? property.status}</p>
-                {property.status === "suspended" && property.suspension_reason ? (
-                    <p className="mt-1 text-copy">{property.suspension_reason}</p>
-                ) : null}
+            <header className="grid gap-4 rounded-xl border border-border bg-card p-4 sm:p-5">
+                <div className="grid gap-1">
+                    <h1 className="text-heading text-primary wrap-anywhere">{property.name ?? "Untitled property"}</h1>
+                    <p className="flex flex-wrap items-center gap-x-3 gap-y-1 text-sm text-copy">
+                        {place ? (
+                            <span className="flex items-center gap-1">
+                                <MapPin size={14} aria-hidden /> {place}
+                            </span>
+                        ) : null}
+                        <span>
+                            Reference <span className="text-data font-medium text-foreground">{property.prop_id}</span>
+                        </span>
+                    </p>
+                </div>
+                <PropertyProgress status={property.status} size="md" />
+                <div className="grid gap-0.5">
+                    <p className="font-medium">{explained.label}</p>
+                    <p className="text-sm text-copy">{explained.next}</p>
+                    {property.status === "suspended" && property.suspension_reason ? (
+                        <p className="mt-1 rounded-lg bg-muted/50 p-3 text-sm text-copy">{property.suspension_reason}</p>
+                    ) : null}
+                </div>
             </header>
+
+            {property.status === "active" ? (
+                <section className="grid gap-4 rounded-xl border border-success bg-card p-4 sm:p-5">
+                    <div className="grid gap-1">
+                        <h2 className="flex items-center gap-2 font-medium">
+                            <BadgeCheck className="size-5 text-success" aria-hidden /> Verified by OurProps
+                        </h2>
+                        <p className="text-sm text-copy">
+                            Our team has checked the evidence for this property. Share its public record with buyers, tenants or family,
+                            so they can see what we checked. Your documents stay private.
+                        </p>
+                        <p className="text-xs text-muted-foreground">
+                            Verified is OurProps&apos; review status. It isn&apos;t a guarantee of legal title, and doesn&apos;t replace a
+                            Lands Commission search or legal advice.
+                        </p>
+                    </div>
+                    <div className="flex flex-wrap gap-2">
+                        <Link href={`/record/${property.prop_id}`} className={buttonVariants({ className: "h-10" })}>
+                            View public record
+                        </Link>
+                        <ShareRecord path={`/record/${property.prop_id}`} name={property.name ?? "My property"} />
+                    </div>
+                </section>
+            ) : null}
 
             {property.status === "action_required" && checklist ? (
                 <section className="grid gap-5 rounded-xl border border-warning bg-card p-4 sm:p-5">
@@ -139,6 +195,60 @@ export default async function OwnPropertyPage({ params }: PageProps<"/account/da
                     </div>
                 </section>
             ) : null}
-        </main>
+
+            {property.documents.length > 0 ? (
+                <section aria-labelledby="documents-title" className="grid gap-3">
+                    <div className="flex flex-wrap items-baseline justify-between gap-2">
+                        <h2 id="documents-title" className="font-medium">
+                            Documents you sent
+                        </h2>
+                        <span className="text-xs text-muted-foreground">
+                            {decided} of {property.documents.length} checked
+                        </span>
+                    </div>
+                    <ul className="divide-y divide-border rounded-xl border border-border bg-card">
+                        {property.documents.map((document) => (
+                            <li key={document.id} className="grid gap-1 px-4 py-3">
+                                <div className="flex items-start justify-between gap-3">
+                                    <span className="flex min-w-0 items-start gap-2">
+                                        <FileText size={16} className="mt-0.5 shrink-0 text-muted-foreground" aria-hidden />
+                                        <span className="min-w-0 text-sm wrap-anywhere">{document.file_name}</span>
+                                    </span>
+                                    <DocumentOutcome status={document.verification_status} />
+                                </div>
+                                <p className="pl-6 text-xs text-muted-foreground">
+                                    {DOCUMENT_SLOT_OPTIONS.find((option) => option.value === document.slot)?.title ?? "Other document"} · Sent{" "}
+                                    {dateFormat.format(new Date(document.created_at))}
+                                </p>
+                                {document.review_note && document.verification_status !== "accepted" ? (
+                                    <p className="pl-6 text-sm text-copy">{document.review_note}</p>
+                                ) : null}
+                            </li>
+                        ))}
+                    </ul>
+                    <p className="flex items-start gap-2 text-xs text-muted-foreground">
+                        <LockKeyhole size={14} className="mt-0.5 shrink-0" aria-hidden />
+                        Only our verification team sees these. They are never on the public record.
+                    </p>
+                </section>
+            ) : null}
+
+            <Updates notifications={notifications} />
+        </OwnerShell>
     )
+}
+
+const dateFormat = new Intl.DateTimeFormat("en-GB", { day: "numeric", month: "short", year: "numeric" })
+
+// A document's review, in the owner's words
+const OUTCOMES: Record<string, { label: string; className: string }> = {
+    unreviewed: { label: "Waiting to be checked", className: "bg-muted text-copy" },
+    accepted: { label: "Accepted", className: "bg-success-soft text-success" },
+    rejected: { label: "Not accepted", className: "bg-destructive/10 text-destructive" },
+    superseded: { label: "Replaced", className: "bg-muted text-muted-foreground" },
+}
+
+function DocumentOutcome({ status }: { status: string }) {
+    const { label, className } = OUTCOMES[status] ?? OUTCOMES.unreviewed
+    return <span className={`shrink-0 rounded-full px-2 py-0.5 text-xs font-medium ${className}`}>{label}</span>
 }
