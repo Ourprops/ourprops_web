@@ -2,8 +2,11 @@ import { BadgeCheck, Check, Link2 } from "lucide-react"
 
 import type { HomeContent } from "@/lib/content/defaults"
 import { SAMPLE_PROPERTY } from "./property-record"
+import { cn } from "@/lib/utils"
 import MoreLink from "./more-link"
 import SectionHeading from "./section-heading"
+
+const STEP_BLOCKS = ["bg-block-sand", "bg-block-sky", "bg-block-mint"]
 
 type HowItWorksProps = {
 	content: HomeContent["howItWorks"]
@@ -13,25 +16,27 @@ type HowItWorksProps = {
 
 export default function HowItWorks({ content, variant = "home" }: HowItWorksProps) {
 	return (
-		<section className="w-full py-20 md:py-28" id="how-it-works">
+		<section className="w-full py-24 md:py-36" id="how-it-works">
 			<div className="mx-auto max-w-310 px-5 md:px-8">
 				<SectionHeading as={variant === "page" ? "h1" : "h2"} {...content.header} />
 
-				<ol className="mt-14 grid grid-cols-1 gap-10 md:grid-cols-3 md:gap-6">
+				<ol className="mt-14 grid grid-cols-1 gap-4 md:mt-20 md:grid-cols-3 md:gap-5">
 					{content.steps.map((step, index) => (
-						<li key={step.title} className="flex flex-col">
+						<li key={step.title} className={cn("block-panel flex flex-col p-5 md:p-6", STEP_BLOCKS[index % STEP_BLOCKS.length])}>
 							{/* The same record at this step, so the steps read as one record filling in */}
 							<RecordAtStage stage={Math.min(index + 1, 3)} />
-							<p className="text-data mt-6 text-sm text-secondary">
-								{String(index + 1).padStart(2, "0")}
-							</p>
-							<h3 className="text-heading mt-2 text-foreground">{step.title}</h3>
-							<p className="mt-2 text-base leading-relaxed text-copy">{step.description}</p>
+							<div className="mt-7 flex items-baseline gap-3 px-1">
+								<span className="text-data text-4xl font-medium tracking-tighter text-ink/30" aria-hidden>
+									{String(index + 1).padStart(2, "0")}
+								</span>
+								<h3 className="text-2xl font-bold tracking-tight text-ink">{step.title}</h3>
+							</div>
+							<p className="mt-2 px-1 text-base leading-relaxed text-ink/75">{step.description}</p>
 						</li>
 					))}
 				</ol>
 
-				{variant === "home" ? <MoreLink href="/how-it-works" className="mt-12">See the whole walkthrough</MoreLink> : null}
+				{variant === "home" ? <MoreLink href="/how-it-works" className="mt-10">See the whole walkthrough</MoreLink> : null}
 			</div>
 		</section>
 	)
@@ -44,7 +49,7 @@ function RecordAtStage({ stage }: { stage: number }) {
 	const verified = stage >= 3
 
 	return (
-		<div className="survey-grid rounded-xl border border-border p-4" aria-hidden>
+		<div className="survey-grid rounded-2xl bg-card/60 p-4 ring-1 ring-ink/5" aria-hidden>
 			<div className="rounded-lg border border-border bg-card p-3.5 shadow-xs">
 				<div className="flex items-center justify-between gap-2">
 					<p className="truncate text-sm font-semibold text-foreground">{SAMPLE_PROPERTY.name}</p>

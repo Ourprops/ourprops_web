@@ -16,7 +16,7 @@ export default function Faq({ content, variant = "home" }: FaqProps) {
 	const items = page ? content.items : content.items.slice(0, HOME_FAQ_COUNT)
 
 	return (
-		<section className="w-full bg-card py-20 md:py-28" id="faq">
+		<section className="w-full py-24 md:py-36" id="faq">
 			<div className="mx-auto grid max-w-310 grid-cols-1 gap-12 px-5 md:px-8 lg:grid-cols-12 lg:gap-16">
 				<div className="lg:col-span-5">
 					<SectionHeading as={page ? "h1" : "h2"} {...content.header} />
@@ -25,11 +25,11 @@ export default function Faq({ content, variant = "home" }: FaqProps) {
 
 				<div className="divide-y divide-border border-y border-border lg:col-span-7">
 					{items.map(({ question, answer }) => (
-						<details key={question} className="group py-5">
-							<summary className="cursor-pointer list-none text-base font-semibold text-foreground marker:hidden [&::-webkit-details-marker]:hidden">
-								<span className="flex items-start justify-between gap-4">
+						<details key={question} className="group py-6">
+							<summary className="cursor-pointer list-none text-lg font-semibold tracking-tight text-ink md:text-xl marker:hidden [&::-webkit-details-marker]:hidden">
+								<span className="flex items-center justify-between gap-4">
 									{question}
-									<span aria-hidden className="mt-0.5 text-lg leading-none text-muted-foreground transition-transform group-open:rotate-45">
+									<span aria-hidden className="flex size-8 shrink-0 items-center justify-center rounded-full bg-ink/5 text-xl leading-none text-ink transition-transform group-open:rotate-45 group-open:bg-secondary">
 										+
 									</span>
 								</span>

@@ -9,7 +9,7 @@ export default function MoreLink({ href, children, className }: { href: string; 
         <Link
             href={href}
             className={cn(
-                "group inline-flex items-center gap-1.5 text-sm font-semibold text-primary hover:text-secondary",
+                "group inline-flex items-center gap-1.5 border-b-2 border-secondary pb-0.5 text-base font-semibold text-ink hover:border-ink",
                 className
             )}
         >

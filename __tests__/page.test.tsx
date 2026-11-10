@@ -5,12 +5,18 @@ import Hero from '../app/(public)/_components/hero'
 import { HOME_DEFAULTS, type AccessLevel } from '../lib/content/defaults'
 import { withFallback } from '../lib/content/merge'
 import { SIGN_UP_PATH } from '../lib/site'
+import { PUBLIC_CHECKS } from '../lib/public-record'
 
 afterEach(cleanup)
 
-test('Hero renders the headline', () => {
+test('Hero renders the headline, the product walkthrough, and every check once for screen readers', () => {
+    // the walkthrough asks whether the visitor wants less motion; jsdom has no matchMedia
+    window.matchMedia = ((query: string) => ({ matches: false, media: query, addEventListener: () => {}, removeEventListener: () => {} })) as unknown as typeof window.matchMedia
     render(<Hero content={HOME_DEFAULTS.hero} />)
     expect(screen.getByRole('heading', { level: 1, name: HOME_DEFAULTS.hero.heading })).toBeDefined()
+    expect(screen.getByRole('tablist', { name: 'How OurProps works' })).toBeDefined()
+    // the scrolling row is doubled for a seamless loop; the copy is hidden, so each check is read once
+    for (const check of PUBLIC_CHECKS) expect(screen.getAllByText(check.title).filter((chip) => !chip.closest('[aria-hidden="true"]'))).toHaveLength(1)
 })
 
 test('withFallback keeps CMS values and fills gaps', () => {

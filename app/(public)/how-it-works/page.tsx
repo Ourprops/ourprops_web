@@ -5,6 +5,7 @@ import { getHomeContent } from "@/lib/content"
 import GetStarted from "../_components/get-started"
 import HowItWorks from "../_components/how-it-works"
 import ProductPreview from "../_components/product-preview"
+import Technology from "../_components/technology"
 
 export const metadata: Metadata = {
     title: "How it works",
@@ -21,6 +22,7 @@ export default async function HowItWorksPage() {
         <div className="pt-16">
             <HowItWorks content={content.howItWorks} variant="page" />
             <ProductPreview content={content.productPreview} />
+            <Technology />
             <GetStarted content={content.getStarted} />
         </div>
     )

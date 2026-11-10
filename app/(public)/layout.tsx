@@ -11,7 +11,7 @@ export default async function MarketingLayout({
   const site = await getSiteContent();
 
   return (
-    <div className="min-h-full flex flex-col">
+    <div className="min-h-full flex flex-col bg-card">
       <Header navigation={site.navigation} cta={site.headerCta} />
       <main className="flex-1">{children}</main>
       <Footer

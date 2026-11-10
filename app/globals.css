@@ -356,3 +356,88 @@
   --viz-series-1: #3987e5;
   --viz-series-2: #d95926;
 }
+
+/*
+ * The public site's look (2026-11-10): Figma-like confidence. Very large, tight headlines; colour blocks with big
+ * rounded corners; ink pill buttons; the product itself on stage with "live" cursors. Brand colours throughout: the
+ * blocks are tints of the brand's orange, blue and green, and one full orange block. Owner and admin pages don't use these.
+ */
+:root {
+  --ink: #0B1E33; /* the darkest navy: pill buttons and the huge headlines */
+  --block-orange: #FFE4D8;
+  --block-sky: #DCEAFB;
+  --block-mint: #DAF1E4;
+  --block-sand: #F4ECDF;
+}
+
+@theme inline {
+  --color-ink: var(--ink);
+  --color-block-orange: var(--block-orange);
+  --color-block-sky: var(--block-sky);
+  --color-block-mint: var(--block-mint);
+  --color-block-sand: var(--block-sand);
+}
+
+/* The homepage headline: as big as the screen allows */
+@utility text-hero {
+  font-size: clamp(2.75rem, 1.2rem + 6.4vw, 6.75rem);
+  line-height: 0.98;
+  letter-spacing: -0.048em;
+  font-weight: 700;
+  text-wrap: balance;
+}
+
+/* Section headlines on the public site */
+@utility text-section {
+  font-size: clamp(2.25rem, 1.4rem + 3.4vw, 4.25rem);
+  line-height: 1.02;
+  letter-spacing: -0.04em;
+  font-weight: 700;
+  text-wrap: balance;
+}
+
+/* A rounded colour block, inset from the page edge */
+@utility block-panel {
+  border-radius: clamp(1.5rem, 1rem + 1.6vw, 2.5rem);
+}
+
+@theme {
+  --animate-cursor-a: cursor-a 9s cubic-bezier(0.45, 0, 0.25, 1) infinite;
+  --animate-cursor-b: cursor-b 11s cubic-bezier(0.45, 0, 0.25, 1) infinite;
+  --animate-marquee: marquee 38s linear infinite;
+  --animate-overlap: overlap 3.2s ease-in-out infinite;
+  --animate-blink: blink 1.1s steps(2, start) infinite;
+
+  /* Two collaborators' cursors drifting over the product, like people working in the same file */
+  @keyframes cursor-a {
+    0%, 100% { transform: translate(0, 0); }
+    30% { transform: translate(-70px, 46px); }
+    55% { transform: translate(-30px, 110px); }
+    80% { transform: translate(40px, 40px); }
+  }
+  @keyframes cursor-b {
+    0%, 100% { transform: translate(0, 0); }
+    25% { transform: translate(60px, -40px); }
+    60% { transform: translate(110px, 20px); }
+    85% { transform: translate(20px, -70px); }
+  }
+  /* A row of chips scrolling sideways forever; the row is doubled so it loops without a jump */
+  @keyframes marquee {
+    from { transform: translateX(0); }
+    to { transform: translateX(-50%); }
+  }
+  /* Where two boundaries overlap, pulsing */
+  @keyframes overlap {
+    0%, 100% { opacity: 0.35; }
+    50% { opacity: 1; }
+  }
+  @keyframes blink {
+    to { visibility: hidden; }
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .animate-cursor-a, .animate-cursor-b, .animate-marquee, .animate-overlap, .animate-blink {
+    animation: none;
+  }
+}

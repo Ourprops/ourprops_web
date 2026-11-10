@@ -1,29 +1,33 @@
 import { Check } from "lucide-react"
 
 import type { HomeContent } from "@/lib/content/defaults"
+import { cn } from "@/lib/utils"
 import SectionHeading from "./section-heading"
 
-// The problem on the left, what OurProps changes as numbered entries on the right, like clauses in a document
+// One colour block per card, in order, like Figma's coloured feature tiles
+const BLOCKS = ["bg-block-orange", "bg-block-sky", "bg-block-mint"]
+
+// The problem, stated big, then what OurProps changes, as three colour blocks
 export default function ValueProposition({ content }: { content: HomeContent["valueProposition"] }) {
 	return (
-		<section className="w-full bg-card py-20 md:py-28">
-			<div className="mx-auto grid max-w-310 grid-cols-1 gap-12 px-5 md:px-8 lg:grid-cols-12 lg:gap-16">
-				<SectionHeading className="lg:sticky lg:top-28 lg:col-span-5 lg:self-start" {...content.header} />
+		<section className="w-full py-24 md:py-36">
+			<div className="mx-auto max-w-310 px-5 md:px-8">
+				<SectionHeading {...content.header} />
 
-				<ol className="divide-y divide-border border-y border-border lg:col-span-7">
+				<ol className="mt-14 grid grid-cols-1 gap-4 md:mt-20 md:grid-cols-3 md:gap-5">
 					{content.items.map((item, index) => (
-						<li key={item.title} className="grid grid-cols-[2.5rem_1fr] gap-x-4 py-8 sm:grid-cols-[3.5rem_1fr]">
-							<span className="text-data pt-1 text-sm text-secondary" aria-hidden>
+						<li key={item.title} className={cn("block-panel flex flex-col p-7 md:p-8", BLOCKS[index % BLOCKS.length])}>
+							<span className="text-data text-6xl font-medium tracking-tighter text-ink/25 md:text-7xl" aria-hidden>
 								{String(index + 1).padStart(2, "0")}
 							</span>
-							<div>
-								<h3 className="text-heading text-foreground">{item.title}</h3>
-								<p className="mt-3 text-base leading-relaxed text-copy">{item.description}</p>
-								<p className="mt-4 flex items-center gap-2 text-sm font-medium text-foreground">
-									<Check size={16} strokeWidth={2.5} className="shrink-0 text-success" aria-hidden />
-									{item.highlight}
-								</p>
-							</div>
+							<h3 className="mt-10 text-2xl font-bold tracking-tight text-ink md:text-[1.75rem] md:leading-tight">{item.title}</h3>
+							<p className="mt-3 flex-1 text-base leading-relaxed text-ink/75">{item.description}</p>
+							<p className="mt-6 flex items-center gap-2 text-sm font-semibold text-ink">
+								<span className="flex size-5 shrink-0 items-center justify-center rounded-full bg-ink text-white">
+									<Check size={12} strokeWidth={3} aria-hidden />
+								</span>
+								{item.highlight}
+							</p>
 						</li>
 					))}
 				</ol>

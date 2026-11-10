@@ -3,6 +3,7 @@ import { ArrowRight, Info } from "lucide-react"
 import Link from "next/link"
 
 import type { HomeContent } from "@/lib/content/defaults"
+import { Eyebrow } from "./section-heading"
 
 // Deep blue with a faint plan grid: the brand's main surface colour, used for the page's firmest statements
 // On the homepage it links on to /about; on /about it's the second section, so no link
@@ -10,19 +11,17 @@ export default function Values({ content, showMore = false }: { content: HomeCon
   const { eyebrow, heading, description } = content.header
 
   return (
-    <section
-      className="survey-grid w-full bg-primary py-20 text-primary-foreground [--grid-line:rgba(255,255,255,0.05)] md:py-28"
-      id="our-values"
-    >
-      <div className="mx-auto grid max-w-310 grid-cols-1 gap-12 px-5 md:px-8 lg:grid-cols-12 lg:gap-16">
+    <section className="w-full py-6 md:py-10" id="our-values">
+      <div className="mx-auto max-w-310 px-3 sm:px-5 md:px-8">
+      <div className="block-panel survey-grid grid grid-cols-1 gap-12 bg-primary px-5 py-16 text-primary-foreground [--grid-line:rgba(255,255,255,0.05)] sm:px-8 md:px-12 md:py-24 lg:grid-cols-12 lg:gap-16">
         <div className="max-w-2xl lg:col-span-5">
-          <p className="text-eyebrow text-secondary">{eyebrow}</p>
-          <h2 className="text-title mt-3">{heading}</h2>
-          <p className="text-lead mt-4 text-white/75">{description}</p>
+          <Eyebrow className="bg-white/10 text-white">{eyebrow}</Eyebrow>
+          <h2 className="text-section mt-4">{heading}</h2>
+          <p className="text-lead mt-5 text-white/75">{description}</p>
           {showMore ? (
             <Link
               href="/about"
-              className="group mt-6 inline-flex items-center gap-1.5 text-sm font-semibold text-white hover:text-secondary"
+              className="pressable group mt-8 inline-flex h-11 items-center gap-1.5 rounded-full bg-white px-5 text-sm font-semibold text-ink hover:bg-white/90"
             >
               About OurProps
               <ArrowRight size={16} className="transition-transform group-hover:translate-x-0.5 motion-reduce:transition-none" aria-hidden />
@@ -38,7 +37,7 @@ export default function Values({ content, showMore = false }: { content: HomeCon
                   {String(index + 1).padStart(2, "0")}
                 </span>
                 <div>
-                  <dt className="text-heading">{value.title}</dt>
+                  <dt className="text-xl font-bold tracking-tight">{value.title}</dt>
                   <dd className="mt-2 text-base leading-relaxed text-white/75">{value.description}</dd>
                 </div>
               </div>
@@ -51,6 +50,7 @@ export default function Values({ content, showMore = false }: { content: HomeCon
             <span>{content.disclaimer}</span>
           </p>
         </div>
+      </div>
       </div>
     </section>
   )

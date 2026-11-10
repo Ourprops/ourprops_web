@@ -9,6 +9,8 @@ import SectionHeading from "./section-heading"
 
 type Visibility = "visible" | "status" | "hidden"
 
+const AUDIENCE_BLOCKS = ["bg-block-orange", "bg-block-sky", "bg-block-sand"]
+
 // The parts of the sample record, and what each person sees of them. As OurProps works today: the owner sees their own
 // record, documents included; everyone else sees the public record, which shows the area and what was checked, and
 // never the documents or the exact boundary (app/(public)/record). "summary" and "documents" are both the public record.
@@ -47,20 +49,20 @@ export default function Audience({ content, variant = "home" }: AudienceProps) {
 	const page = variant === "page"
 
 	return (
-		<section className="w-full py-20 md:py-28" id="who-its-for">
+		<section className="w-full py-24 md:py-36" id="who-its-for">
 			<div className="mx-auto max-w-310 px-5 md:px-8">
 				<SectionHeading as={page ? "h1" : "h2"} {...content.header} />
 
-				<ul className="mt-14 grid grid-cols-1 gap-5 md:grid-cols-3 md:gap-6">
-					{content.items.map((item) => (
+				<ul className="mt-14 grid grid-cols-1 gap-4 md:mt-20 md:grid-cols-3 md:gap-5">
+					{content.items.map((item, index) => (
 						// The card isn't a link; only its button is, so the link reads as one clear phrase
-						<li key={item.title} className="flex flex-col rounded-xl border border-border bg-card p-5 shadow-xs md:p-6">
+						<li key={item.title} className={cn("block-panel flex flex-col p-6 md:p-8", AUDIENCE_BLOCKS[index % AUDIENCE_BLOCKS.length])}>
 							{page ? <RecordView level={toAccessLevel(item.accessLevel)} /> : null}
-							<h3 className={cn("text-heading text-foreground", page && "mt-6")}>{item.title}</h3>
-							<p className="mt-2 flex-1 text-base leading-relaxed text-copy">{item.description}</p>
+							<h3 className={cn("text-2xl font-bold tracking-tight text-ink", page && "mt-6")}>{item.title}</h3>
+							<p className="mt-3 flex-1 text-base leading-relaxed text-ink/75">{item.description}</p>
 							<Link
 								href={item.cta.href}
-								className="group mt-6 inline-flex w-fit items-center gap-1.5 text-sm font-semibold text-primary hover:text-secondary"
+								className="pressable group mt-7 inline-flex h-11 w-fit items-center gap-1.5 rounded-full bg-ink px-5 text-sm font-semibold text-white hover:bg-ink/90"
 							>
 								{item.cta.label}
 								<ArrowRight
@@ -82,7 +84,7 @@ export default function Audience({ content, variant = "home" }: AudienceProps) {
 // The sample record as this person sees it. Decorative: the card's text describes who it's for.
 function RecordView({ level }: { level: AccessLevel }) {
 	return (
-		<div className="overflow-hidden rounded-lg border border-border bg-background" aria-hidden>
+		<div className="overflow-hidden rounded-xl bg-card shadow-sm ring-1 ring-ink/5" aria-hidden>
 			<div className="flex items-center justify-between gap-2 border-b border-border px-3 py-2">
 				<span className="truncate text-xs font-semibold text-foreground">{SAMPLE_PROPERTY.name}</span>
 				<span className="text-data shrink-0 text-[10px] text-muted-foreground">{ACCESS_LABELS[level]}</span>
