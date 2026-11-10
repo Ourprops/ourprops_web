@@ -1,3 +1,4 @@
+import { ArrowRight, Plus } from "lucide-react"
 import type { Metadata } from "next"
 import Link from "next/link"
 import { redirect } from "next/navigation"
@@ -11,10 +12,14 @@ import { listOwnProperties, loadChangeChecklists } from "@/lib/supabase/owner-pr
 import { getOwnProfile } from "@/lib/supabase/profile"
 import { createClient } from "@/lib/supabase/server"
 
+import { Overview } from "./overview"
 import { PropertyCard } from "./property-card"
 import { TodoList } from "./todo-list"
 import { Updates } from "./updates"
 import { Welcome } from "./welcome"
+
+// The dashboard shows the properties that changed most recently; the rest are on the Properties page
+const RECENT = 4
 
 export const metadata: Metadata = {
     title: "Your properties",
@@ -42,46 +47,49 @@ export default async function DashboardPage() {
 
     return (
         <OwnerShell fullName={profile?.full_name ?? "Account"}>
-            <div className="grid gap-1">
-                <h1 className="text-heading text-primary">{firstName ? `Welcome back, ${firstName}` : "Welcome back"}</h1>
-                <p className="text-copy">
-                    {todos.length === 0
-                        ? "Everything is in hand."
-                        : todos.length === 1
-                          ? "1 thing needs you."
-                          : `${todos.length} things need you.`}
-                </p>
-            </div>
+            <Overview firstName={firstName ?? null} todoCount={todos.length} properties={properties} />
 
             {properties.length === 0 ? (
-                <>
+                <div className="grid gap-8">
                     <Welcome />
                     {/* Identity can be done before a first property; a draft can't exist yet */}
                     {todos.length > 0 ? <TodoList todos={todos} /> : null}
-                </>
+                    <Updates notifications={notifications} />
+                </div>
             ) : (
-                <>
-                    <TodoList todos={todos} />
+                // On a wide screen, recent updates sit beside the work; on a phone, below it
+                <div className="grid items-start gap-8 xl:grid-cols-[minmax(0,1fr)_19rem]">
+                    <div className="grid min-w-0 gap-8">
+                        <TodoList todos={todos} />
 
-                    <section aria-labelledby="properties-title" className="grid gap-3">
-                        <div className="flex flex-wrap items-center justify-between gap-3">
-                            <h2 id="properties-title" className="font-medium">
-                                Your properties
-                            </h2>
-                            <Link href="/account/dashboard/properties/new" className={buttonVariants({ variant: "outline", className: "h-10" })}>
-                                Register another
-                            </Link>
-                        </div>
-                        <ul className="grid gap-3">
-                            {properties.map((property) => (
-                                <PropertyCard key={property.id} property={property} />
-                            ))}
-                        </ul>
-                    </section>
-                </>
+                        <section aria-labelledby="properties-title" className="grid gap-3">
+                            <div className="flex flex-wrap items-center justify-between gap-3">
+                                <h2 id="properties-title" className="font-semibold tracking-tight">
+                                    {properties.length > RECENT ? "Recently changed" : "Your properties"}
+                                </h2>
+                                <Link href="/account/dashboard/properties/new" className={buttonVariants({ variant: "outline", className: "h-10" })}>
+                                    <Plus aria-hidden /> Register another
+                                </Link>
+                            </div>
+                            <ul className="grid gap-3 md:grid-cols-2">
+                                {properties.slice(0, RECENT).map((property, index) => (
+                                    <PropertyCard key={property.id} property={property} index={index} />
+                                ))}
+                            </ul>
+                            {properties.length > RECENT ? (
+                                <Link
+                                    href="/account/properties"
+                                    className="flex h-11 items-center justify-center gap-1.5 rounded-xl border border-dashed border-border text-sm font-medium text-primary transition-colors hover:border-primary/40 hover:bg-card"
+                                >
+                                    View all {properties.length} properties <ArrowRight size={15} aria-hidden />
+                                </Link>
+                            ) : null}
+                        </section>
+                    </div>
+
+                    <Updates notifications={notifications} seeAll />
+                </div>
             )}
-
-            <Updates notifications={notifications} />
         </OwnerShell>
     )
 }

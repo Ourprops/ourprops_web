@@ -17,6 +17,9 @@ const buttonVariants = cva(
         destructive:
           "bg-destructive/10 text-destructive hover:bg-destructive/20 focus-visible:border-destructive/40 focus-visible:ring-destructive/20 dark:bg-destructive/20 dark:hover:bg-destructive/30 dark:focus-visible:ring-destructive/40",
         link: "text-primary underline-offset-4 hover:underline",
+        // The main action on an owner page, in the brand orange (docs/design.md, "Buttons"). Navy text, not white:
+        // white on #FF6B35 is 2.84:1, too faint to read; navy is 5.16:1.
+        cta: "bg-secondary font-semibold text-foreground shadow-sm hover:bg-[color-mix(in_oklab,var(--secondary),white_12%)]",
       },
       size: {
         default:
