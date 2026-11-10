@@ -99,7 +99,7 @@ export default function ExitAlert({ mode = "draft", open, onClose, onLeave, onDe
                             <div className="mt-7 flex flex-col gap-2">
                                 <AlertDialog.Close
                                     render={
-                                        <Button className="pressable h-11 rounded-lg bg-secondary text-[15px] text-secondary-foreground hover:bg-secondary/90" />
+                                        <Button className="pressable h-11 rounded-lg bg-secondary text-[15px] font-semibold text-secondary-foreground hover:bg-[color-mix(in_oklab,var(--secondary),white_12%)]" />
                                     }
                                 >
                                     Keep editing

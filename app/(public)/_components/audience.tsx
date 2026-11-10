@@ -1,4 +1,4 @@
-import { ArrowRight, Eye, EyeOff, Lock } from "lucide-react"
+import { ArrowRight, Eye, Lock } from "lucide-react"
 
 import { ACCESS_LEVELS, type AccessLevel, type HomeContent } from "@/lib/content/defaults"
 import { cn } from "@/lib/utils"
@@ -7,25 +7,27 @@ import SectionHeading from "./section-heading"
 
 type Visibility = "visible" | "status" | "hidden"
 
-// The parts of the sample record, and how much of each one a person with that access level sees
+// The parts of the sample record, and what each person sees of them. As OurProps works today: the owner sees their own
+// record, documents included; everyone else sees the public record, which shows the area and what was checked, and
+// never the documents or the exact boundary (app/(public)/record). "summary" and "documents" are both the public record.
 const RECORD_PARTS: { name: string; access: Record<AccessLevel, Visibility> }[] = [
-	{ name: "Location", access: { full: "visible", summary: "visible", documents: "visible" } },
-	{ name: "Mapped boundary", access: { full: "visible", summary: "visible", documents: "hidden" } },
-	{ name: "Indenture", access: { full: "visible", summary: "status", documents: "visible" } },
-	{ name: "Site plan", access: { full: "visible", summary: "status", documents: "visible" } },
-	{ name: "Receipts", access: { full: "visible", summary: "hidden", documents: "hidden" } },
+	{ name: "General area", access: { full: "visible", summary: "visible", documents: "visible" } },
+	{ name: "What we checked", access: { full: "visible", summary: "visible", documents: "visible" } },
+	{ name: "Exact boundary", access: { full: "visible", summary: "hidden", documents: "hidden" } },
+	{ name: "Indenture", access: { full: "visible", summary: "hidden", documents: "hidden" } },
+	{ name: "Site plan", access: { full: "visible", summary: "hidden", documents: "hidden" } },
 ]
 
 const ACCESS_LABELS: Record<AccessLevel, string> = {
-	full: "Whole record",
-	summary: "Summary",
-	documents: "Documents",
+	full: "Your account",
+	summary: "Public record",
+	documents: "Public record",
 }
 
 const VISIBILITY: Record<Visibility, { label: string; icon: typeof Eye; className: string }> = {
 	visible: { label: "Visible", icon: Eye, className: "text-success" },
 	status: { label: "Status only", icon: Lock, className: "text-warning" },
-	hidden: { label: "Hidden", icon: EyeOff, className: "text-muted-foreground" },
+	hidden: { label: "Private", icon: Lock, className: "text-muted-foreground" },
 }
 
 // Sanity restricts the field to these values, but an unexpected one shouldn't break the page

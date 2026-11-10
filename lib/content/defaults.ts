@@ -14,7 +14,9 @@ export type Link = { label: string; href: string }
 export type SectionHeader = { eyebrow: string; heading: string; description: string }
 export type Card = { title: string; description: string }
 
-// How much of the sample record each audience card shows; matches `accessLevel` in the Sanity schema
+// Which view of the sample record each audience card shows; matches `accessLevel` in the Sanity schema. "full" is the
+// owner's own record; "summary" and "documents" both show the public record, as nobody else sees an owner's documents
+// (no document sharing in the MVP).
 export const ACCESS_LEVELS = ["full", "summary", "documents"] as const
 export type AccessLevel = (typeof ACCESS_LEVELS)[number]
 
@@ -87,7 +89,7 @@ export const HOME_DEFAULTS = {
       eyebrow: "The property record",
       heading: "Everything about a plot, on one page.",
       description:
-        "Each property gets a single record: where it is, where its edges run, which documents back it up, and who can see it.",
+        "Each property gets a single record: where it is, where its edges run, the documents behind it, and what our team has checked.",
     } as SectionHeader,
     callouts: [
       {
@@ -109,27 +111,27 @@ export const HOME_DEFAULTS = {
       eyebrow: "Who it's for",
       heading: "One record, seen differently by each person.",
       description:
-        "Owners see everything. Everyone else sees only the parts the owner chooses to share with them.",
+        "Owners see everything, documents included. Everyone else sees the public record: what our team checked, never the documents.",
     } as SectionHeader,
     items: [
       {
         title: "Property owners",
         description:
-          "Keep the indenture, site plan, and boundary together, and decide who can see each part.",
+          "Keep the indenture, site plan and boundary together in one private place, and share a verified record when you're ready.",
         accessLevel: "full" as AccessLevel,
         cta: { label: "For owners", href: "#waitlist" } as Link,
       },
       {
         title: "Buyers and families",
         description:
-          "Ask for a property's record before you pay, then go through the boundary and papers with your lawyer.",
+          "Ask the owner for the property's verified record before you pay, and see exactly what was checked.",
         accessLevel: "summary" as AccessLevel,
         cta: { label: "For buyers", href: "#waitlist" } as Link,
       },
       {
         title: "Lawyers, surveyors, and agents",
         description:
-          "Work from the documents your client has shared, instead of chasing copies over chat.",
+          "Start from a property's verified record when you advise a client, so everyone works from the same checked facts.",
         accessLevel: "documents" as AccessLevel,
         cta: { label: "For professionals", href: "#waitlist" } as Link,
       },

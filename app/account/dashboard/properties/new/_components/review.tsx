@@ -109,7 +109,7 @@ export default function Review() {
 
     return (
         <section className="mx-auto w-full max-w-xl px-5 py-10 md:py-14">
-            <h1 className="text-heading text-foreground md:text-2xl">Check your answers</h1>
+            <h1 className="text-display text-primary">Check your answers</h1>
             <p className="mt-2 text-[15px] leading-relaxed text-copy">
                 {mode === "changes"
                     ? "Make sure everything is right. Your changes are saved as you go."
@@ -266,7 +266,7 @@ export default function Review() {
                                 type="button"
                                 onClick={handleSubmit}
                                 disabled={required.length > 0 || submit.isPending}
-                                className="pressable h-12 w-full rounded-lg bg-secondary px-8 text-[15px] text-secondary-foreground hover:bg-secondary/90 sm:w-auto"
+                                className="pressable h-12 w-full rounded-lg bg-secondary px-8 text-[15px] font-semibold text-foreground shadow-sm hover:bg-[color-mix(in_oklab,var(--secondary),white_12%)] sm:w-auto"
                             >
                                 {submit.isPending ? "Submitting…" : "Submit for review"}
                                 {!submit.isPending && <ArrowRight size={16} aria-hidden />}
@@ -321,7 +321,7 @@ function ChangesFooter({ required }: { required: string[] }) {
                     type="button"
                     onClick={handleDone}
                     disabled={required.length > 0 || save.isPending}
-                    className="pressable h-12 w-full rounded-lg bg-secondary px-8 text-[15px] text-secondary-foreground hover:bg-secondary/90 sm:w-auto"
+                    className="pressable h-12 w-full rounded-lg bg-secondary px-8 text-[15px] font-semibold text-foreground shadow-sm hover:bg-[color-mix(in_oklab,var(--secondary),white_12%)] sm:w-auto"
                 >
                     {save.isPending ? "Saving…" : "Save and go back"}
                     {!save.isPending && <ArrowRight size={16} aria-hidden />}

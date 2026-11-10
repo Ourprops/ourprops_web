@@ -1,5 +1,5 @@
 import type { Metadata } from "next";
-import { plexMono, plexSans } from "./fonts";
+import { inter, plexMono } from "./fonts";
 import { Toaster } from "@/components/ui/sonner"
 import Providers from "@/components/providers"
 import { getSiteContent } from "@/lib/content"
@@ -39,7 +39,7 @@ export default function RootLayout({ children }: LayoutProps<"/">) {
   return (
     <html
       lang="en"
-      className={`${plexSans.variable} ${plexMono.variable} h-full antialiased`}
+      className={`${inter.variable} ${plexMono.variable} h-full antialiased`}
     >
       <body className="min-h-full">
         <Providers>

@@ -53,7 +53,7 @@ export default function Confirmation() {
                     <Check size={16} strokeWidth={3} aria-hidden />
                 </span>
             </div>
-            <h1 className="mt-4 text-heading text-foreground md:text-2xl">Property submitted</h1>
+            <h1 className="mt-4 text-display text-primary">Property submitted</h1>
             <p className="mt-2 text-[15px] leading-relaxed text-copy">
                 {details.name ? (
                     <>
@@ -123,7 +123,7 @@ export default function Confirmation() {
                 <Button
                     render={<Link href={DASHBOARD_HREF} />}
                     nativeButton={false}
-                    className="pressable h-12 rounded-lg bg-secondary px-6 text-[15px] text-secondary-foreground hover:bg-secondary/90"
+                    className="pressable h-12 rounded-lg bg-secondary px-6 text-[15px] font-semibold text-foreground shadow-sm hover:bg-[color-mix(in_oklab,var(--secondary),white_12%)]"
                 >
                     Go to your dashboard
                     <ArrowRight size={16} aria-hidden />

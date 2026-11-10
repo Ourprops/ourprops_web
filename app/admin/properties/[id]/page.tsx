@@ -23,6 +23,7 @@ import {
 import { getPropertyForReview, type PropertyForReview } from "@/lib/admin/review"
 import { ChecklistMark } from "@/components/checklist-mark"
 import { changeRequestChecklist, type IdentityStatus } from "@/lib/change-requests"
+import { acquisitionDetails } from "@/lib/admin/acquisition"
 import { SECTION_IDS, blockerAnchor, checkpointAnchor, reviewProgress, type ReviewProgress } from "@/lib/admin/review-summary"
 import { requireAdmin } from "@/lib/auth/staff"
 import { cn } from "@/lib/utils"
@@ -156,6 +157,8 @@ export default async function PropertyReviewPage({ params }: PageProps<"/admin/p
                                     ACQUISITION_OPTIONS.find((option) => option.value === property.acquisition_method)?.title ??
                                         property.acquisition_method,
                                 ],
+                                // the follow-up answers, each optional for the owner, so a gap says "Not given"
+                                ...acquisitionDetails(property.acquisition_method, property.acquisition_metadata),
                                 [
                                     "Ownership type",
                                     property.ownership_type ? labelFor(OWNERSHIP_TYPE_LABELS, property.ownership_type) : "Not classified yet",
@@ -267,7 +270,7 @@ function DecisionPanel({
     const percent = Math.round((progress.checkpointsDone / progress.checkpointsTotal) * 100)
 
     return (
-        <div className="grid gap-5 rounded-xl border border-border bg-card p-4">
+        <div className="grid gap-5 rounded-xl border border-border bg-card shadow-card p-4">
             <h2 className="text-eyebrow text-muted-foreground">Decision</h2>
 
             {review.checkpoints.length > 0 ? (
@@ -595,7 +598,7 @@ function PropertyMap({ review }: { review: PropertyForReview }) {
 // sticky header when a link jumps here.
 function Section({ id, title, meta, children }: { id: string; title: string; meta?: string; children: React.ReactNode }) {
     return (
-        <section id={id} aria-labelledby={`${id}-title`} className="scroll-mt-20 rounded-xl border border-border bg-card p-4 sm:p-5">
+        <section id={id} aria-labelledby={`${id}-title`} className="scroll-mt-20 rounded-xl border border-border bg-card shadow-card p-4 sm:p-5">
             <div className="mb-3 flex flex-wrap items-baseline justify-between gap-2">
                 <h2 id={`${id}-title`} className="text-eyebrow text-muted-foreground">
                     {title}

@@ -111,7 +111,7 @@ export default function Documents() {
 
     return (
         <section className="mx-auto w-full max-w-xl px-5 py-10 md:py-14">
-            <h1 className="text-heading text-foreground md:text-2xl">Add your documents</h1>
+            <h1 className="text-display text-primary">Add your documents</h1>
             <p className="mt-2 text-[15px] leading-relaxed text-copy">
                 Upload what you have for each item below. Photos of paper documents are fine. If you&apos;re not sure
                 where something goes, add it anyway: a reviewer checks every document.
@@ -149,7 +149,7 @@ export default function Documents() {
                     <Button
                         type="submit"
                         disabled={uploading}
-                        className="pressable h-12 w-full rounded-lg bg-secondary px-8 text-[15px] text-secondary-foreground hover:bg-secondary/90 sm:w-auto"
+                        className="pressable h-12 w-full rounded-lg bg-secondary px-8 text-[15px] font-semibold text-foreground shadow-sm hover:bg-[color-mix(in_oklab,var(--secondary),white_12%)] sm:w-auto"
                     >
                         {uploading ? "Uploading…" : hasDocuments ? "Continue" : "Continue without documents"}
                         {!uploading && <ArrowRight size={16} aria-hidden />}

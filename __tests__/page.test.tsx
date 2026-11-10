@@ -35,22 +35,32 @@ describe('Who it is for', () => {
         )
     }
 
-    test('shows each audience the parts of the record their access level allows', () => {
+    // As OurProps works today: the owner sees their whole record; everyone else sees the public record, never documents
+    test('shows the owner their whole record, and everyone else the public record without documents', () => {
         render(<Audience content={HOME_DEFAULTS.audience} />)
 
         const [owner, buyer, professional] = recordViews()
         expect(owner.every((row) => row?.endsWith('Visible'))).toBe(true)
-        expect(buyer).toContain('IndentureStatus only')
-        expect(buyer).toContain('ReceiptsHidden')
-        expect(professional).toContain('IndentureVisible')
-        expect(professional).toContain('Mapped boundaryHidden')
+        for (const view of [buyer, professional]) {
+            expect(view).toContain('What we checkedVisible')
+            expect(view).toContain('IndenturePrivate')
+            expect(view).toContain('Site planPrivate')
+            expect(view).toContain('Exact boundaryPrivate')
+        }
     })
 
-    test('treats an access level it does not know as a summary', () => {
+    test('never shows anyone but the owner a document, whatever the access level says', () => {
+        render(<Audience content={HOME_DEFAULTS.audience} />)
+
+        const [, ...others] = recordViews()
+        expect(others.flat().some((row) => /^(Indenture|Site plan)Visible/.test(row ?? ''))).toBe(false)
+    })
+
+    test('treats an access level it does not know as the public record', () => {
         const [owner] = HOME_DEFAULTS.audience.items
         render(<Audience content={{ ...HOME_DEFAULTS.audience, items: [{ ...owner, accessLevel: 'everything' as AccessLevel }] }} />)
 
-        expect(recordViews()[0]).toContain('IndentureStatus only')
+        expect(recordViews()[0]).toContain('IndenturePrivate')
     })
 
     test('a card from Sanity without an access level uses the default for its position', () => {

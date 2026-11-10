@@ -29,7 +29,7 @@ export default async function ReviewQueuePage() {
             </header>
 
             {queue.length > 0 ? (
-                <ul className="divide-y divide-border overflow-hidden rounded-xl border border-border bg-card">
+                <ul className="divide-y divide-border overflow-hidden rounded-xl border border-border bg-card shadow-card">
                     {queue.map((item) => (
                         <QueueRow key={item.id} item={item} />
                     ))}
