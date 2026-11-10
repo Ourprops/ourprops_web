@@ -2,13 +2,20 @@ import { BadgeCheck, Check, Link2 } from "lucide-react"
 
 import type { HomeContent } from "@/lib/content/defaults"
 import { SAMPLE_PROPERTY } from "./property-record"
+import MoreLink from "./more-link"
 import SectionHeading from "./section-heading"
 
-export default function HowItWorks({ content }: { content: HomeContent["howItWorks"] }) {
+type HowItWorksProps = {
+	content: HomeContent["howItWorks"]
+	/** "page" when it opens /how-it-works: its heading is the page's h1 and there's no link to itself */
+	variant?: "home" | "page"
+}
+
+export default function HowItWorks({ content, variant = "home" }: HowItWorksProps) {
 	return (
 		<section className="w-full py-20 md:py-28" id="how-it-works">
 			<div className="mx-auto max-w-310 px-5 md:px-8">
-				<SectionHeading {...content.header} />
+				<SectionHeading as={variant === "page" ? "h1" : "h2"} {...content.header} />
 
 				<ol className="mt-14 grid grid-cols-1 gap-10 md:grid-cols-3 md:gap-6">
 					{content.steps.map((step, index) => (
@@ -23,6 +30,8 @@ export default function HowItWorks({ content }: { content: HomeContent["howItWor
 						</li>
 					))}
 				</ol>
+
+				{variant === "home" ? <MoreLink href="/how-it-works" className="mt-12">See the whole walkthrough</MoreLink> : null}
 			</div>
 		</section>
 	)

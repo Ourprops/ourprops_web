@@ -1,4 +1,4 @@
-import {CogIcon, DocumentTextIcon, HomeIcon} from '@sanity/icons'
+import {CogIcon, DocumentTextIcon, HelpCircleIcon, HomeIcon} from '@sanity/icons'
 import type {StructureResolver} from 'sanity/structure'
 
 import {SINGLETON_TYPES} from './schemaTypes'
@@ -18,6 +18,10 @@ export const structure: StructureResolver = (S) =>
         .title('Site settings')
         .icon(CogIcon)
         .child(S.document().schemaType('siteSettings').documentId('siteSettings')),
+      S.listItem()
+        .title('FAQ')
+        .icon(HelpCircleIcon)
+        .child(S.document().schemaType('faqPage').documentId('faqPage')),
       S.divider(),
       // Legal pages: one fixed document each, so /privacy and /terms always find theirs
       ...LEGAL_PAGES.map((page) =>

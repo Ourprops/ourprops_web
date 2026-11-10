@@ -1,6 +1,7 @@
 import type { HomeContent } from "@/lib/content/defaults"
 import SectionHeading from "./section-heading"
 
+// Opens the /about page, so its heading is the page's h1
 export default function About({ content }: { content: HomeContent["about"] }) {
   const statements = [
     { label: "Our mission", text: content.mission },
@@ -10,7 +11,7 @@ export default function About({ content }: { content: HomeContent["about"] }) {
   return (
     <section className="w-full py-20 md:py-28" id="about">
       <div className="mx-auto grid max-w-310 grid-cols-1 gap-12 px-5 md:px-8 lg:grid-cols-12 lg:gap-16">
-        <SectionHeading className="lg:col-span-6" {...content.header} />
+        <SectionHeading as="h1" className="lg:col-span-6" {...content.header} />
 
         <dl className="divide-y divide-border border-y border-border lg:col-span-6 lg:self-end">
           {statements.map((statement) => (

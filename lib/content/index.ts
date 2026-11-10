@@ -3,8 +3,8 @@ import type { SanityImageSource } from "@sanity/image-url"
 
 import { urlFor } from "@/sanity/lib/image"
 import { sanityFetch } from "@/sanity/lib/live"
-import { HOME_PAGE_QUERY, SITE_SETTINGS_QUERY } from "@/sanity/lib/queries"
-import { HOME_DEFAULTS, SITE_DEFAULTS, type HomeContent, type SiteContent } from "./defaults"
+import { FAQ_PAGE_QUERY, HOME_PAGE_QUERY, SITE_SETTINGS_QUERY } from "@/sanity/lib/queries"
+import { FAQ_DEFAULTS, HOME_DEFAULTS, SITE_DEFAULTS, type FaqContent, type HomeContent, type SiteContent } from "./defaults"
 import { withFallback } from "./merge"
 
 export type ShareImage = { url: string; alt: string; width: number; height: number }
@@ -55,5 +55,15 @@ export const getSiteContent = cache(async (): Promise<SiteContent & { shareImage
   } catch (error) {
     console.error("Failed to load site settings from Sanity", error)
     return { ...SITE_DEFAULTS, shareImage: FALLBACK_SHARE_IMAGE }
+  }
+})
+
+export const getFaqContent = cache(async (): Promise<FaqContent> => {
+  try {
+    const { data } = await sanityFetch({ query: FAQ_PAGE_QUERY, stega: false })
+    return withFallback(FAQ_DEFAULTS, data)
+  } catch (error) {
+    console.error("Failed to load the FAQ from Sanity", error)
+    return FAQ_DEFAULTS
   }
 })

@@ -6,6 +6,7 @@
 import {
   SHARE_DESCRIPTION,
   SHARE_TITLE,
+  SIGN_UP_PATH,
   SITE_DESCRIPTION,
   SITE_TITLE,
 } from "../site"
@@ -26,8 +27,8 @@ export const HOME_DEFAULTS = {
     heading: "Know the land before you pay for it.",
     subheading:
       "OurProps keeps a property's indenture, site plan, and mapped boundary together in one record, and our team checks them. Share the verified record with your family, lawyer, or buyer; your documents stay private.",
-    primaryCta: { label: "Join the waitlist", href: "#waitlist" } as Link,
-    secondaryCta: { label: "See how it works", href: "#how-it-works" } as Link,
+    primaryCta: { label: "Register your property", href: SIGN_UP_PATH } as Link,
+    secondaryCta: { label: "See how it works", href: "/how-it-works" } as Link,
     launchNote: "Launching in Ghana",
     trustPoints: [
       { icon: "Lock", text: "Private by default" },
@@ -120,21 +121,21 @@ export const HOME_DEFAULTS = {
         description:
           "Keep the indenture, site plan and boundary together in one private place, and share a verified record when you're ready.",
         accessLevel: "full" as AccessLevel,
-        cta: { label: "For owners", href: "#waitlist" } as Link,
+        cta: { label: "Register your property", href: SIGN_UP_PATH } as Link,
       },
       {
         title: "Buyers and families",
         description:
           "Ask the owner for the property's verified record before you pay, and see exactly what was checked.",
         accessLevel: "summary" as AccessLevel,
-        cta: { label: "For buyers", href: "#waitlist" } as Link,
+        cta: { label: "Questions buyers ask", href: "/faq" } as Link,
       },
       {
         title: "Lawyers, surveyors, and agents",
         description:
           "Start from a property's verified record when you advise a client, so everyone works from the same checked facts.",
         accessLevel: "documents" as AccessLevel,
-        cta: { label: "For professionals", href: "#waitlist" } as Link,
+        cta: { label: "See how it works", href: "/how-it-works" } as Link,
       },
     ],
   },
@@ -187,6 +188,15 @@ export const HOME_DEFAULTS = {
     successTitle: "You're on the list.",
     successMessage: "Thanks for signing up. We'll be in touch as soon as access opens.",
   },
+  getStarted: {
+    header: {
+      eyebrow: "Get started",
+      heading: "Put your property on record.",
+      description:
+        "Create an account, tell us about your property and send your documents. Your progress saves as you go, so you can finish later.",
+    } as SectionHeader,
+    button: { label: "Register your property", href: SIGN_UP_PATH } as Link,
+  },
 }
 
 export type HomeContent = typeof HOME_DEFAULTS
@@ -197,22 +207,75 @@ export const SITE_DEFAULTS = {
   shareTitle: SHARE_TITLE,
   shareDescription: SHARE_DESCRIPTION,
   navigation: [
-    { label: "How it works", href: "#how-it-works" },
-    { label: "The record", href: "#product" },
-    { label: "Who it's for", href: "#who-its-for" },
-    { label: "About", href: "#about" },
+    { label: "How it works", href: "/how-it-works" },
+    { label: "Who it's for", href: "/who-its-for" },
+    { label: "FAQ", href: "/faq" },
+    { label: "About", href: "/about" },
   ] as Link[],
-  headerCta: { label: "Join waitlist", href: "#waitlist" } as Link,
+  headerCta: { label: "Get started", href: SIGN_UP_PATH } as Link,
   footerTagline: "Property information, organized.",
   footerLinks: [
-    { label: "How it works", href: "#how-it-works" },
-    { label: "The record", href: "#product" },
-    { label: "Who it's for", href: "#who-its-for" },
-    { label: "About", href: "#about" },
-    { label: "Waitlist", href: "#waitlist" },
+    { label: "How it works", href: "/how-it-works" },
+    { label: "Who it's for", href: "/who-its-for" },
+    { label: "FAQ", href: "/faq" },
+    { label: "About", href: "/about" },
+    { label: "Help", href: "/help" },
   ] as Link[],
   footerNote: "Built for conflict-free property transactions across Africa.",
   companyName: "OurProps Inc.",
 }
 
 export type SiteContent = typeof SITE_DEFAULTS
+
+// The public FAQ (/faq), mirroring the Sanity `faqPage` document. The first three also show on the homepage.
+// Price isn't here on purpose: add "How much does it cost?" in Studio once it's decided.
+export const FAQ_DEFAULTS = {
+  header: {
+    eyebrow: "FAQ",
+    heading: "Questions people ask before they start.",
+    description: "What OurProps checks, who sees your documents, and what “verified” does and doesn't mean.",
+  } as SectionHeader,
+  items: [
+    {
+      question: "What does “verified” mean?",
+      answer:
+        "Our team reviewed the evidence for the property against OurProps' review rules: the owner's identity, the ownership documents, the boundary, and whether it overlaps another property. It is OurProps' review status, not a guarantee of legal title.",
+    },
+    {
+      question: "Who can see my documents?",
+      answer:
+        "Only you and our verification team. A property's public record shows what we checked, never the documents themselves or who owns the property.",
+    },
+    {
+      question: "How long does checking take?",
+      answer:
+        "It depends on the property and the documents. You'll see each step in your account, and we'll tell you as soon as we need anything or have finished.",
+    },
+    {
+      question: "What do I need to register a property?",
+      answer:
+        "Your Ghana Card (or your passport if you live abroad), whatever property papers you have, such as an indenture, site plan or land title certificate, and where the property is. Photos from your phone are fine.",
+    },
+    {
+      question: "I'm buying a property. How do I check it?",
+      answer:
+        "Ask the owner to register it on OurProps and send you the link to its public record. The record shows what our team checked and where the property is, without the owner's documents.",
+    },
+    {
+      question: "What if I don't have all my documents?",
+      answer: "Start anyway. Send what you have; we'll tell you what's missing and whether it stops the property being verified.",
+    },
+    {
+      question: "What if someone else has registered my land?",
+      answer:
+        "Register it anyway and send us your evidence. When two properties overlap, our team looks into both. An overlap is a reason to check, not a decision about who owns the land.",
+    },
+    {
+      question: "Does OurProps replace the Lands Commission or a lawyer?",
+      answer:
+        "No. OurProps organises and checks the evidence for a property, but it doesn't replace official land registry processes, a search, a surveyor or legal advice. For a purchase, still do your own checks.",
+    },
+  ],
+}
+
+export type FaqContent = typeof FAQ_DEFAULTS

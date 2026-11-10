@@ -5,6 +5,8 @@ type SectionHeadingProps = {
     heading: string
     description?: string
     align?: "left" | "center"
+    /** h1 when the section opens its own page (/how-it-works, /about…); h2 on the homepage */
+    as?: "h1" | "h2"
     className?: string
 }
 
@@ -14,6 +16,7 @@ export default function SectionHeading({
     heading,
     description,
     align = "left",
+    as: Heading = "h2",
     className,
 }: SectionHeadingProps) {
     return (
@@ -25,7 +28,7 @@ export default function SectionHeading({
             )}
         >
             {eyebrow && <p className="text-eyebrow text-secondary">{eyebrow}</p>}
-            <h2 className="text-title text-foreground mt-3">{heading}</h2>
+            <Heading className={cn(Heading === "h1" ? "text-display" : "text-title", "text-foreground mt-3")}>{heading}</Heading>
             {description && <p className="text-lead text-copy mt-4">{description}</p>}
         </div>
     )

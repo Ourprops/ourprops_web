@@ -82,7 +82,7 @@ export function PropertyHeader({
         <div className="flex items-start justify-between gap-4">
             <div className="min-w-0">
                 <div className="flex flex-wrap items-center gap-2">
-                    <h3 className="text-base font-semibold tracking-tight text-foreground sm:text-lg">{name}</h3>
+                    <p className="text-base font-semibold tracking-tight text-foreground sm:text-lg">{name}</p>
                     <span className="rounded-md bg-background px-1.5 py-0.5 text-[11px] font-medium text-copy ring-1 ring-border">
                         {type}
                     </span>

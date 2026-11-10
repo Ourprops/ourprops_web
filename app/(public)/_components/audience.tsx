@@ -1,7 +1,9 @@
 import { ArrowRight, Eye, Lock } from "lucide-react"
+import Link from "next/link"
 
 import { ACCESS_LEVELS, type AccessLevel, type HomeContent } from "@/lib/content/defaults"
 import { cn } from "@/lib/utils"
+import MoreLink from "./more-link"
 import { SAMPLE_PROPERTY } from "./property-record"
 import SectionHeading from "./section-heading"
 
@@ -35,33 +37,43 @@ function toAccessLevel(value: string): AccessLevel {
 	return (ACCESS_LEVELS as readonly string[]).includes(value) ? (value as AccessLevel) : "summary"
 }
 
-export default function Audience({ content }: { content: HomeContent["audience"] }) {
+type AudienceProps = {
+	content: HomeContent["audience"]
+	/** "home": short cards and a link on to /who-its-for. "page": opens /who-its-for, with each person's view of the record */
+	variant?: "home" | "page"
+}
+
+export default function Audience({ content, variant = "home" }: AudienceProps) {
+	const page = variant === "page"
+
 	return (
 		<section className="w-full py-20 md:py-28" id="who-its-for">
 			<div className="mx-auto max-w-310 px-5 md:px-8">
-				<SectionHeading {...content.header} />
+				<SectionHeading as={page ? "h1" : "h2"} {...content.header} />
 
-				<div className="mt-14 grid grid-cols-1 gap-5 md:grid-cols-3 md:gap-6">
+				<ul className="mt-14 grid grid-cols-1 gap-5 md:grid-cols-3 md:gap-6">
 					{content.items.map((item) => (
-						<a
-							key={item.title}
-							href={item.cta.href}
-							className="pressable group flex flex-col rounded-xl border border-border bg-card p-5 shadow-xs transition-shadow hover:shadow-md focus-visible:outline-none focus-visible:ring-3 focus-visible:ring-ring/50 md:p-6"
-						>
-							<RecordView level={toAccessLevel(item.accessLevel)} />
-							<h3 className="text-heading mt-6 text-foreground">{item.title}</h3>
+						// The card isn't a link; only its button is, so the link reads as one clear phrase
+						<li key={item.title} className="flex flex-col rounded-xl border border-border bg-card p-5 shadow-xs md:p-6">
+							{page ? <RecordView level={toAccessLevel(item.accessLevel)} /> : null}
+							<h3 className={cn("text-heading text-foreground", page && "mt-6")}>{item.title}</h3>
 							<p className="mt-2 flex-1 text-base leading-relaxed text-copy">{item.description}</p>
-							<span className="mt-6 inline-flex items-center gap-1.5 text-sm font-semibold text-primary group-hover:text-secondary">
+							<Link
+								href={item.cta.href}
+								className="group mt-6 inline-flex w-fit items-center gap-1.5 text-sm font-semibold text-primary hover:text-secondary"
+							>
 								{item.cta.label}
 								<ArrowRight
 									size={16}
 									className="transition-transform group-hover:translate-x-0.5 motion-reduce:transition-none"
 									aria-hidden
 								/>
-							</span>
-						</a>
+							</Link>
+						</li>
 					))}
-				</div>
+				</ul>
+
+				{page ? null : <MoreLink href="/who-its-for" className="mt-10">What each person sees</MoreLink>}
 			</div>
 		</section>
 	)

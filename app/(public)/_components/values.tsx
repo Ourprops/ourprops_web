@@ -1,9 +1,12 @@
-import { Info } from "lucide-react"
+import { ArrowRight, Info } from "lucide-react"
+
+import Link from "next/link"
 
 import type { HomeContent } from "@/lib/content/defaults"
 
 // Deep blue with a faint plan grid: the brand's main surface colour, used for the page's firmest statements
-export default function Values({ content }: { content: HomeContent["values"] }) {
+// On the homepage it links on to /about; on /about it's the second section, so no link
+export default function Values({ content, showMore = false }: { content: HomeContent["values"]; showMore?: boolean }) {
   const { eyebrow, heading, description } = content.header
 
   return (
@@ -16,6 +19,15 @@ export default function Values({ content }: { content: HomeContent["values"] }) 
           <p className="text-eyebrow text-secondary">{eyebrow}</p>
           <h2 className="text-title mt-3">{heading}</h2>
           <p className="text-lead mt-4 text-white/75">{description}</p>
+          {showMore ? (
+            <Link
+              href="/about"
+              className="group mt-6 inline-flex items-center gap-1.5 text-sm font-semibold text-white hover:text-secondary"
+            >
+              About OurProps
+              <ArrowRight size={16} className="transition-transform group-hover:translate-x-0.5 motion-reduce:transition-none" aria-hidden />
+            </Link>
+          ) : null}
         </div>
 
         <div className="lg:col-span-7">
