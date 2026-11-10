@@ -36,3 +36,6 @@ export const SITE_SETTINGS_QUERY = defineQuery(`*[_id == "siteSettings"][0]{
   footerNote,
   companyName
 }`)
+
+// A legal page by its fixed document ID (privacyPolicy, termsAndConditions), as the Studio structure creates them
+export const LEGAL_PAGE_QUERY = defineQuery(`*[_id == $id][0]{title, lastUpdated, body}`)

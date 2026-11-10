@@ -25,13 +25,13 @@ export const HOME_DEFAULTS = {
     eyebrow: "Property records for Ghana",
     heading: "Know the land before you pay for it.",
     subheading:
-      "OurProps keeps a property's indenture, site plan, and mapped boundary together in one record. Share it with your family, lawyer, or buyer, and show each of them only what they need.",
+      "OurProps keeps a property's indenture, site plan, and mapped boundary together in one record, and our team checks them. Share the verified record with your family, lawyer, or buyer; your documents stay private.",
     primaryCta: { label: "Join the waitlist", href: "#waitlist" } as Link,
     secondaryCta: { label: "See how it works", href: "#how-it-works" } as Link,
     launchNote: "Launching in Ghana",
     trustPoints: [
       { icon: "Lock", text: "Private by default" },
-      { icon: "ShieldCheck", text: "You choose who sees what" },
+      { icon: "ShieldCheck", text: "Checked by a real review team" },
     ],
   },
   valueProposition: {
@@ -55,32 +55,33 @@ export const HOME_DEFAULTS = {
         highlight: "Nothing stuck in someone's phone",
       },
       {
-        title: "Share exactly what's needed",
+        title: "Show buyers what was checked",
         description:
-          "Give a lawyer the documents, a buyer the summary, and family the whole record. Everything else stays private.",
-        highlight: "You choose who sees what",
+          "Share the property's verified record with a link. It shows what our team checked, never your documents.",
+        highlight: "A record buyers can trust",
       },
     ],
   },
   howItWorks: {
     header: {
       eyebrow: "How it works",
-      heading: "From a folder of papers to one clear record.",
-      description: "Most people finish in one sitting. Your progress saves as a draft as you go.",
+      heading: "Three steps to a verified property record.",
+      description: "From scattered papers to a record people can trust. Your progress saves as a draft as you go.",
     } as SectionHeader,
     steps: [
       {
-        title: "Describe the property",
-        description: "Give it a name and type, then add the region, district, and digital address.",
-      },
-      {
-        title: "Map the boundary",
-        description: "Find the plot on the map and trace its edges, or import the coordinates from your surveyor.",
-      },
-      {
-        title: "Attach the documents",
+        title: "Register",
         description:
-          "Say how you acquired it and upload the indenture, site plan, and receipts. Then submit the record for review.",
+          "Tell us where the property is and how you got it, and mark its boundary on a map if you can. Save and finish later.",
+      },
+      {
+        title: "We check it",
+        description:
+          "Upload your documents. Our team reviews them, the boundary and any overlapping claims, and tells you if anything is missing.",
+      },
+      {
+        title: "Share it",
+        description: "Once verified, send its public record to buyers, family or your lawyer. Your documents stay private.",
       },
     ] as Card[],
   },
@@ -147,11 +148,11 @@ export const HOME_DEFAULTS = {
       {
         title: "Transparency",
         description:
-          "Clear records, documents you can see, and plain language about what OurProps does and doesn't do.",
+          "Clear records, and plain language about what we checked, what we didn't, and what OurProps does and doesn't do.",
       },
       {
         title: "Privacy",
-        description: "Your records are private by default. You decide who can see them, and which parts.",
+        description: "Your documents are private by default. Only our verification team sees them, never the public.",
       },
       {
         title: "Reliability",

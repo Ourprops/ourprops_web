@@ -1,7 +1,6 @@
-import { Check } from "lucide-react"
+import { BadgeCheck, Check, Link2 } from "lucide-react"
 
 import type { HomeContent } from "@/lib/content/defaults"
-import { cn } from "@/lib/utils"
 import { SAMPLE_PROPERTY } from "./property-record"
 import SectionHeading from "./section-heading"
 
@@ -29,72 +28,76 @@ export default function HowItWorks({ content }: { content: HomeContent["howItWor
 	)
 }
 
-// A small picture of the sample record after `stage` steps. Decorative: the step text says the same thing.
+// The sample record at each step: registered and mapped, then documents in and being checked, then verified and
+// ready to share. Decorative: the step text says the same thing.
 function RecordAtStage({ stage }: { stage: number }) {
-	const mapped = stage >= 2
-	const documented = stage >= 3
+	const checking = stage >= 2
+	const verified = stage >= 3
 
 	return (
 		<div className="survey-grid rounded-xl border border-border p-4" aria-hidden>
 			<div className="rounded-lg border border-border bg-card p-3.5 shadow-xs">
 				<div className="flex items-center justify-between gap-2">
 					<p className="truncate text-sm font-semibold text-foreground">{SAMPLE_PROPERTY.name}</p>
-					<span className="text-data shrink-0 text-[10px] text-muted-foreground">{SAMPLE_PROPERTY.digitalAddress}</span>
+					{verified ? (
+						<span className="inline-flex shrink-0 items-center gap-1 rounded-full bg-success-soft px-2 py-0.5 text-[10px] font-medium text-success">
+							<BadgeCheck size={11} /> Verified
+						</span>
+					) : (
+						<span className="text-data shrink-0 text-[10px] text-muted-foreground">{checking ? "Being checked" : "Registered"}</span>
+					)}
 				</div>
 				<p className="mt-0.5 text-xs text-copy">
 					{SAMPLE_PROPERTY.type} · {SAMPLE_PROPERTY.location}
 				</p>
 
-				<div
-					className={cn(
-						"mt-3 h-20 overflow-hidden rounded-md",
-						mapped ? "bg-[#EEF2F6]" : "border border-dashed border-border bg-background"
-					)}
-				>
-					{mapped ? (
-						<svg className="size-full" viewBox="0 0 200 80" preserveAspectRatio="xMidYMid slice">
-							<g fill="#E1E7EF">
-								<path d="M8 4h44l-2 24H6z" />
-								<path d="M150 4h44v26h-46z" />
-								<path d="M10 50h40l-2 28H8z" />
-								<path d="M150 50h44v28h-46z" />
-							</g>
-							<path d="M-4 38C60 32 120 44 204 36" stroke="#FFFFFF" strokeWidth="7" fill="none" />
-							<path
-								d="M66 10l66 3-4 52-64-4z"
-								fill="rgba(255,107,53,0.14)"
-								stroke="#FF6B35"
-								strokeWidth="1.75"
-								strokeLinejoin="round"
-							/>
-						</svg>
-					) : (
-						<p className="flex h-full items-center justify-center text-[11px] text-muted-foreground">
-							No boundary yet
-						</p>
-					)}
+				{/* the mapped plot, from the first step */}
+				<div className="mt-3 h-16 overflow-hidden rounded-md bg-[#EEF2F6]">
+					<svg className="size-full" viewBox="0 0 200 64" preserveAspectRatio="xMidYMid slice">
+						<g fill="#E1E7EF">
+							<path d="M8 4h44l-2 20H6z" />
+							<path d="M150 4h44v22h-46z" />
+							<path d="M10 40h40l-2 22H8z" />
+							<path d="M150 40h44v22h-46z" />
+						</g>
+						<path d="M-4 31C60 26 120 36 204 29" stroke="#FFFFFF" strokeWidth="6" fill="none" />
+						<path d="M66 8l66 3-4 42-64-3z" fill="rgba(255,107,53,0.14)" stroke="#FF6B35" strokeWidth="1.75" strokeLinejoin="round" />
+					</svg>
 				</div>
 
-				<ul className="mt-3 flex flex-col gap-1.5">
-					{["Indenture", "Site plan"].map((name) => (
-						<li key={name} className="flex items-center justify-between gap-2 text-xs">
-							{documented ? (
-								<>
-									<span className="text-foreground">{name}</span>
-									<span className="inline-flex items-center gap-0.5 text-success">
-										<Check size={11} strokeWidth={3} />
-										Added
-									</span>
-								</>
-							) : (
-								<>
-									<span className="h-2 w-20 rounded-full bg-border" />
-									<span className="text-muted-foreground">Not added</span>
-								</>
-							)}
-						</li>
-					))}
-				</ul>
+				{verified ? (
+					// the shared public record: what was checked, never the documents
+					<div className="mt-3 flex items-center gap-2 rounded-md bg-background px-2.5 py-2 text-xs">
+						<Link2 size={13} className="shrink-0 text-primary" />
+						<span className="text-data truncate text-copy">…/record/PROP-x7Kd2q</span>
+						<span className="ml-auto shrink-0 font-medium text-primary">Share</span>
+					</div>
+				) : (
+					<ul className="mt-3 flex flex-col gap-1.5">
+						{["Ownership documents", "Boundary", "Overlapping claims"].map((name, index) => (
+							<li key={name} className="flex items-center justify-between gap-2 text-xs">
+								{checking ? (
+									<>
+										<span className="text-foreground">{name}</span>
+										{index < 2 ? (
+											<span className="inline-flex items-center gap-0.5 text-success">
+												<Check size={11} strokeWidth={3} />
+												Checked
+											</span>
+										) : (
+											<span className="text-primary">Checking…</span>
+										)}
+									</>
+								) : (
+									<>
+										<span className="h-2 w-20 rounded-full bg-border" />
+										<span className="text-muted-foreground">Not yet</span>
+									</>
+								)}
+							</li>
+						))}
+					</ul>
+				)}
 			</div>
 		</div>
 	)

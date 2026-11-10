@@ -32,6 +32,13 @@ export default function Header({ navigation, cta }: HeaderProps) {
         </nav>
 
         <div className="flex shrink-0 items-center gap-2">
+          {/* for owners who already have an account; on a phone it's in the menu */}
+          <Link
+            href="/account/login"
+            className="hidden rounded-md px-3 py-1.5 text-sm font-medium text-primary transition-colors hover:bg-background sm:block"
+          >
+            Sign in
+          </Link>
           <Button
             className="pressable h-9 rounded-lg bg-secondary px-4 text-secondary-foreground hover:bg-secondary/90"
             render={<a href={cta.href} />}

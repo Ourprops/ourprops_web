@@ -16,7 +16,7 @@ export default async function IdentityPage() {
     return (
         <div className="grid max-w-2xl gap-6">
             <div className="grid gap-2">
-                <h1 className="text-heading text-primary">Identity documents</h1>
+                <h1 className="text-display text-primary">Identity documents</h1>
                 <p className="text-copy">
                     When an owner&apos;s card or passport is already linked to another account, find that account here. Release the
                     document only once the owner has proved it is theirs, for example on a video call holding it. Every lookup is

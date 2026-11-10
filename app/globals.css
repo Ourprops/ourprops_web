@@ -339,3 +339,20 @@
     to { opacity: 1; transform: translateY(0); }
   }
 }
+
+/*
+ * Chart colours, from the dataviz skill's reference palette and validated with its script against the light surface
+ * (categorical slots 1 and 2). Dark mode has its own steps of the same hues, not an automatic flip.
+ */
+:root {
+  --viz-series-1: #2a78d6;
+  --viz-series-2: #eb6834;
+  --viz-surface: var(--card);
+  --viz-grid: color-mix(in oklab, var(--border) 70%, transparent);
+  --viz-crosshair: var(--muted-foreground);
+}
+
+.dark {
+  --viz-series-1: #3987e5;
+  --viz-series-2: #d95926;
+}

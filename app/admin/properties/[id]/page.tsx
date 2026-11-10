@@ -1,9 +1,10 @@
-import { Check, CircleDashed, CircleMinus, Clock, Inbox, TriangleAlert, type LucideIcon } from "lucide-react"
+import { Check, ChevronRight, CircleDashed, CircleMinus, Clock, Inbox, TriangleAlert, type LucideIcon } from "lucide-react"
 import type { Metadata } from "next"
 import Link from "next/link"
 import { notFound } from "next/navigation"
 
 import { ActionForm } from "@/components/action-form"
+import { StatusGlyph } from "@/components/owner/status-glyph"
 import { Badge } from "@/components/ui/badge"
 import {
     AUDIT_ACTION_LABELS,
@@ -98,17 +99,22 @@ export default async function PropertyReviewPage({ params }: PageProps<"/admin/p
 
     return (
         <div className="space-y-6">
-            <header>
-                <Link href="/admin" className="text-sm text-copy hover:text-primary">
-                    ← Review queue
-                </Link>
-                <div className="mt-3 flex flex-wrap items-center gap-3">
-                    <h1 className="text-heading text-primary">{property.name ?? "Untitled property"}</h1>
+            <header className="grid gap-3">
+                <nav aria-label="Breadcrumb" className="flex min-w-0 items-center gap-1.5 text-sm text-copy">
+                    <Link href="/admin" className="transition-colors hover:text-primary">
+                        Review queue
+                    </Link>
+                    <ChevronRight size={14} className="shrink-0 text-muted-foreground" aria-hidden />
+                    <span className="truncate font-medium text-foreground">{property.name ?? "Untitled property"}</span>
+                </nav>
+                <div className="flex flex-wrap items-center gap-3">
+                    <StatusGlyph status={property.status} className="size-5" />
+                    <h1 className="text-display text-primary wrap-anywhere">{property.name ?? "Untitled property"}</h1>
                     <Badge variant="outline">{labelFor(PROPERTY_STATUS_LABELS, property.status)}</Badge>
                 </div>
-                <p className="mt-1 text-sm text-muted-foreground">
-                    <span className="text-data">{property.prop_id}</span>
-                    {property.owner ? ` · ${property.owner.full_name}` : null}
+                <p className="flex flex-wrap gap-2 text-sm text-copy">
+                    <span className="text-data rounded-full bg-muted px-2.5 py-1 font-medium text-foreground">{property.prop_id}</span>
+                    {property.owner ? <span className="rounded-full bg-muted px-2.5 py-1">{property.owner.full_name}</span> : null}
                 </p>
             </header>
 
@@ -117,7 +123,7 @@ export default async function PropertyReviewPage({ params }: PageProps<"/admin/p
             <div className="grid gap-6 lg:grid-cols-[minmax(0,1fr)_20rem] lg:items-start">
                 <aside
                     aria-label="Decision"
-                    className="lg:sticky lg:top-20 lg:order-last lg:max-h-[calc(100vh-6rem)] lg:overflow-y-auto"
+                    className="lg:sticky lg:top-6 lg:order-last lg:max-h-[calc(100vh-3rem)] lg:overflow-y-auto"
                 >
                     <DecisionPanel review={review} progress={progress} identityStatus={identityStatus} />
                 </aside>

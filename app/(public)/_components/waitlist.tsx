@@ -2,6 +2,7 @@
 
 import { useState } from "react"
 import { ArrowRight, CheckCircle2 } from "lucide-react"
+import Link from "next/link"
 
 import { Button } from "@/components/ui/button"
 import {
@@ -142,7 +143,10 @@ export default function Waitlist({ content }: { content: HomeContent["waitlist"]
 								)}
 
 								<p className="text-center text-sm text-copy">
-									{content.privacyNote}
+									{content.privacyNote}{" "}
+									<Link href="/privacy" className="font-medium text-primary underline underline-offset-2">
+										Privacy policy
+									</Link>
 								</p>
 							</form>
 						) : (

@@ -6,8 +6,9 @@ import { sectionHeader } from './objects/sectionHeader'
 import { homePage } from './singletons/homePage'
 import { siteSettings } from './singletons/siteSettings'
 
-// Document types that have exactly one document, edited in place
-export const SINGLETON_TYPES = new Set(['homePage', 'siteSettings'])
+// Document types whose documents have fixed IDs, opened from the Studio structure and edited in place: no "create
+// new", duplicate or delete. homePage and siteSettings have one each; legalPage has one per page (LEGAL_PAGES).
+export const SINGLETON_TYPES = new Set(['homePage', 'siteSettings', 'legalPage'])
 
 export const schema: { types: SchemaTypeDefinition[] } = {
   types: [
