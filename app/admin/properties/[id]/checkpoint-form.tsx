@@ -31,7 +31,7 @@ export function CheckpointForm({ checkpointKey, status, publicNotes, internalNot
                     id={`${id}-public`}
                     name="public_note"
                     label="Owner sees"
-                    hint="Needed for flagged or waived. Shown to the owner, and on the public page once active."
+                    hint="Needed for flagged or waived. The owner sees it (and is told when you flag), and so does the public once verified. Describe the issue; never name other people or properties."
                     defaultValue={publicNotes}
                 />
                 <NoteField id={`${id}-internal`} name="internal_note" label="Internal note" defaultValue={internalNotes} />

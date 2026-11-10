@@ -2,7 +2,7 @@ import type { Metadata } from "next"
 import Link from "next/link"
 import { notFound, redirect } from "next/navigation"
 
-import { BadgeCheck, CircleCheck, FileText, LockKeyhole, MapPin } from "lucide-react"
+import { BadgeCheck, Circle, CircleCheck, CircleMinus, Clock, FileText, LockKeyhole, MapPin, TriangleAlert } from "lucide-react"
 
 import { ActionForm } from "@/components/action-form"
 import { ChecklistMark } from "@/components/checklist-mark"
@@ -14,9 +14,11 @@ import { changeRequestChecklist } from "@/lib/change-requests"
 import { getOwnIdentityDocument } from "@/lib/supabase/identity-documents"
 import { STATUS_EXPLAINED } from "@/lib/owner/dashboard"
 import { listRecentNotifications } from "@/lib/supabase/notifications"
-import { getOwnProperty } from "@/lib/supabase/owner-properties"
+import { listOwnCheckpoints, getOwnProperty, type OwnCheckpoint } from "@/lib/supabase/owner-properties"
+import { CHECK_STATES, ownerChecks, type CheckState } from "@/lib/owner/checks"
 import { getOwnProfile } from "@/lib/supabase/profile"
 import { createClient } from "@/lib/supabase/server"
+import { supportWhatsAppUrl } from "@/lib/support"
 import { DOCUMENT_SLOT_OPTIONS } from "@/lib/types/property"
 import { documentSlotSchema } from "@/lib/validators/property"
 
@@ -43,9 +45,10 @@ export default async function OwnPropertyPage({ params }: PageProps<"/account/da
     // A draft is still being filled in, in the registration flow
     if (property.status === "draft") redirect(`/account/dashboard/properties/new?draft=${property.id}`)
 
-    const [profile, notifications] = await Promise.all([
+    const [profile, notifications, checkpoints] = await Promise.all([
         getOwnProfile(supabase, ownerId),
         listRecentNotifications(supabase, 5, property.id),
+        listOwnCheckpoints(supabase, property.id),
     ])
 
     // What we asked for, ticked off as it arrives, so the last step (sending it back) is plain to see
@@ -196,6 +199,8 @@ export default async function OwnPropertyPage({ params }: PageProps<"/account/da
                 </section>
             ) : null}
 
+            {checkpoints.length > 0 ? <WhatWeCheck checkpoints={checkpoints} /> : null}
+
             {property.documents.length > 0 ? (
                 <section aria-labelledby="documents-title" className="grid gap-3">
                     <div className="flex flex-wrap items-baseline justify-between gap-2">
@@ -251,4 +256,61 @@ const OUTCOMES: Record<string, { label: string; className: string }> = {
 function DocumentOutcome({ status }: { status: string }) {
     const { label, className } = OUTCOMES[status] ?? OUTCOMES.unreviewed
     return <span className={`shrink-0 rounded-full px-2 py-0.5 text-xs font-medium ${className}`}>{label}</span>
+}
+
+const CHECK_STYLES: Record<CheckState, { icon: typeof BadgeCheck; className: string }> = {
+    checked: { icon: BadgeCheck, className: "text-success" },
+    attention: { icon: TriangleAlert, className: "text-warning" },
+    checking: { icon: Clock, className: "text-primary" },
+    skipped: { icon: CircleMinus, className: "text-muted-foreground" },
+    not_started: { icon: Circle, className: "text-muted-foreground" },
+}
+
+// The seven checks and where each stands, so "being checked" means something, and anything that needs attention is
+// seen with the note our team wrote. Shown once the review has started.
+function WhatWeCheck({ checkpoints }: { checkpoints: OwnCheckpoint[] }) {
+    const checks = ownerChecks(checkpoints)
+    const done = checks.filter((check) => check.state === "checked" || check.state === "skipped").length
+    const attention = checks.filter((check) => check.state === "attention").length
+
+    return (
+        <section aria-labelledby="checks-title" className="grid gap-3">
+            <div className="flex flex-wrap items-baseline justify-between gap-2">
+                <h2 id="checks-title" className="font-medium">
+                    What we&apos;re checking
+                </h2>
+                <span className="text-xs text-muted-foreground">
+                    {done} of {checks.length} done{attention > 0 ? ` · ${attention} needs attention` : ""}
+                </span>
+            </div>
+            <ul className="divide-y divide-border rounded-xl border border-border bg-card">
+                {checks.map((check) => {
+                    const { icon: Icon, className } = CHECK_STYLES[check.state]
+                    return (
+                        <li key={check.key} className={`flex gap-3 px-4 py-3 ${check.state === "attention" ? "bg-warning-soft/40" : ""}`}>
+                            <Icon className={`mt-0.5 size-5 shrink-0 ${className}`} aria-hidden />
+                            <span className="grid min-w-0 flex-1 gap-0.5">
+                                <span className="flex flex-wrap items-baseline justify-between gap-x-3">
+                                    <span className="font-medium">{check.title}</span>
+                                    <span className={`text-xs ${check.state === "attention" ? "font-medium text-warning" : "text-muted-foreground"}`}>
+                                        {CHECK_STATES[check.state]}
+                                    </span>
+                                </span>
+                                {check.note ? <span className="text-sm text-copy wrap-anywhere">{check.note}</span> : null}
+                            </span>
+                        </li>
+                    )
+                })}
+            </ul>
+            {attention > 0 ? (
+                <p className="text-xs text-muted-foreground">
+                    If we need something from you to sort it out, we&apos;ll ask here. You can also{" "}
+                    <a href={supportWhatsAppUrl("Hello OurProps, I have a question about a check on my property: ")} className="text-primary underline">
+                        message us on WhatsApp
+                    </a>
+                    .
+                </p>
+            ) : null}
+        </section>
+    )
 }

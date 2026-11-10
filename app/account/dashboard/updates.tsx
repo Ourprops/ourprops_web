@@ -9,6 +9,7 @@ import { MarkSeen } from "./mark-seen"
 // The tone of each kind of update: something to act on, good news, a setback, or just news
 const TONES: Record<string, { icon: LucideIcon; className: string }> = {
     "property.changes_requested": { icon: CircleAlert, className: "text-warning" },
+    "checkpoint.flagged": { icon: CircleAlert, className: "text-warning" },
     "property.approved": { icon: CircleCheck, className: "text-success" },
     "identity.verified": { icon: CircleCheck, className: "text-success" },
     "property.suspended": { icon: CircleX, className: "text-destructive" },

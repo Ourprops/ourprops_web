@@ -177,3 +177,12 @@ export async function loadChangeChecklists(
     }
     return checklists
 }
+
+export type OwnCheckpoint = { checkpoint_key: string; status: string; public_notes: string | null; updated_at: string }
+
+/** What we're checking on one of the owner's properties, without internal notes or who checked; empty before review */
+export async function listOwnCheckpoints(supabase: SupabaseClient, propertyId: string): Promise<OwnCheckpoint[]> {
+    const { data, error } = await supabase.rpc("property_checkpoints_for_owner", { property_id: propertyId })
+    if (error) throw error
+    return (data ?? []) as OwnCheckpoint[]
+}
