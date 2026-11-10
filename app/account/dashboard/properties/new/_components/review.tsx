@@ -427,9 +427,11 @@ function AcquisitionRows({ acquisition }: { acquisition: AcquisitionDraft }) {
                     <Row term="How" value={title} />
                     <Row term="Transferred by" value={metadata.transferred_by?.name} />
                     <Row term="Their phone number" value={metadata.transferred_by?.phone} />
-                    {metadata.has_document
+                    {/* every follow-up is optional: a question left unanswered shows as not given, not as a "no". Saying
+                        they have the document but not uploading it is pointed out, as a reminder; it doesn't block. */}
+                    {metadata.has_document === true
                         ? documentRow("Transfer document", false)
-                        : <Row term="Transfer document" value="You don't have it" />}
+                        : <Row term="Transfer document" value={metadata.has_document === false ? "You don't have it" : undefined} />}
                 </>
             )
         case "lease_sublease":
@@ -443,9 +445,9 @@ function AcquisitionRows({ acquisition }: { acquisition: AcquisitionDraft }) {
             return (
                 <>
                     <Row term="How" value={title} />
-                    {metadata.has_document
+                    {metadata.has_document === true
                         ? documentRow("Supporting document", false)
-                        : <Row term="Supporting document" value="You don't have one" />}
+                        : <Row term="Supporting document" value={metadata.has_document === false ? "You don't have one" : undefined} />}
                 </>
             )
         case "other":

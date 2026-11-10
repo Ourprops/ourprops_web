@@ -44,11 +44,8 @@ export default async function IdentityPage() {
 
     return (
         <OwnerShell fullName={profile?.full_name ?? "Account"}>
-            <Link href="/account/dashboard" className="w-fit text-sm text-copy hover:text-primary">
-                ← Your properties
-            </Link>
-            <div className="grid gap-2">
-                <h1 className="text-heading text-primary">Verify your identity</h1>
+            <div className="grid max-w-2xl gap-2">
+                <h1 className="text-display text-primary">Verify your identity</h1>
                 <p className="text-copy">
                     Before a property goes live, we check that the person registering it is who they say they are. Add your Ghana Card,
                     or your passport if you live abroad and don&apos;t have one. You only do this once, for all your properties.
@@ -56,7 +53,7 @@ export default async function IdentityPage() {
             </div>
 
             {document?.verification_status === "verified" ? (
-                <section className="grid gap-5 rounded-xl border border-border bg-card p-5">
+                <section className="grid w-full max-w-2xl gap-5 rounded-2xl border border-border bg-card p-5 shadow-card sm:p-6">
                     <IdentitySteps status="verified" />
                     <div className="grid gap-1">
                         <p className="flex items-center gap-2 font-medium">
@@ -74,7 +71,7 @@ export default async function IdentityPage() {
                 </section>
             ) : document?.verification_status === "unreviewed" ? (
                 <>
-                    <section className="grid gap-5 rounded-xl border border-border bg-card p-5" aria-live="polite">
+                    <section className="grid w-full max-w-2xl gap-5 rounded-2xl border border-border bg-card p-5 shadow-card sm:p-6" aria-live="polite">
                         <IdentitySteps status="unreviewed" />
                         <div className="grid gap-1">
                             <p className="flex items-center gap-2 font-medium">
@@ -107,7 +104,7 @@ export default async function IdentityPage() {
             ) : (
                 <>
                     {document?.verification_status === "rejected" ? (
-                        <section className="grid gap-5 rounded-xl border border-warning bg-card p-5">
+                        <section className="grid w-full max-w-2xl gap-5 rounded-2xl border border-warning bg-card p-5 shadow-card sm:p-6">
                             <IdentitySteps status="rejected" />
                             <div className="grid gap-1">
                                 <p className="font-medium">We couldn&apos;t accept your {IDENTITY_DOCUMENT_TYPES[document.document_type]}</p>
@@ -117,14 +114,14 @@ export default async function IdentityPage() {
                         </section>
                     ) : null}
 
-                    <section className="grid gap-4 rounded-xl border border-border bg-card p-5">
+                    <section className="grid w-full max-w-2xl gap-4 rounded-2xl border border-border bg-card p-5 shadow-card sm:p-6">
                         <IdentityForm profileId={profileId} />
                     </section>
                 </>
             )}
 
             {document?.verification_status === "verified" ? null : (
-                <p className="flex gap-2 text-xs text-muted-foreground">
+                <p className="flex max-w-2xl gap-2 text-xs text-muted-foreground">
                     <LockKeyhole className="mt-0.5 size-3.5 shrink-0" aria-hidden />
                     Only our verification team sees your document. Once it is verified, we delete the photo and the number, and keep
                     only the type of document, the country, the expiry date and when we checked it.
@@ -149,7 +146,7 @@ function NextStep({ waiting }: { waiting: { id: string; name: string | null }[] 
     }
 
     return (
-        <div className="grid gap-2 rounded-lg border border-warning p-3">
+        <div className="grid gap-2 rounded-xl border border-secondary/40 bg-secondary/8 p-4">
             <p className="text-sm font-medium">One more step</p>
             <p className="text-sm text-copy">
                 {waiting.length === 1
@@ -160,7 +157,7 @@ function NextStep({ waiting }: { waiting: { id: string; name: string | null }[] 
                 <Link
                     key={property.id}
                     href={`/account/dashboard/properties/${property.id}`}
-                    className={buttonVariants({ className: "h-11 w-full sm:w-fit sm:px-6" })}
+                    className={buttonVariants({ variant: "cta", className: "h-11 w-full sm:w-fit sm:px-6" })}
                 >
                     {waiting.length === 1 ? "Send it back for review" : `Send back ${property.name ?? "this property"}`}
                 </Link>

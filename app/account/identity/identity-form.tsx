@@ -167,7 +167,7 @@ export function IdentityForm({ profileId }: { profileId: string }) {
                         {error}
                     </p>
                 ) : null}
-                <Button type="submit" size="lg" disabled={pending} className="h-11 w-full sm:w-fit sm:px-6">
+                <Button type="submit" size="lg" variant="cta" disabled={pending} className="h-11 w-full sm:w-fit sm:px-6">
                     {pending ? <Spinner /> : null}
                     {!pending ? "Send my document" : stage === "uploading" ? "Uploading your photo…" : "Saving your details…"}
                 </Button>

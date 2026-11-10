@@ -11,7 +11,8 @@ type Props = {
     // A server action, with its ids already bound by the page
     action: (previous: ActionState, formData: FormData) => Promise<ActionState>
     submitLabel: string
-    variant?: "default" | "outline" | "destructive"
+    // cta is the orange main action on owner pages
+    variant?: "default" | "outline" | "destructive" | "cta"
     // Turns the button off without hiding it, e.g. while approval is blocked; the database decides all the same
     disabled?: boolean
     className?: string
