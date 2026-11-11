@@ -45,3 +45,16 @@ export const SITE_SETTINGS_QUERY = defineQuery(`*[_id == "siteSettings"][0]{
 
 // A legal page by its fixed document ID (privacyPolicy, termsAndConditions), as the Studio structure creates them
 export const LEGAL_PAGE_QUERY = defineQuery(`*[_id == $id][0]{title, lastUpdated, body}`)
+
+// Blog. Only published posts with a date that has come (a post can be scheduled by giving it a future date).
+const POST_CARD = `_id, title, "slug": slug.current, excerpt, publishedAt, authorName, coverImage{asset, crop, hotspot, alt}`
+
+export const POSTS_QUERY = defineQuery(`*[_type == "post" && defined(slug.current) && publishedAt <= now()]
+  | order(publishedAt desc)[0...$limit]{${POST_CARD}}`)
+
+export const POST_QUERY = defineQuery(`*[_type == "post" && slug.current == $slug && publishedAt <= now()][0]{
+  ${POST_CARD},
+  body[]{..., _type == "image" => {asset, crop, hotspot, alt, caption}}
+}`)
+
+export const POST_SLUGS_QUERY = defineQuery(`*[_type == "post" && defined(slug.current) && publishedAt <= now()]{"slug": slug.current, publishedAt}`)

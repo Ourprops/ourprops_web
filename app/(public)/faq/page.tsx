@@ -3,7 +3,9 @@ import Link from "next/link"
 
 import { getFaqContent, getHomeContent } from "@/lib/content"
 
-import Faq, { faqJsonLd, toScriptJson } from "../_components/faq"
+import { toScriptJson } from "@/lib/json-ld"
+
+import Faq, { faqJsonLd } from "../_components/faq"
 import GetStarted from "../_components/get-started"
 
 export const metadata: Metadata = {

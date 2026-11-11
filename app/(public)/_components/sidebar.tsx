@@ -20,7 +20,7 @@ export default function Sidebar({ navigation, cta }: { navigation: Link[]; cta: 
                     <Button
                         variant="ghost"
                         size="icon"
-                        className="size-9 rounded-lg text-foreground hover:bg-background md:hidden"
+                        className="size-9 rounded-lg text-foreground hover:bg-background lg:hidden"
                         aria-label="Open menu"
                     />
                 }

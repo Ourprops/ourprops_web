@@ -7,6 +7,8 @@ type SectionHeadingProps = {
     align?: "left" | "center"
     /** h1 when the section opens its own page (/how-it-works, /about…); h2 on the homepage */
     as?: "h1" | "h2"
+    /** for aria-labelledby on the section */
+    id?: string
     className?: string
 }
 
@@ -17,6 +19,7 @@ export default function SectionHeading({
     description,
     align = "left",
     as: Heading = "h2",
+    id,
     className,
 }: SectionHeadingProps) {
     return (
@@ -29,7 +32,7 @@ export default function SectionHeading({
         >
             {eyebrow && <Eyebrow>{eyebrow}</Eyebrow>}
             {/* a plain string, not cn(): tailwind-merge reads text-hero/text-section and text-ink as the same group and drops the size */}
-            <Heading className={`${Heading === "h1" ? "text-hero" : "text-section"} mt-4 text-ink`}>{heading}</Heading>
+            <Heading id={id} className={`${Heading === "h1" ? "text-hero" : "text-section"} mt-4 text-ink`}>{heading}</Heading>
             {description && <p className="text-lead text-copy mt-5">{description}</p>}
         </div>
     )

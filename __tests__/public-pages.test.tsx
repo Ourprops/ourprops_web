@@ -2,7 +2,8 @@ import { cleanup, fireEvent, render, screen } from "@testing-library/react"
 import { afterEach, describe, expect, it, vi } from "vitest"
 
 import Audience from "@/app/(public)/_components/audience"
-import Faq, { HOME_FAQ_COUNT, faqJsonLd, toScriptJson } from "@/app/(public)/_components/faq"
+import Faq, { HOME_FAQ_COUNT, faqJsonLd } from "@/app/(public)/_components/faq"
+import { toScriptJson } from "@/lib/json-ld"
 import GetStarted from "@/app/(public)/_components/get-started"
 import HowItWorks from "@/app/(public)/_components/how-it-works"
 import robots from "@/app/robots"
@@ -10,6 +11,11 @@ import sitemap from "@/app/sitemap"
 import { FAQ_DEFAULTS, HOME_DEFAULTS, SITE_DEFAULTS } from "@/lib/content/defaults"
 import { SIGN_UP_PATH } from "@/lib/site"
 
+// the sitemap lists blog posts from Sanity; here, one live post
+vi.mock("@/sanity/lib/live", () => ({
+  sanityFetch: vi.fn(async () => ({ data: [{ slug: "how-to-read-a-site-plan", publishedAt: "2026-11-01T09:00:00Z" }] })),
+}))
+vi.mock("@/sanity/lib/image", () => ({ urlFor: vi.fn() }))
 vi.mock("next/navigation", () => ({ useRouter: () => ({ replace: vi.fn(), push: vi.fn() }) }))
 vi.mock("@/lib/queries/auth", () => ({
   useSignIn: () => ({ isPending: false, mutate: vi.fn() }),
@@ -110,10 +116,13 @@ describe("account page", () => {
 })
 
 describe("robots and sitemap", () => {
-  it("lists every public page with a full URL, and no owner or admin pages", () => {
-    const urls = sitemap().map((entry) => new URL(entry.url).pathname)
-    expect(urls).toEqual(["/", "/how-it-works", "/who-its-for", "/faq", "/about", "/help", "/privacy", "/terms"])
-    expect(sitemap().every((entry) => /^https?:\/\//.test(entry.url))).toBe(true)
+  it("lists every public page and published post with a full URL, and no owner or admin pages", async () => {
+    const entries = await sitemap()
+    expect(entries.map((entry) => new URL(entry.url).pathname)).toEqual([
+      "/", "/how-it-works", "/who-its-for", "/faq", "/about", "/blog", "/help", "/privacy", "/terms",
+      "/blog/how-to-read-a-site-plan",
+    ])
+    expect(entries.every((entry) => /^https?:\/\//.test(entry.url))).toBe(true)
   })
 
   it("keeps crawlers out of the owner area, admin, Studio and API, and points them to the sitemap", () => {

@@ -18,7 +18,7 @@ export default function Header({ navigation, cta }: HeaderProps) {
           <span className="text-lg font-bold tracking-tight text-ink">OurProps</span>
         </Link>
 
-        <nav className="hidden items-center gap-1 md:flex" aria-label="Main">
+        <nav className="hidden items-center gap-1 lg:flex" aria-label="Main">
           {navigation.map((link) => (
             <a
               key={link.href}
