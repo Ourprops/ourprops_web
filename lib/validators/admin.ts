@@ -1,5 +1,7 @@
 import { z } from "zod"
 
+import { AREA_UNIT_KEYS, toSquareMetres } from "@/lib/site-plan-area"
+
 // Only the shape of each review action. The rules (what can be waived, when a note is needed, what blocks
 // approval) are the database functions', so they live in one place and their messages reach the admin as they are.
 
@@ -146,3 +148,16 @@ export const encumbranceUpdateSchema = z.object({
   status: z.enum(["open", "resolved"], { error: "Choose open or resolved" }),
   note: noteSchema,
 })
+
+// The area as the site plan states it, in its unit, stored in square metres. The database refuses 0 or less and
+// anything from 1,000,000,000 m² up (properties_site_plan_area_sqm_check); this says so in the admin's terms first.
+export const sitePlanAreaSchema = z
+  .object({
+    propertyId,
+    value: z.coerce
+      .number({ error: "Enter the area shown on the site plan" })
+      .refine((value) => Number.isFinite(value) && value > 0, "Enter the area shown on the site plan"),
+    unit: z.enum(AREA_UNIT_KEYS, { error: "Choose the unit the site plan uses" }),
+  })
+  .transform(({ propertyId, value, unit }) => ({ propertyId, areaSqm: Math.round(toSquareMetres(value, unit) * 100) / 100 }))
+  .refine(({ areaSqm }) => areaSqm > 0 && areaSqm < 1_000_000_000, "That area is too large for one property")

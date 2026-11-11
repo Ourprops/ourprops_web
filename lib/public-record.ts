@@ -10,6 +10,8 @@ export type PublicRecord = {
     district_municipality: string | null
     region: string | null
     area_sqm: number | null
+    // where area_sqm comes from: the site plan, checked by an admin, or the boundary the owner drew, not checked
+    area_source: "site_plan" | "owner_map" | null
     status: "active" | "suspended"
     verified_at: string | null
     checkpoints: { key: string; status: string; note: string | null }[] | null
@@ -41,4 +43,12 @@ export const PUBLIC_CHECKS: { key: string; title: string; text: string }[] = [
 export function describeArea(squareMetres: number) {
     const acres = squareMetres / 4046.8564224
     return `${Math.round(squareMetres).toLocaleString("en-GB")} m² (about ${acres < 10 ? acres.toFixed(2) : Math.round(acres)} acres)`
+}
+
+/** The record's area in words that say how far to trust it: checked against the site plan, or the owner's sketch */
+export function describeRecordArea(record: Pick<PublicRecord, "area_sqm" | "area_source">) {
+    if (!record.area_sqm || !record.area_source) return null
+    return record.area_source === "site_plan"
+        ? { text: describeArea(record.area_sqm), source: "from the site plan, checked by OurProps", checked: true }
+        : { text: `About ${describeArea(record.area_sqm)}`, source: "drawn on a map by the owner, not checked", checked: false }
 }

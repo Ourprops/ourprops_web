@@ -153,6 +153,8 @@ export type PropertyForReview = {
         acquisition_metadata: unknown
         ownership_type: string | null
         ownership_structure: string | null
+        // The area the site plan states, in m², recorded at the survey records check
+        site_plan_area_sqm: number | null
         // Shown to the owner while the property is suspended
         suspension_reason: string | null
         // What the admin asked the owner for, while the property waits on them
@@ -244,7 +246,7 @@ export async function getPropertyForReview(supabase: SupabaseClient, id: string)
     const { data: property, error } = await supabase
         .from("properties")
         .select(
-            "id, prop_id, name, status, property_type, description, region, district_municipality, city_town, address, digital_address, landmark, acquisition_method, acquisition_metadata, ownership_type, ownership_structure, suspension_reason, changes_requested_message, identity_requested, created_at, updated_at, owner:profiles!properties_submitted_by_fkey(id, full_name, phone_number), property_boundaries(source, area_sqm, boundary_geojson)"
+            "id, prop_id, name, status, property_type, description, region, district_municipality, city_town, address, digital_address, landmark, acquisition_method, acquisition_metadata, ownership_type, ownership_structure, site_plan_area_sqm, suspension_reason, changes_requested_message, identity_requested, created_at, updated_at, owner:profiles!properties_submitted_by_fkey(id, full_name, phone_number), property_boundaries(source, area_sqm, boundary_geojson)"
         )
         .eq("id", id)
         .maybeSingle()
