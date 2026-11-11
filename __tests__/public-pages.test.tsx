@@ -149,9 +149,9 @@ describe("FAQ", () => {
 })
 
 describe("Get started", () => {
-  it("offers registering, and signing in for people who already have an account", () => {
+  it("offers creating an account, and signing in for people who already have one", () => {
     render(<GetStarted content={HOME_DEFAULTS.getStarted} />)
-    expect(screen.getByRole("link", { name: /Register your property/ }).getAttribute("href")).toBe(SIGN_UP_PATH)
+    expect(screen.getByRole("link", { name: /Create your account/ }).getAttribute("href")).toBe(SIGN_UP_PATH)
     expect(screen.getByRole("link", { name: /Sign in/ }).getAttribute("href")).toBe("/account/login")
   })
 })

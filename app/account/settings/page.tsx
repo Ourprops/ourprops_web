@@ -26,7 +26,7 @@ export default async function SettingsPage() {
     return (
         <OwnerShell fullName={profile.full_name}>
             <div className="grid gap-1.5">
-                <h1 className="text-display text-primary">Settings</h1>
+                <h1 className="text-display text-ink">Settings</h1>
                 <p className="text-copy">Your details and how you sign in. Only our team sees these, never the public.</p>
             </div>
 

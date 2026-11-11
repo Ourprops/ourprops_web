@@ -45,8 +45,12 @@ export const getSiteContent = cache(async (): Promise<SiteContent & { shareImage
     // A small image (e.g. a logo) would be blown up and cropped, so keep the generated one instead
     const useSanityImage = Boolean(ogImage?.asset) && (ogImage?.width ?? 0) >= MIN_SHARE_IMAGE_WIDTH
 
+    const site = withFallback(SITE_DEFAULTS, data)
     return {
-      ...withFallback(SITE_DEFAULTS, data),
+      ...site,
+      // the waitlist is gone; an old "Join the waitlist." in the Sanity description shouldn't reach Google
+      description: site.description.replace(/\s*Join the waitlist\.?/i, "").trim(),
+      shareDescription: site.shareDescription.replace(/\s*Join the waitlist\.?/i, "").trim(),
       shareImage: useSanityImage && ogImage
         ? {
             url: urlFor(ogImage).width(SHARE_IMAGE_SIZE.width).height(SHARE_IMAGE_SIZE.height).fit("crop").url(),

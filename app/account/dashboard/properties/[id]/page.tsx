@@ -94,7 +94,7 @@ export default async function OwnPropertyPage({ params }: PageProps<"/account/da
                 <div className="flex gap-3">
                     <StatusGlyph status={property.status} className="mt-2.5 size-5" />
                     <div className="grid min-w-0 gap-2">
-                        <h1 className="text-display text-primary wrap-anywhere">{property.name ?? "Untitled property"}</h1>
+                        <h1 className="text-display text-ink wrap-anywhere">{property.name ?? "Untitled property"}</h1>
                         <p className="flex flex-wrap items-center gap-2 text-sm text-copy">
                             {place ? (
                                 <span className="flex items-center gap-1 rounded-full bg-muted px-2.5 py-1">

@@ -53,7 +53,7 @@ export default function StartScreen() {
                     <ol className="divide-y divide-border">
                         {STEPS.map((step, index) => (
                             <li key={step.title} className="flex items-start gap-4 p-4 sm:p-5">
-                                <span className="text-data w-6 shrink-0 pt-0.5 text-sm text-secondary">
+                                <span className="text-data w-6 shrink-0 pt-0.5 text-sm font-semibold text-ink">
                                     {String(index + 1).padStart(2, "0")}
                                 </span>
                                 <div className="min-w-0 flex-1">
@@ -81,7 +81,7 @@ export default function StartScreen() {
                 <Button
                     type="button"
                     onClick={handleNext}
-                    className="pressable h-12 rounded-lg bg-secondary px-8 text-[15px] font-semibold text-foreground shadow-sm hover:bg-[color-mix(in_oklab,var(--secondary),white_12%)]"
+                    className="pressable h-12 rounded-full bg-ink px-8 text-[15px] font-semibold text-white shadow-sm hover:bg-ink/90"
                 >
                     Get started
                     <ArrowRight size={16} aria-hidden />

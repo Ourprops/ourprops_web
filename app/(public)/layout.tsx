@@ -14,7 +14,8 @@ export default async function MarketingLayout({
   return (
     <div className="min-h-full flex flex-col bg-card">
       <Header visitor={visitor} />
-      <main className="flex-1">{children}</main>
+      {/* pt-16 clears the fixed header (h-16) for every page, so no page has to remember it */}
+      <main className="flex-1 pt-16">{children}</main>
       <Footer
         footerTagline={site.footerTagline}
         footerNote={site.footerNote}

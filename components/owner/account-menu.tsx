@@ -29,8 +29,8 @@ export function AccountMenu({ fullName }: { fullName: string }) {
 
     return (
         <Menu.Root>
-            <Menu.Trigger className="flex h-10 items-center gap-2 rounded-full border border-border bg-card pr-3 pl-1 text-sm font-medium outline-none hover:bg-muted focus-visible:ring-3 focus-visible:ring-ring/50">
-                <span aria-hidden className="flex size-8 items-center justify-center rounded-full bg-primary text-xs font-semibold text-primary-foreground">
+            <Menu.Trigger className="flex h-10 items-center gap-2 rounded-full border border-border bg-card pr-3 pl-1 text-sm font-semibold text-ink outline-none hover:bg-ink/5 focus-visible:ring-3 focus-visible:ring-ring/50">
+                <span aria-hidden className="flex size-8 items-center justify-center rounded-full bg-secondary text-sm font-bold text-ink">
                     {firstName.charAt(0).toUpperCase()}
                 </span>
                 <span className="max-w-28 truncate">{firstName}</span>
@@ -38,7 +38,7 @@ export function AccountMenu({ fullName }: { fullName: string }) {
             </Menu.Trigger>
             <Menu.Portal>
                 <Menu.Positioner align="end" sideOffset={6} className="z-50">
-                    <Menu.Popup className="min-w-56 rounded-xl border border-border bg-popover p-1.5 text-popover-foreground shadow-lg outline-none">
+                    <Menu.Popup className="min-w-56 rounded-2xl border border-border bg-popover p-1.5 text-popover-foreground shadow-lg outline-none">
                         <p className="truncate px-3 pt-1.5 pb-2 text-xs text-muted-foreground">{fullName}</p>
                         <Menu.LinkItem className={itemClassName} render={<Link href="/account/settings" />}>
                             <Settings size={16} aria-hidden /> Settings

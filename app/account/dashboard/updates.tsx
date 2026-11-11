@@ -42,7 +42,7 @@ export function Updates({
         <section aria-labelledby={title ? "updates-title" : undefined} aria-label={title ? undefined : "Updates"} className="animate-rise grid gap-3 motion-reduce:animate-none" style={{ animationDelay: "240ms" }}>
             {title ? (
                 <div className="flex items-baseline justify-between gap-2">
-                    <h2 id="updates-title" className="font-semibold tracking-tight">
+                    <h2 id="updates-title" className="text-xl font-bold tracking-tight text-ink">
                         {title}
                     </h2>
                     {seeAll ? (
@@ -59,7 +59,7 @@ export function Updates({
                     const isNew = notification.read_at === null
                     const content = (
                         <>
-                            <span className="relative z-10 flex size-[1.375rem] shrink-0 items-center justify-center rounded-full bg-background">
+                            <span className="relative z-10 flex size-[1.375rem] shrink-0 items-center justify-center rounded-full bg-card">
                                 <Icon className={cn("size-[1.125rem]", className)} aria-hidden />
                             </span>
                             <span className="grid min-w-0 flex-1 gap-0.5">

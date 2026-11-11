@@ -57,7 +57,7 @@ export default async function PostPage({ params }: PageProps<"/blog/[slug]">) {
     }
 
     return (
-        <div className="pt-16">
+        <div>
             <script type="application/ld+json" dangerouslySetInnerHTML={{ __html: toScriptJson(jsonLd) }} />
             <article className="w-full pt-12 pb-20 md:pt-20 md:pb-28">
                 <header className="mx-auto max-w-3xl px-5 md:px-8">

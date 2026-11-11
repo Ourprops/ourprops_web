@@ -64,7 +64,7 @@ export default async function DashboardPage() {
 
                         <section aria-labelledby="properties-title" className="grid gap-3">
                             <div className="flex flex-wrap items-center justify-between gap-3">
-                                <h2 id="properties-title" className="font-semibold tracking-tight">
+                                <h2 id="properties-title" className="text-xl font-bold tracking-tight text-ink">
                                     {properties.length > RECENT ? "Recently changed" : "Your properties"}
                                 </h2>
                                 <Link href="/account/dashboard/properties/new" className={buttonVariants({ variant: "outline", className: "h-10" })}>
@@ -79,7 +79,7 @@ export default async function DashboardPage() {
                             {properties.length > RECENT ? (
                                 <Link
                                     href="/account/properties"
-                                    className="flex h-11 items-center justify-center gap-1.5 rounded-xl border border-dashed border-border text-sm font-medium text-primary transition-colors hover:border-primary/40 hover:bg-card"
+                                    className="flex h-12 items-center justify-center gap-1.5 rounded-full border border-dashed border-ink/20 text-sm font-semibold text-ink transition-colors hover:border-ink/40 hover:bg-ink/5"
                                 >
                                     View all {properties.length} properties <ArrowRight size={15} aria-hidden />
                                 </Link>

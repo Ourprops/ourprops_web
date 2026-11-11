@@ -19,7 +19,7 @@ export default async function BlogPage() {
     const [newest, ...rest] = posts
 
     return (
-        <div className="pt-16">
+        <div>
             <section className="w-full pt-16 pb-24 md:pt-24 md:pb-32">
                 <div className="mx-auto max-w-310 px-5 md:px-8">
                     <SectionHeading

@@ -101,7 +101,7 @@ function OnboardingForm({ profile }: { profile: Profile }) {
     return (
         <>
             <header className="mb-8">
-                <h1 className="text-2xl font-semibold tracking-tight text-foreground">
+                <h1 className="text-3xl font-bold tracking-[-0.03em] text-ink">
                     {firstName ? `Welcome, ${firstName}` : "Welcome to OurProps"}
                 </h1>
                 <p className="mt-2 text-[15px] leading-relaxed text-copy">
@@ -173,7 +173,7 @@ function OnboardingForm({ profile }: { profile: Profile }) {
                 <Button
                     type="submit"
                     disabled={isLoading}
-                    className="pressable h-11 w-full bg-secondary text-[15px] font-semibold text-secondary-foreground hover:bg-secondary/90"
+                    className="pressable rounded-full h-11 w-full bg-ink text-[15px] font-semibold text-white hover:bg-ink/90"
                 >
                     {isLoading ? (
                         <span

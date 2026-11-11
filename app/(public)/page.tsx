@@ -22,7 +22,7 @@ export default async function Home() {
   const [content, faq, posts] = await Promise.all([getHomeContent(), getFaqContent(), getPosts(HOME_POST_COUNT)]);
 
   return (
-    <div className="pt-16">
+    <div>
       <Hero content={content.hero} />
       <ValueProposition content={content.valueProposition} />
       <Technology />
