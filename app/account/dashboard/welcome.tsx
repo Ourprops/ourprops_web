@@ -1,6 +1,7 @@
-import { FileText, IdCard, LockKeyhole, MapPinned } from "lucide-react"
+import { ArrowRight, FileText, IdCard, LockKeyhole, MapPinned } from "lucide-react"
 import Link from "next/link"
 
+import { PlotIllustration } from "@/components/owner/illustrations"
 import { buttonVariants } from "@/components/ui/button"
 
 const STEPS = [
@@ -18,45 +19,49 @@ const READY = [
 // What a new owner sees before they've registered anything: how it works, what to have ready, and where to start
 export function Welcome() {
     return (
-        <section aria-labelledby="welcome-title" className="grid gap-6 rounded-xl border border-border bg-card p-5 sm:p-6">
-            <div className="grid gap-2">
-                <h2 id="welcome-title" className="text-lg font-semibold">
-                    Register your first property
-                </h2>
-                <p className="text-copy">
-                    OurProps checks the ownership evidence for your property, so buyers and family can trust it. You can save as you go
-                    and come back any time.
-                </p>
+        <section
+            aria-labelledby="welcome-title"
+            className="animate-rise grid gap-6 overflow-hidden rounded-2xl border border-border bg-card shadow-card motion-reduce:animate-none"
+            style={{ animationDelay: "80ms" }}
+        >
+            <div className="grid gap-5 p-5 sm:grid-cols-[1fr_auto] sm:items-center sm:p-6">
+                <div className="grid gap-2">
+                    <h2 id="welcome-title" className="text-xl font-semibold tracking-tight">
+                        Register your first property
+                    </h2>
+                    <p className="text-copy">
+                        OurProps checks the ownership evidence for your property, so buyers and family can trust it. Save as you go and
+                        come back any time.
+                    </p>
+                </div>
+                <PlotIllustration className="w-full max-w-60 justify-self-center sm:w-52" />
             </div>
 
-            <ol className="grid gap-4">
+            <ol className="grid gap-4 px-5 sm:grid-cols-3 sm:px-6">
                 {STEPS.map((step, index) => (
-                    <li key={step.title} className="flex gap-3">
-                        <span className="flex size-7 shrink-0 items-center justify-center rounded-full bg-primary/10 text-sm font-semibold text-primary">
+                    <li key={step.title} className="grid content-start gap-2">
+                        <span className="text-data flex size-7 items-center justify-center rounded-lg bg-secondary/15 text-sm font-semibold text-foreground">
                             {index + 1}
                         </span>
-                        <span className="grid gap-0.5">
-                            <span className="font-medium">{step.title}</span>
-                            <span className="text-sm text-copy">{step.text}</span>
-                        </span>
+                        <span className="font-medium">{step.title}</span>
+                        <span className="text-sm text-copy">{step.text}</span>
                     </li>
                 ))}
             </ol>
 
-            <div className="grid gap-2 rounded-lg bg-muted/50 p-4">
-                <p className="text-sm font-medium">Good to have ready</p>
-                <ul className="grid gap-2">
-                    {READY.map(({ icon: Icon, text }) => (
-                        <li key={text} className="flex items-start gap-2 text-sm text-copy">
-                            <Icon size={16} className="mt-0.5 shrink-0 text-primary" aria-hidden /> {text}
-                        </li>
-                    ))}
-                </ul>
-            </div>
-
-            <div className="grid gap-3">
-                <Link href="/account/dashboard/properties/new" className={buttonVariants({ size: "lg", className: "h-11 w-full sm:w-fit sm:px-6" })}>
-                    Register a property
+            <div className="grid gap-4 border-t border-border bg-muted/40 p-5 sm:p-6">
+                <div className="grid gap-2">
+                    <p className="text-sm font-medium">Good to have ready</p>
+                    <ul className="grid gap-2">
+                        {READY.map(({ icon: Icon, text }) => (
+                            <li key={text} className="flex items-start gap-2.5 text-sm text-copy">
+                                <Icon size={16} className="mt-0.5 shrink-0 text-primary" aria-hidden /> {text}
+                            </li>
+                        ))}
+                    </ul>
+                </div>
+                <Link href="/account/dashboard/properties/new" className={buttonVariants({ variant: "cta", size: "lg", className: "h-11 w-full sm:w-fit sm:px-6" })}>
+                    Register a property <ArrowRight aria-hidden />
                 </Link>
                 <p className="flex items-start gap-2 text-xs text-muted-foreground">
                     <LockKeyhole size={14} className="mt-0.5 shrink-0" aria-hidden />

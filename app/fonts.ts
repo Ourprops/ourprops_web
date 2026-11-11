@@ -1,12 +1,12 @@
-import { IBM_Plex_Mono, IBM_Plex_Sans } from "next/font/google";
+import { IBM_Plex_Mono, Inter } from "next/font/google";
 
-// Plex reads like technical documentation, which suits property records.
-// The mono face is for record data: parcel IDs, coordinates, digital addresses.
+// Inter for everything people read, as docs/design.md prefers: crisp and very readable on phones.
+// Plex Mono for record data: references, coordinates, digital addresses, so they line up and read as data.
 // Shared by the root layout and global-error, which replaces the layout and must load its own fonts.
-export const plexSans = IBM_Plex_Sans({
+export const inter = Inter({
   subsets: ["latin"],
   display: "swap",
-  variable: "--font-plex-sans",
+  variable: "--font-inter",
 });
 
 export const plexMono = IBM_Plex_Mono({

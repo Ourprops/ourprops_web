@@ -1,7 +1,7 @@
 // @vitest-environment node
 import { beforeEach, describe, expect, test, vi } from 'vitest'
 
-import { saveOwnDetails } from '../app/account/details/actions'
+import { saveOwnDetails } from '../app/account/settings/actions'
 
 const claims = vi.fn()
 const update = vi.fn()

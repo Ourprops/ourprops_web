@@ -1,33 +1,34 @@
 import type { Metadata } from "next";
 
-import { getHomeContent } from "@/lib/content";
+import { getFaqContent, getHomeContent } from "@/lib/content";
 import Hero from "./_components/hero";
 import ValueProposition from "./_components/value-proposition";
 import HowItWorks from "./_components/how-it-works";
-import ProductPreview from "./_components/product-preview";
 import Audience from "./_components/audience";
 import Values from "./_components/values";
-import About from "./_components/about";
-import Waitlist from "./_components/waitlist";
+import Technology from "./_components/technology";
+import Faq from "./_components/faq";
+import GetStarted from "./_components/get-started";
 
 export const metadata: Metadata = {
   alternates: { canonical: "/" },
 };
 
-// Sections alternate between the page background, white, and deep blue
+// The product on stage first (in the hero), then a short version of each part of the story, each linking on to its own page (/how-it-works, /who-its-for, /about,
+// /faq), and one next step: register. Sections alternate between the page background, white, and deep blue.
 export default async function Home() {
-  const content = await getHomeContent();
+  const [content, faq] = await Promise.all([getHomeContent(), getFaqContent()]);
 
   return (
     <div className="pt-16">
       <Hero content={content.hero} />
       <ValueProposition content={content.valueProposition} />
+      <Technology />
       <HowItWorks content={content.howItWorks} />
-      <ProductPreview content={content.productPreview} />
       <Audience content={content.audience} />
-      <Values content={content.values} />
-      <About content={content.about} />
-      <Waitlist content={content.waitlist} />
+      <Values content={content.values} showMore />
+      <Faq content={faq} />
+      <GetStarted content={content.getStarted} />
     </div>
   );
 }

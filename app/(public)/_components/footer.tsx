@@ -33,7 +33,18 @@ export default function Footer({ footerTagline, footerLinks, footerNote, company
 
 				<div className="mt-10 flex flex-col items-start justify-between gap-2 border-t border-white/10 pt-6 text-sm text-white/60 sm:flex-row sm:items-center">
 					<p>© {new Date().getFullYear()} {companyName} All rights reserved.</p>
-					<p>{footerNote}</p>
+					<div className="flex flex-col gap-2 sm:items-end">
+						<p>{footerNote}</p>
+						{/* in code, not Sanity's footer links, so the legal pages are always linked */}
+						<p className="flex gap-4">
+							<Link href="/privacy" className="transition-colors hover:text-white">
+								Privacy policy
+							</Link>
+							<Link href="/terms" className="transition-colors hover:text-white">
+								Terms &amp; conditions
+							</Link>
+						</p>
+					</div>
 				</div>
 			</div>
 		</footer>

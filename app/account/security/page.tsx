@@ -19,9 +19,9 @@ import {
 } from "@/lib/queries/mfa";
 
 const inputClassName =
-    "h-11 rounded-lg border-[#D9E2EC] bg-white px-3 text-sm text-[#102A43] placeholder:text-[#7B8794] focus-visible:border-[#003366] focus-visible:ring-2 focus-visible:ring-[#003366]/30";
+    "h-11 rounded-lg border-border bg-card px-3 text-sm text-foreground placeholder:text-muted-foreground focus-visible:border-primary focus-visible:ring-2 focus-visible:ring-primary/30";
 const primaryButtonClassName =
-    "h-11 w-full bg-[#FF6B35] text-sm font-semibold text-white hover:bg-[#E55D2B] focus-visible:border-[#003366] focus-visible:ring-2 focus-visible:ring-[#003366]/40";
+    "h-11 w-full bg-secondary text-sm font-semibold text-secondary-foreground hover:bg-[color-mix(in_oklab,var(--secondary),white_12%)] focus-visible:border-primary focus-visible:ring-2 focus-visible:ring-primary/40";
 
 // Codes are six digits; people often type or paste them with a space in the middle
 function normaliseCode(value: string) {
@@ -46,8 +46,8 @@ export default function SecurityPage() {
     const isError = profile.isError || mfa.isError || profile.data === null;
 
     return (
-        <main className="min-h-screen bg-[#F7F9FB] text-[#102A43] flex items-center justify-center px-4 py-8">
-            <section className="w-full max-w-115 rounded-2xl border border-[#D9E2EC] bg-white p-5 sm:p-8 shadow-[0_10px_24px_rgba(16,42,67,0.08)]">
+        <main className="min-h-screen bg-background text-foreground flex items-center justify-center px-4 py-8">
+            <section className="w-full max-w-115 rounded-2xl border border-border bg-card p-5 shadow-card sm:p-8">
                 <div className="mb-4 flex justify-center">
                     <Image
                         src="/logo.svg"
@@ -68,13 +68,13 @@ export default function SecurityPage() {
                 ) : (
                     <div className="flex justify-center py-10" role="status" aria-label="Loading">
                         {isError ? (
-                            <p className="text-sm text-[#C0392B]">
+                            <p className="text-sm text-destructive">
                                 We couldn&apos;t load your security settings. Please refresh and try again.
                             </p>
                         ) : (
                             <span
                                 aria-hidden="true"
-                                className="h-6 w-6 animate-spin rounded-full border-2 border-[#003366]/70 border-t-transparent"
+                                className="h-6 w-6 animate-spin rounded-full border-2 border-primary/70 border-t-transparent"
                             />
                         )}
                     </div>
@@ -125,8 +125,8 @@ function EnterCode({ profile, factors }: { profile: Profile; factors: Factor[] }
     return (
         <>
             <header className="mb-6 text-center">
-                <h1 className="text-2xl font-semibold text-[#003366]">Enter your code</h1>
-                <p className="mt-2 text-sm sm:text-base text-[#334E68]">
+                <h1 className="text-2xl font-semibold text-primary">Enter your code</h1>
+                <p className="mt-2 text-sm sm:text-base text-copy">
                     Open your authenticator app and enter the 6-digit code for OurProps.
                 </p>
             </header>
@@ -134,7 +134,7 @@ function EnterCode({ profile, factors }: { profile: Profile; factors: Factor[] }
             <form className="space-y-4" onSubmit={handleSubmit} noValidate>
                 {factors.length > 1 ? (
                     <div>
-                        <label htmlFor="factor" className="mb-1.5 block text-sm font-medium text-[#102A43]">
+                        <label htmlFor="factor" className="mb-1.5 block text-sm font-medium text-foreground">
                             App
                         </label>
                         <select
@@ -158,13 +158,13 @@ function EnterCode({ profile, factors }: { profile: Profile; factors: Factor[] }
                     {verifyCode.isPending ? "Checking..." : "Continue"}
                 </Button>
 
-                <p className="text-center text-sm text-[#486581]">
+                <p className="text-center text-sm text-copy">
                     Not you?{" "}
                     <Button
                         type="button"
                         variant="link"
                         onClick={handleSignOut}
-                        className="h-auto p-0 font-semibold text-[#003366]"
+                        className="h-auto p-0 font-semibold text-primary"
                     >
                         Sign out
                     </Button>
@@ -201,32 +201,32 @@ function ManageApps({ profile, status }: { profile: Profile; status: MfaStatus }
     return (
         <>
             <header className="mb-6 text-center">
-                <h1 className="text-2xl font-semibold text-[#003366]">Sign-in security</h1>
-                <p className="mt-2 text-sm sm:text-base text-[#334E68]">
+                <h1 className="text-2xl font-semibold text-primary">Sign-in security</h1>
+                <p className="mt-2 text-sm sm:text-base text-copy">
                     With an authenticator app, signing in needs a code from your phone as well as your password.
                 </p>
             </header>
 
             {isAdmin && status.factors.length === 0 ? (
-                <p className="mb-4 rounded-lg border border-[#F5C6A5] bg-[#FFF4EC] p-3 text-sm text-[#102A43]">
+                <p className="mb-4 rounded-lg border border-secondary/40 bg-secondary/8 p-3 text-sm text-foreground">
                     Admins must add an authenticator app before they can use the admin console.
                 </p>
             ) : null}
             {isAdmin && status.factors.length === 1 ? (
-                <p className="mb-4 rounded-lg border border-[#D9E2EC] bg-[#F7F9FB] p-3 text-sm text-[#334E68]">
+                <p className="mb-4 rounded-lg border border-border bg-background p-3 text-sm text-copy">
                     Add a second app, such as a password manager, so you can still sign in if you lose your phone.
                 </p>
             ) : null}
 
             {status.factors.length > 0 ? (
-                <ul className="mb-4 divide-y divide-[#D9E2EC] rounded-lg border border-[#D9E2EC]">
+                <ul className="mb-4 divide-y divide-border rounded-lg border border-border">
                     {status.factors.map((factor) => (
                         <li key={factor.id} className="flex items-center justify-between gap-3 p-3">
                             <div>
-                                <p className="text-sm font-medium text-[#102A43]">
+                                <p className="text-sm font-medium text-foreground">
                                     {factor.friendly_name || "Authenticator app"}
                                 </p>
-                                <p className="text-xs text-[#486581]">
+                                <p className="text-xs text-copy">
                                     Added {new Date(factor.created_at).toLocaleDateString()}
                                 </p>
                             </div>
@@ -236,7 +236,7 @@ function ManageApps({ profile, status }: { profile: Profile; status: MfaStatus }
                                 size="sm"
                                 disabled={removeFactor.isPending}
                                 onClick={() => handleRemove(factor)}
-                                className="text-sm font-medium text-[#C0392B] hover:bg-[#FDECEA]"
+                                className="text-sm font-medium text-destructive hover:bg-destructive/10"
                             >
                                 Remove
                             </Button>
@@ -245,17 +245,17 @@ function ManageApps({ profile, status }: { profile: Profile; status: MfaStatus }
                 </ul>
             ) : null}
 
-            {error ? <p className="mb-4 text-sm text-[#C0392B]">{error}</p> : null}
+            {error ? <p className="mb-4 text-sm text-destructive">{error}</p> : null}
 
             <AddApp appCount={status.factors.length} />
 
             <p className="mt-6 text-center text-sm">
                 {isAdmin && status.enteredCode ? (
-                    <Link href="/admin" className="font-semibold text-[#003366] hover:underline">
+                    <Link href="/admin" className="font-semibold text-primary hover:underline">
                         Go to the admin console
                     </Link>
                 ) : (
-                    <Link href="/account/dashboard" className="font-semibold text-[#003366] hover:underline">
+                    <Link href="/account/dashboard" className="font-semibold text-primary hover:underline">
                         Back to your dashboard
                     </Link>
                 )}
@@ -349,7 +349,7 @@ function AddApp({ appCount }: { appCount: number }) {
         return (
             <form className="space-y-4" onSubmit={handleEnroll} noValidate>
                 <div>
-                    <label htmlFor="friendly-name" className="mb-1.5 block text-sm font-medium text-[#102A43]">
+                    <label htmlFor="friendly-name" className="mb-1.5 block text-sm font-medium text-foreground">
                         Name this app
                     </label>
                     <Input
@@ -363,7 +363,7 @@ function AddApp({ appCount }: { appCount: number }) {
                         placeholder="For example, Google Authenticator on my phone"
                     />
                     {error ? (
-                        <p id="friendly-name-error" className="mt-1.5 text-sm text-[#C0392B]">
+                        <p id="friendly-name-error" className="mt-1.5 text-sm text-destructive">
                             {error}
                         </p>
                     ) : null}
@@ -371,7 +371,7 @@ function AddApp({ appCount }: { appCount: number }) {
                 <Button type="submit" disabled={enrollTotp.isPending} className={primaryButtonClassName}>
                     {enrollTotp.isPending ? "Preparing..." : "Continue"}
                 </Button>
-                <Button type="button" variant="ghost" onClick={handleCancel} className="h-11 w-full text-sm text-[#486581]">
+                <Button type="button" variant="ghost" onClick={handleCancel} className="h-11 w-full text-sm text-copy">
                     Cancel
                 </Button>
             </form>
@@ -380,7 +380,7 @@ function AddApp({ appCount }: { appCount: number }) {
 
     return (
         <form className="space-y-4" onSubmit={handleVerify} noValidate>
-            <p className="text-sm text-[#334E68]">
+            <p className="text-sm text-copy">
                 Scan this QR code with an authenticator app, such as Google Authenticator, Microsoft
                 Authenticator or a password manager.
             </p>
@@ -394,8 +394,8 @@ function AddApp({ appCount }: { appCount: number }) {
                 />
             </div>
             <div>
-                <p className="text-xs text-[#486581]">Can&apos;t scan it? Enter this key in the app instead:</p>
-                <p className="mt-1 break-all rounded-md bg-[#F7F9FB] p-2 font-mono text-sm text-[#102A43]">
+                <p className="text-xs text-copy">Can&apos;t scan it? Enter this key in the app instead:</p>
+                <p className="mt-1 break-all rounded-md bg-background p-2 font-mono text-sm text-foreground">
                     {pending.secret}
                 </p>
             </div>
@@ -405,7 +405,7 @@ function AddApp({ appCount }: { appCount: number }) {
             <Button type="submit" disabled={verifyCode.isPending} className={primaryButtonClassName}>
                 {verifyCode.isPending ? "Checking..." : "Finish setting up"}
             </Button>
-            <Button type="button" variant="ghost" onClick={handleCancel} className="h-11 w-full text-sm text-[#486581]">
+            <Button type="button" variant="ghost" onClick={handleCancel} className="h-11 w-full text-sm text-copy">
                 Cancel
             </Button>
         </form>
@@ -415,7 +415,7 @@ function AddApp({ appCount }: { appCount: number }) {
 function CodeInput({ value, onChange, error }: { value: string; onChange: (value: string) => void; error?: string }) {
     return (
         <div>
-            <label htmlFor="code" className="mb-1.5 block text-sm font-medium text-[#102A43]">
+            <label htmlFor="code" className="mb-1.5 block text-sm font-medium text-foreground">
                 6-digit code
             </label>
             <Input
@@ -432,7 +432,7 @@ function CodeInput({ value, onChange, error }: { value: string; onChange: (value
                 placeholder="123456"
             />
             {error ? (
-                <p id="code-error" className="mt-1.5 text-sm text-[#C0392B]">
+                <p id="code-error" className="mt-1.5 text-sm text-destructive">
                     {error}
                 </p>
             ) : null}

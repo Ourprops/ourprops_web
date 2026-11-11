@@ -63,25 +63,11 @@ type Metadata = {
 
 type Errors = Partial<Record<string, string>>
 
-// Missing follow-ups are filled in as empty, so the errors say what to enter rather than that a value is missing
-function forChecking(acquisition: NonNullable<AcquisitionDraft>) {
-    const metadata = acquisition.metadata as Metadata
-    if (acquisition.method === "purchase_from_owner") {
-        return {
-            ...acquisition,
-            metadata: {
-                ...metadata,
-                transferred_by: { name: metadata.transferred_by?.name ?? "", phone: metadata.transferred_by?.phone ?? "" },
-            },
-        }
-    }
-    if (acquisition.method === "other") return { ...acquisition, metadata: { note: metadata.note ?? "" } }
-    return acquisition
-}
-
+// Every follow-up is optional, so only the method is needed, and only something typed wrongly, such as a phone number
+// that can't be one, stops the owner continuing
 function errorsFor(acquisition: AcquisitionDraft): Errors {
     if (!acquisition) return { method: "Choose how you got the property" }
-    const result = acquisitionSchema.safeParse(forChecking(acquisition))
+    const result = acquisitionSchema.safeParse(acquisition)
     if (result.success) return {}
 
     const errors: Errors = {}
@@ -131,7 +117,7 @@ export default function Acquisition() {
         }
 
         // Store the trimmed answers; any unsaved change is saved as the screen closes
-        const result = acquisitionSchema.safeParse(forChecking(acquisition))
+        const result = acquisitionSchema.safeParse(acquisition)
         if (result.success) setAcquisition(result.data)
         handleNext()
     }
@@ -149,10 +135,10 @@ export default function Acquisition() {
 
     return (
         <section className="mx-auto w-full max-w-xl px-5 py-10 md:py-14">
-            <h1 className="text-heading text-foreground md:text-2xl">How did you get the property?</h1>
+            <h1 className="text-display text-primary">How did you get the property?</h1>
             <p className="mt-2 text-[15px] leading-relaxed text-copy">
                 This tells reviewers which documents to look for. If you&apos;re not sure, say so and a reviewer will
-                work it out.
+                work it out. The questions after it are all optional: answer what you know.
             </p>
 
             <form noValidate onSubmit={handleSubmit} className="mt-8">
@@ -208,7 +194,7 @@ export default function Acquisition() {
                     <Button
                         type="submit"
                         disabled={uploading}
-                        className="pressable h-12 w-full rounded-lg bg-secondary px-8 text-[15px] text-secondary-foreground hover:bg-secondary/90 sm:w-auto"
+                        className="pressable h-12 w-full rounded-lg bg-secondary px-8 text-[15px] font-semibold text-foreground shadow-sm hover:bg-[color-mix(in_oklab,var(--secondary),white_12%)] sm:w-auto"
                     >
                         {uploading ? "Uploading…" : "Continue"}
                         {!uploading && <ArrowRight size={16} aria-hidden />}
@@ -252,11 +238,14 @@ function FollowUps({ method, metadata, errors, onUploadingChange }: FollowUpsPro
             return (
                 <>
                     <FieldSet>
-                        <FieldLegend variant="label">Who transferred the property to you?</FieldLegend>
-                        <FieldDescription>A reviewer may contact them to confirm the sale.</FieldDescription>
+                        <FieldLegend variant="label">Who transferred the property to you? (optional)</FieldLegend>
+                        <FieldDescription>
+                            Adding their number can speed up checking: a reviewer may call them to confirm the sale. Leave it empty if
+                            you don&apos;t know or would rather not say.
+                        </FieldDescription>
                         <FieldGroup className="mt-1 gap-5">
                             <Field data-invalid={!!errors["metadata.transferred_by.name"]}>
-                                <FieldLabel htmlFor={FIELD_IDS["metadata.transferred_by.name"]}>Their full name</FieldLabel>
+                                <FieldLabel htmlFor={FIELD_IDS["metadata.transferred_by.name"]}>Their full name (optional)</FieldLabel>
                                 <Input
                                     id={FIELD_IDS["metadata.transferred_by.name"]}
                                     value={metadata.transferred_by?.name ?? ""}
@@ -271,7 +260,7 @@ function FollowUps({ method, metadata, errors, onUploadingChange }: FollowUpsPro
                                 <FieldError errors={toErrors(errors["metadata.transferred_by.name"])} />
                             </Field>
                             <Field data-invalid={!!errors["metadata.transferred_by.phone"]}>
-                                <FieldLabel htmlFor={FIELD_IDS["metadata.transferred_by.phone"]}>Their phone number</FieldLabel>
+                                <FieldLabel htmlFor={FIELD_IDS["metadata.transferred_by.phone"]}>Their phone number (optional)</FieldLabel>
                                 <Input
                                     id={FIELD_IDS["metadata.transferred_by.phone"]}
                                     type="tel"
@@ -291,7 +280,7 @@ function FollowUps({ method, metadata, errors, onUploadingChange }: FollowUpsPro
                     </FieldSet>
 
                     <YesNo
-                        legend="Do you have the document showing the transfer?"
+                        legend="Do you have the document showing the transfer? (optional)"
                         value={metadata.has_document}
                         error={errors["metadata.has_document"]}
                         // Saying No drops the upload from this answer; the document stays on the draft for the next step
@@ -300,8 +289,8 @@ function FollowUps({ method, metadata, errors, onUploadingChange }: FollowUpsPro
                     {metadata.has_document &&
                         documentField(
                             "The document showing the transfer",
-                            "For example, a deed of assignment or a sale agreement.",
-                            false,
+                            "For example, a deed of assignment or a sale agreement. You can also add it in the next step.",
+                            true,
                         )}
                 </>
             )
@@ -316,7 +305,7 @@ function FollowUps({ method, metadata, errors, onUploadingChange }: FollowUpsPro
         case "lease_sublease":
             return (
                 <Field data-invalid={!!errors["metadata.lease_years"]}>
-                    <FieldLabel htmlFor={FIELD_IDS["metadata.lease_years"]}>How long is the lease?</FieldLabel>
+                    <FieldLabel htmlFor={FIELD_IDS["metadata.lease_years"]}>How long is the lease? (optional)</FieldLabel>
                     <div className="flex items-center gap-3">
                         <Input
                             id={FIELD_IDS["metadata.lease_years"]}
@@ -336,7 +325,7 @@ function FollowUps({ method, metadata, errors, onUploadingChange }: FollowUpsPro
                         <span className="text-sm text-copy">years</span>
                     </div>
                     <FieldDescription id="acquisition-lease-years-description">
-                        The full length on the lease, for example 50 or 99 years.
+                        The full length on the lease, for example 50 or 99 years. Leave it empty if you&apos;re not sure.
                     </FieldDescription>
                     <FieldError errors={toErrors(errors["metadata.lease_years"])} />
                 </Field>
@@ -346,7 +335,7 @@ function FollowUps({ method, metadata, errors, onUploadingChange }: FollowUpsPro
             return (
                 <>
                     <YesNo
-                        legend="Do you have documents supporting the inheritance?"
+                        legend="Do you have documents supporting the inheritance? (optional)"
                         description="For example, letters of administration, a grant of probate or a will."
                         value={metadata.has_document}
                         error={errors["metadata.has_document"]}
@@ -355,8 +344,8 @@ function FollowUps({ method, metadata, errors, onUploadingChange }: FollowUpsPro
                     {metadata.has_document &&
                         documentField(
                             "A document supporting the inheritance",
-                            "Upload the main one here. You can add more in the next step.",
-                            false,
+                            "Upload the main one here, or add it in the next step.",
+                            true,
                         )}
                 </>
             )
@@ -364,7 +353,7 @@ function FollowUps({ method, metadata, errors, onUploadingChange }: FollowUpsPro
         case "other":
             return (
                 <Field data-invalid={!!errors["metadata.note"]}>
-                    <FieldLabel htmlFor={FIELD_IDS["metadata.note"]}>Tell us how you got the property</FieldLabel>
+                    <FieldLabel htmlFor={FIELD_IDS["metadata.note"]}>Tell us how you got the property (optional)</FieldLabel>
                     <Textarea
                         id={FIELD_IDS["metadata.note"]}
                         value={metadata.note ?? ""}

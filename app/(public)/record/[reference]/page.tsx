@@ -3,10 +3,12 @@ import type { Metadata } from "next"
 import Link from "next/link"
 import { notFound } from "next/navigation"
 
+import { ownerInter } from "@/components/owner/owner-fonts"
 import { buttonVariants } from "@/components/ui/button"
 import { PUBLIC_CHECKS, describeArea, getPublicRecord } from "@/lib/public-record"
 import { supportWhatsAppUrl } from "@/lib/support"
 import { createClient } from "@/lib/supabase/server"
+import { cn } from "@/lib/utils"
 import { TYPE_OPTIONS } from "@/lib/types/property"
 
 const dateFormat = new Intl.DateTimeFormat("en-GB", { day: "numeric", month: "long", year: "numeric", timeZone: "UTC" })
@@ -35,8 +37,8 @@ export default async function PublicRecordPage({ params }: PageProps<"/record/[r
     const checks = PUBLIC_CHECKS.map((check) => ({ ...check, result: record.checkpoints?.find((each) => each.key === check.key) }))
 
     return (
-        <div className="mx-auto grid max-w-2xl gap-6 px-4 py-10 sm:px-6 sm:py-14">
-            <section className="grid gap-5 rounded-2xl border border-border bg-card p-5 sm:p-6">
+        <div className={cn(ownerInter.variable, "owner-ui mx-auto grid max-w-2xl gap-6 px-4 py-10 sm:px-6 sm:py-14")}>
+            <section className="animate-rise grid gap-5 rounded-2xl border border-border bg-card p-5 shadow-card motion-reduce:animate-none sm:p-6">
                 {verified ? (
                     <p className="flex w-fit items-center gap-2 rounded-full bg-success-soft px-3 py-1 text-sm font-medium text-success">
                         <BadgeCheck size={16} aria-hidden /> Verified by OurProps
@@ -48,7 +50,7 @@ export default async function PublicRecordPage({ params }: PageProps<"/record/[r
                 )}
 
                 <div className="grid gap-2">
-                    <h1 className="text-heading text-primary wrap-anywhere">{record.name ?? "A property"}</h1>
+                    <h1 className="text-display text-primary wrap-anywhere">{record.name ?? "A property"}</h1>
                     <ul className="grid gap-1 text-sm text-copy">
                         {place ? (
                             <li className="flex items-center gap-2">
@@ -87,7 +89,7 @@ export default async function PublicRecordPage({ params }: PageProps<"/record/[r
                     <h2 id="checks-title" className="font-medium">
                         What we checked
                     </h2>
-                    <ul className="divide-y divide-border rounded-xl border border-border bg-card">
+                    <ul className="divide-y divide-border rounded-2xl border border-border bg-card shadow-card">
                         {checks.map((check) => {
                             const passed = check.result?.status === "verified"
                             return (

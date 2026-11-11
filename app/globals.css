@@ -6,7 +6,7 @@
 @theme inline {
   --color-background: var(--background);
   --color-foreground: var(--foreground);
-  --font-sans: var(--font-plex-sans), ui-sans-serif, system-ui, sans-serif;
+  --font-sans: var(--font-inter), ui-sans-serif, system-ui, sans-serif;
   --font-mono: var(--font-plex-mono), ui-monospace, monospace;
   --font-heading: var(--font-sans);
   --color-sidebar-ring: var(--sidebar-ring);
@@ -104,7 +104,8 @@
   --primary: #003366; /* Deep Blue */
   --primary-foreground: #FFFFFF;
   --secondary: #FF6B35; /* Orange accent */
-  --secondary-foreground: #FFFFFF;
+  /* navy, not white: white on the orange is 2.84:1, too faint to read; navy is 5.16:1 (WCAG AA) */
+  --secondary-foreground: #102A43;
   --muted: #F7F9FB;
   --muted-foreground: #7B8794; /* text-muted: labels and meta only, too light for body copy */
   --copy: #52606D; /* text-secondary: body copy, passes WCAG AA on white and page-bg */
@@ -123,8 +124,8 @@
   --chart-3: #2E7D5B;
   --chart-4: #B7791F;
   --chart-5: #52606D;
-  /* Tight corners: records and plans are precise, not soft */
-  --radius: 0.375rem;
+  /* docs/design.md: buttons 8–10px, cards 12–16px (rounded-xl and rounded-2xl) */
+  --radius: 0.625rem;
   --sidebar: #FFFFFF;
   --sidebar-foreground: #102A43;
   --sidebar-primary: #003366;
@@ -296,5 +297,147 @@
     html {
       scroll-behavior: auto;
     }
+  }
+}
+
+/*
+ * Inter's alternate digits and letters, for the owner pages; the font and the corner scale themselves are site-wide now
+ * (--font-sans, --radius)
+ */
+.owner-ui {
+  font-feature-settings: "cv11", "ss01";
+}
+
+/* A card that matters on its page: a hairline border and a shadow you feel more than see */
+@utility shadow-card {
+  box-shadow:
+    0 1px 2px rgba(16, 42, 67, 0.04),
+    0 4px 16px -4px rgba(16, 42, 67, 0.08);
+}
+
+/* Headings in the owner area: tight, confident, like Linear's */
+@utility text-display {
+  font-size: clamp(1.625rem, 1.4rem + 1vw, 2.125rem);
+  line-height: 1.15;
+  letter-spacing: -0.025em;
+  font-weight: 650;
+  text-wrap: balance;
+}
+
+@theme {
+  --animate-grow-x: grow-x 700ms cubic-bezier(0.22, 1, 0.36, 1) both;
+  --animate-rise: rise 480ms cubic-bezier(0.22, 1, 0.36, 1) both;
+
+  /* A progress bar filling in from the left */
+  @keyframes grow-x {
+    from { transform: scaleX(0); }
+    to { transform: scaleX(1); }
+  }
+  /* A section arriving: a short lift and fade, staggered with animation-delay */
+  @keyframes rise {
+    from { opacity: 0; transform: translateY(10px); }
+    to { opacity: 1; transform: translateY(0); }
+  }
+}
+
+/*
+ * Chart colours, from the dataviz skill's reference palette and validated with its script against the light surface
+ * (categorical slots 1 and 2). Dark mode has its own steps of the same hues, not an automatic flip.
+ */
+:root {
+  --viz-series-1: #2a78d6;
+  --viz-series-2: #eb6834;
+  --viz-surface: var(--card);
+  --viz-grid: color-mix(in oklab, var(--border) 70%, transparent);
+  --viz-crosshair: var(--muted-foreground);
+}
+
+.dark {
+  --viz-series-1: #3987e5;
+  --viz-series-2: #d95926;
+}
+
+/*
+ * The public site's look (2026-11-10): Figma-like confidence. Very large, tight headlines; colour blocks with big
+ * rounded corners; ink pill buttons; the product itself on stage with "live" cursors. Brand colours throughout: the
+ * blocks are tints of the brand's orange, blue and green, and one full orange block. Owner and admin pages don't use these.
+ */
+:root {
+  --ink: #0B1E33; /* the darkest navy: pill buttons and the huge headlines */
+  --block-orange: #FFE4D8;
+  --block-sky: #DCEAFB;
+  --block-mint: #DAF1E4;
+  --block-sand: #F4ECDF;
+}
+
+@theme inline {
+  --color-ink: var(--ink);
+  --color-block-orange: var(--block-orange);
+  --color-block-sky: var(--block-sky);
+  --color-block-mint: var(--block-mint);
+  --color-block-sand: var(--block-sand);
+}
+
+/* The homepage headline: as big as the screen allows */
+@utility text-hero {
+  font-size: clamp(2.75rem, 1.2rem + 6.4vw, 6.75rem);
+  line-height: 0.98;
+  letter-spacing: -0.048em;
+  font-weight: 700;
+  text-wrap: balance;
+}
+
+/* Section headlines on the public site */
+@utility text-section {
+  font-size: clamp(2.25rem, 1.4rem + 3.4vw, 4.25rem);
+  line-height: 1.02;
+  letter-spacing: -0.04em;
+  font-weight: 700;
+  text-wrap: balance;
+}
+
+/* A rounded colour block, inset from the page edge */
+@utility block-panel {
+  border-radius: clamp(1.5rem, 1rem + 1.6vw, 2.5rem);
+}
+
+@theme {
+  --animate-cursor-a: cursor-a 9s cubic-bezier(0.45, 0, 0.25, 1) infinite;
+  --animate-cursor-b: cursor-b 11s cubic-bezier(0.45, 0, 0.25, 1) infinite;
+  --animate-marquee: marquee 38s linear infinite;
+  --animate-overlap: overlap 3.2s ease-in-out infinite;
+  --animate-blink: blink 1.1s steps(2, start) infinite;
+
+  /* Two collaborators' cursors drifting over the product, like people working in the same file */
+  @keyframes cursor-a {
+    0%, 100% { transform: translate(0, 0); }
+    30% { transform: translate(-70px, 46px); }
+    55% { transform: translate(-30px, 110px); }
+    80% { transform: translate(40px, 40px); }
+  }
+  @keyframes cursor-b {
+    0%, 100% { transform: translate(0, 0); }
+    25% { transform: translate(60px, -40px); }
+    60% { transform: translate(110px, 20px); }
+    85% { transform: translate(20px, -70px); }
+  }
+  /* A row of chips scrolling sideways forever; the row is doubled so it loops without a jump */
+  @keyframes marquee {
+    from { transform: translateX(0); }
+    to { transform: translateX(-50%); }
+  }
+  /* Where two boundaries overlap, pulsing */
+  @keyframes overlap {
+    0%, 100% { opacity: 0.35; }
+    50% { opacity: 1; }
+  }
+  @keyframes blink {
+    to { visibility: hidden; }
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .animate-cursor-a, .animate-cursor-b, .animate-marquee, .animate-overlap, .animate-blink {
+    animation: none;
   }
 }

@@ -1,9 +1,10 @@
-import { Check, CircleDashed, CircleMinus, Clock, Inbox, TriangleAlert, type LucideIcon } from "lucide-react"
+import { Check, ChevronRight, CircleDashed, CircleMinus, Clock, Inbox, TriangleAlert, type LucideIcon } from "lucide-react"
 import type { Metadata } from "next"
 import Link from "next/link"
 import { notFound } from "next/navigation"
 
 import { ActionForm } from "@/components/action-form"
+import { StatusGlyph } from "@/components/owner/status-glyph"
 import { Badge } from "@/components/ui/badge"
 import {
     AUDIT_ACTION_LABELS,
@@ -23,6 +24,7 @@ import {
 import { getPropertyForReview, type PropertyForReview } from "@/lib/admin/review"
 import { ChecklistMark } from "@/components/checklist-mark"
 import { changeRequestChecklist, type IdentityStatus } from "@/lib/change-requests"
+import { acquisitionDetails } from "@/lib/admin/acquisition"
 import { SECTION_IDS, blockerAnchor, checkpointAnchor, reviewProgress, type ReviewProgress } from "@/lib/admin/review-summary"
 import { requireAdmin } from "@/lib/auth/staff"
 import { cn } from "@/lib/utils"
@@ -97,17 +99,22 @@ export default async function PropertyReviewPage({ params }: PageProps<"/admin/p
 
     return (
         <div className="space-y-6">
-            <header>
-                <Link href="/admin" className="text-sm text-copy hover:text-primary">
-                    ← Review queue
-                </Link>
-                <div className="mt-3 flex flex-wrap items-center gap-3">
-                    <h1 className="text-heading text-primary">{property.name ?? "Untitled property"}</h1>
+            <header className="grid gap-3">
+                <nav aria-label="Breadcrumb" className="flex min-w-0 items-center gap-1.5 text-sm text-copy">
+                    <Link href="/admin" className="transition-colors hover:text-primary">
+                        Review queue
+                    </Link>
+                    <ChevronRight size={14} className="shrink-0 text-muted-foreground" aria-hidden />
+                    <span className="truncate font-medium text-foreground">{property.name ?? "Untitled property"}</span>
+                </nav>
+                <div className="flex flex-wrap items-center gap-3">
+                    <StatusGlyph status={property.status} className="size-5" />
+                    <h1 className="text-display text-primary wrap-anywhere">{property.name ?? "Untitled property"}</h1>
                     <Badge variant="outline">{labelFor(PROPERTY_STATUS_LABELS, property.status)}</Badge>
                 </div>
-                <p className="mt-1 text-sm text-muted-foreground">
-                    <span className="text-data">{property.prop_id}</span>
-                    {property.owner ? ` · ${property.owner.full_name}` : null}
+                <p className="flex flex-wrap gap-2 text-sm text-copy">
+                    <span className="text-data rounded-full bg-muted px-2.5 py-1 font-medium text-foreground">{property.prop_id}</span>
+                    {property.owner ? <span className="rounded-full bg-muted px-2.5 py-1">{property.owner.full_name}</span> : null}
                 </p>
             </header>
 
@@ -116,7 +123,7 @@ export default async function PropertyReviewPage({ params }: PageProps<"/admin/p
             <div className="grid gap-6 lg:grid-cols-[minmax(0,1fr)_20rem] lg:items-start">
                 <aside
                     aria-label="Decision"
-                    className="lg:sticky lg:top-20 lg:order-last lg:max-h-[calc(100vh-6rem)] lg:overflow-y-auto"
+                    className="lg:sticky lg:top-6 lg:order-last lg:max-h-[calc(100vh-3rem)] lg:overflow-y-auto"
                 >
                     <DecisionPanel review={review} progress={progress} identityStatus={identityStatus} />
                 </aside>
@@ -156,6 +163,8 @@ export default async function PropertyReviewPage({ params }: PageProps<"/admin/p
                                     ACQUISITION_OPTIONS.find((option) => option.value === property.acquisition_method)?.title ??
                                         property.acquisition_method,
                                 ],
+                                // the follow-up answers, each optional for the owner, so a gap says "Not given"
+                                ...acquisitionDetails(property.acquisition_method, property.acquisition_metadata),
                                 [
                                     "Ownership type",
                                     property.ownership_type ? labelFor(OWNERSHIP_TYPE_LABELS, property.ownership_type) : "Not classified yet",
@@ -267,7 +276,7 @@ function DecisionPanel({
     const percent = Math.round((progress.checkpointsDone / progress.checkpointsTotal) * 100)
 
     return (
-        <div className="grid gap-5 rounded-xl border border-border bg-card p-4">
+        <div className="grid gap-5 rounded-xl border border-border bg-card shadow-card p-4">
             <h2 className="text-eyebrow text-muted-foreground">Decision</h2>
 
             {review.checkpoints.length > 0 ? (
@@ -595,7 +604,7 @@ function PropertyMap({ review }: { review: PropertyForReview }) {
 // sticky header when a link jumps here.
 function Section({ id, title, meta, children }: { id: string; title: string; meta?: string; children: React.ReactNode }) {
     return (
-        <section id={id} aria-labelledby={`${id}-title`} className="scroll-mt-20 rounded-xl border border-border bg-card p-4 sm:p-5">
+        <section id={id} aria-labelledby={`${id}-title`} className="scroll-mt-20 rounded-xl border border-border bg-card shadow-card p-4 sm:p-5">
             <div className="mb-3 flex flex-wrap items-baseline justify-between gap-2">
                 <h2 id={`${id}-title`} className="text-eyebrow text-muted-foreground">
                     {title}

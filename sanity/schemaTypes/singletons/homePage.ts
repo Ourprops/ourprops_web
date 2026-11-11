@@ -35,7 +35,8 @@ export const homePage = defineType({
     {name: 'audience', title: 'Who it is for'},
     {name: 'values', title: 'Values'},
     {name: 'about', title: 'About'},
-    {name: 'waitlist', title: 'Waitlist'},
+    {name: 'getStarted', title: 'Get started'},
+    {name: 'waitlist', title: 'Waitlist (not shown)'},
   ],
   fields: [
     defineField({
@@ -264,11 +265,29 @@ export const homePage = defineType({
       ],
     }),
 
+    // The last section of the homepage and of each page about OurProps: an invitation to register
+    defineField({
+      name: 'getStarted',
+      title: 'Get started',
+      type: 'object',
+      group: 'getStarted',
+      fields: [
+        defineField({name: 'header', title: 'Header', type: 'sectionHeader'}),
+        defineField({
+          name: 'button',
+          title: 'Button',
+          type: 'link',
+          description: 'Usually /account/login?mode=signup, which opens the sign-up form.',
+        }),
+      ],
+    }),
+
+    // No longer shown: the site asks owners to register instead. Kept so the saved text isn't lost.
     // Form fields and role options stay in code (lib/validators/waitlist.ts)
     // because they must match the database.
     defineField({
       name: 'waitlist',
-      title: 'Waitlist',
+      title: 'Waitlist (not shown on the site)',
       type: 'object',
       group: 'waitlist',
       fields: [

@@ -2,8 +2,10 @@ import { BadgeCheck, CircleHelp, FileText, IdCard, LockKeyhole, MapPinned, Messa
 import type { Metadata } from "next"
 import Link from "next/link"
 
+import { ownerInter } from "@/components/owner/owner-fonts"
 import { buttonVariants } from "@/components/ui/button"
 import { SUPPORT_WHATSAPP_IS_PLACEHOLDER, supportWhatsAppUrl } from "@/lib/support"
+import { cn } from "@/lib/utils"
 
 export const metadata: Metadata = {
     title: "Help",
@@ -41,12 +43,12 @@ const QUESTIONS = [
 // are kept, what "verified" means, and how to reach a person. Plain words, as the rest of the product.
 export default function HelpPage() {
     return (
-        <div className="mx-auto grid max-w-3xl gap-12 px-4 py-10 sm:px-6 sm:py-14">
+        <div className={cn(ownerInter.variable, "owner-ui mx-auto grid max-w-3xl gap-12 px-4 py-10 sm:px-6 sm:py-14")}>
             <header className="grid gap-3">
                 <p className="flex items-center gap-2 text-sm font-medium text-primary">
                     <CircleHelp size={16} aria-hidden /> Help
                 </p>
-                <h1 className="text-heading text-primary">How OurProps works</h1>
+                <h1 className="text-display text-primary">How OurProps works</h1>
                 <p className="text-copy">
                     OurProps organises the evidence for a property, checks it, and shows clearly what was checked, so you and the people
                     you deal with can make safer decisions.
@@ -79,7 +81,7 @@ export default function HelpPage() {
 
             <section id="what-you-need" aria-labelledby="what-you-need-title" className="grid scroll-mt-24 gap-4">
                 <h2 id="what-you-need-title" className="text-lg font-semibold">What you need</h2>
-                <ul className="grid gap-3 rounded-xl border border-border bg-card p-5">
+                <ul className="grid gap-3 rounded-2xl border border-border bg-card shadow-card p-5">
                     <li className="flex gap-3 text-sm">
                         <IdCard size={18} className="mt-0.5 shrink-0 text-primary" aria-hidden />
                         <span><span className="font-medium">Your Ghana Card</span>, or your passport if you live abroad and don&apos;t have one.</span>
@@ -129,7 +131,7 @@ export default function HelpPage() {
 
             <section aria-labelledby="questions-title" className="grid gap-4">
                 <h2 id="questions-title" className="text-lg font-semibold">Common questions</h2>
-                <div className="divide-y divide-border rounded-xl border border-border bg-card">
+                <div className="divide-y divide-border rounded-2xl border border-border bg-card shadow-card">
                     {QUESTIONS.map(({ question, answer }) => (
                         <details key={question} className="group px-5 py-4">
                             <summary className="cursor-pointer list-none font-medium marker:hidden">
@@ -144,7 +146,7 @@ export default function HelpPage() {
                 </div>
             </section>
 
-            <section id="contact" aria-labelledby="contact-title" className="grid scroll-mt-24 gap-4 rounded-xl border border-border bg-card p-5">
+            <section id="contact" aria-labelledby="contact-title" className="grid scroll-mt-24 gap-4 rounded-2xl border border-border bg-card shadow-card p-5">
                 <h2 id="contact-title" className="text-lg font-semibold">Talk to a person</h2>
                 <p className="text-sm text-copy">
                     Stuck, or not sure what to send? Message us on WhatsApp. Include your property&apos;s reference (it starts with PROP-) if
@@ -155,7 +157,7 @@ export default function HelpPage() {
                         href={supportWhatsAppUrl("Hello OurProps, I need help with ")}
                         target="_blank"
                         rel="noopener noreferrer"
-                        className={buttonVariants({ size: "lg", className: "h-11" })}
+                        className={buttonVariants({ variant: "cta", size: "lg", className: "h-11" })}
                     >
                         <MessageCircle aria-hidden /> Chat on WhatsApp
                     </a>

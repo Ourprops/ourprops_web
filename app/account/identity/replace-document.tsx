@@ -20,7 +20,7 @@ export function ReplaceDocument({ profileId }: { profileId: string }) {
     }
 
     return (
-        <section className="grid gap-4 rounded-xl border border-border bg-card p-4">
+        <section className="grid w-full max-w-2xl gap-4 rounded-2xl border border-border bg-card p-5 shadow-card sm:p-6">
             <div className="flex items-center justify-between gap-2">
                 <h2 className="font-medium">Replace your document</h2>
                 <Button type="button" variant="ghost" size="sm" onClick={() => setReplacing(false)}>

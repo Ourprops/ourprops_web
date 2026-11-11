@@ -8,10 +8,13 @@ export const SITE_URL =
 
 export const SITE_NAME = "OurProps"
 
+// Where every "Register" button goes: the account page, opened on the sign-up form
+export const SIGN_UP_PATH = "/account/login?mode=signup"
+
 export const SITE_TITLE = "OurProps · Clear property records for Ghana"
 
 export const SITE_DESCRIPTION =
-  "Keep ownership documents, site plans, and mapped boundaries together in one clear record. Built for property owners, buyers, and agents in Ghana. Join the waitlist."
+  "Keep ownership documents, site plans, and mapped boundaries together in one clear record. Built for property owners, buyers, and agents in Ghana."
 
 // Shorter, headline-led copy for link previews (WhatsApp, LinkedIn, X)
 export const SHARE_TITLE = "Know the property before you commit."

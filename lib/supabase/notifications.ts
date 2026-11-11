@@ -21,3 +21,10 @@ export async function listRecentNotifications(supabase: Supabase, limit = 5, pro
     if (error) throw error
     return (data ?? []) as OwnNotification[]
 }
+
+/** How many of the signed-in user's notifications they haven't seen yet */
+export async function countUnseenNotifications(supabase: Supabase): Promise<number> {
+    const { count, error } = await supabase.from("notifications").select("id", { count: "exact", head: true }).is("read_at", null)
+    if (error) throw error
+    return count ?? 0
+}

@@ -57,6 +57,20 @@ export default function Sidebar({ navigation, cta }: { navigation: Link[]; cta: 
                     >
                         {cta.label}
                     </DrawerClose>
+                    {/* for owners who already have an account */}
+                    <DrawerClose
+                        nativeButton={false}
+                        render={
+                            <Button
+                                variant="outline"
+                                className="pressable h-12 w-full rounded-lg bg-card text-[15px] text-primary"
+                                nativeButton={false}
+                                render={<a href="/account/login" />}
+                            />
+                        }
+                    >
+                        Sign in
+                    </DrawerClose>
                 </DrawerFooter>
             </DrawerContent>
         </Drawer>

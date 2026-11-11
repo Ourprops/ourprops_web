@@ -26,7 +26,7 @@ export function IdentityLookup() {
 
     return (
         <div className="grid gap-6">
-            <form action={lookUp} className="grid gap-4 rounded-xl border border-border bg-card p-4">
+            <form action={lookUp} className="grid gap-4 rounded-xl border border-border bg-card shadow-card p-4">
                 <fieldset className="grid gap-2">
                     <legend className="mb-1 text-sm font-medium">Document</legend>
                     {Object.entries(IDENTITY_DOCUMENT_TYPES).map(([value, label]) => (
@@ -88,7 +88,7 @@ function Holder({ holder }: { holder: IdentityHolder }) {
 
     if (state && "released" in state) {
         return (
-            <section className="grid gap-1 rounded-xl border border-border bg-card p-4">
+            <section className="grid gap-1 rounded-xl border border-border bg-card shadow-card p-4">
                 <p className="font-medium">Released from {holder.full_name}&apos;s account.</p>
                 <p className="text-sm text-copy">
                     The rightful owner can now add it on their identity page.
@@ -101,7 +101,7 @@ function Holder({ holder }: { holder: IdentityHolder }) {
     }
 
     return (
-        <section className="grid gap-4 rounded-xl border border-border bg-card p-4">
+        <section className="grid gap-4 rounded-xl border border-border bg-card shadow-card p-4">
             <dl className="grid grid-cols-[max-content_1fr] gap-x-4 gap-y-1 text-sm">
                 <dt className="text-muted-foreground">Held by</dt>
                 <dd>{holder.full_name}</dd>
