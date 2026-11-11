@@ -5,6 +5,7 @@
 
 import {
   SHARE_DESCRIPTION,
+  PRIMARY_CTA,
   SHARE_TITLE,
   SIGN_UP_PATH,
   SITE_DESCRIPTION,
@@ -27,7 +28,7 @@ export const HOME_DEFAULTS = {
     heading: "Know the land before you pay for it.",
     subheading:
       "OurProps keeps a property's indenture, site plan, and mapped boundary together in one record, and our team checks them. Share the verified record with your family, lawyer, or buyer; your documents stay private.",
-    primaryCta: { label: "Register your property", href: SIGN_UP_PATH } as Link,
+    primaryCta: PRIMARY_CTA as Link,
     secondaryCta: { label: "See how it works", href: "/how-it-works" } as Link,
     launchNote: "Launching in Ghana",
     trustPoints: [
@@ -121,7 +122,7 @@ export const HOME_DEFAULTS = {
         description:
           "Keep the indenture, site plan and boundary together in one private place, and share a verified record when you're ready.",
         accessLevel: "full" as AccessLevel,
-        cta: { label: "Register your property", href: SIGN_UP_PATH } as Link,
+        cta: { label: "Get started", href: SIGN_UP_PATH } as Link,
       },
       {
         title: "Buyers and families",
@@ -176,18 +177,6 @@ export const HOME_DEFAULTS = {
     vision:
       "To become the place people turn to for reliable property information and conflict-free transactions across Africa.",
   },
-  waitlist: {
-    header: {
-      eyebrow: "Early access",
-      heading: "Be one of the first to put your property on record.",
-      description:
-        "Join the waitlist and we'll email you as soon as OurProps opens in Ghana.",
-    } as SectionHeader,
-    submitLabel: "Join the waitlist",
-    privacyNote: "No spam. Only launch news and important product updates.",
-    successTitle: "You're on the list.",
-    successMessage: "Thanks for signing up. We'll be in touch as soon as access opens.",
-  },
   getStarted: {
     header: {
       eyebrow: "Get started",
@@ -195,7 +184,7 @@ export const HOME_DEFAULTS = {
       description:
         "Create an account, tell us about your property and send your documents. Your progress saves as you go, so you can finish later.",
     } as SectionHeader,
-    button: { label: "Register your property", href: SIGN_UP_PATH } as Link,
+    button: { label: "Create your account", href: SIGN_UP_PATH } as Link,
   },
 }
 
@@ -206,23 +195,7 @@ export const SITE_DEFAULTS = {
   description: SITE_DESCRIPTION,
   shareTitle: SHARE_TITLE,
   shareDescription: SHARE_DESCRIPTION,
-  navigation: [
-    { label: "How it works", href: "/how-it-works" },
-    { label: "Who it's for", href: "/who-its-for" },
-    { label: "FAQ", href: "/faq" },
-    { label: "Blog", href: "/blog" },
-    { label: "About", href: "/about" },
-  ] as Link[],
-  headerCta: { label: "Get started", href: SIGN_UP_PATH } as Link,
   footerTagline: "Property information, organized.",
-  footerLinks: [
-    { label: "How it works", href: "/how-it-works" },
-    { label: "Who it's for", href: "/who-its-for" },
-    { label: "FAQ", href: "/faq" },
-    { label: "About", href: "/about" },
-    { label: "Blog", href: "/blog" },
-    { label: "Help", href: "/help" },
-  ] as Link[],
   footerNote: "Built for conflict-free property transactions across Africa.",
   companyName: "OurProps Inc.",
 }

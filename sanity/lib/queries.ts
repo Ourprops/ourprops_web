@@ -9,7 +9,6 @@ export const HOME_PAGE_QUERY = defineQuery(`*[_id == "homePage"][0]{
     eyebrow,
     heading,
     subheading,
-    primaryCta${LINK},
     secondaryCta${LINK},
     launchNote,
     trustPoints[]{icon, text}
@@ -20,7 +19,6 @@ export const HOME_PAGE_QUERY = defineQuery(`*[_id == "homePage"][0]{
   audience{${SECTION_HEADER}, items[]{title, description, accessLevel, cta${LINK}}},
   values{${SECTION_HEADER}, items[]${CARD}, disclaimer},
   about{${SECTION_HEADER}, mission, vision},
-  waitlist{${SECTION_HEADER}, submitLabel, privacyNote, successTitle, successMessage},
   getStarted{${SECTION_HEADER}, button${LINK}}
 }`)
 
@@ -35,10 +33,7 @@ export const SITE_SETTINGS_QUERY = defineQuery(`*[_id == "siteSettings"][0]{
   shareTitle,
   shareDescription,
   ogImage{asset, crop, hotspot, alt, "width": asset->metadata.dimensions.width},
-  navigation[]${LINK},
-  headerCta${LINK},
   footerTagline,
-  footerLinks[]${LINK},
   footerNote,
   companyName
 }`)

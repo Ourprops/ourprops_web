@@ -1,3 +1,4 @@
+import { getVisitor } from "@/lib/auth/visitor";
 import { getSiteContent } from "@/lib/content";
 import { SanityLive } from "@/sanity/lib/live";
 import Header from "./_components/header";
@@ -8,15 +9,14 @@ export default async function MarketingLayout({
 }: {
   children: React.ReactNode;
 }) {
-  const site = await getSiteContent();
+  const [site, visitor] = await Promise.all([getSiteContent(), getVisitor()]);
 
   return (
     <div className="min-h-full flex flex-col bg-card">
-      <Header navigation={site.navigation} cta={site.headerCta} />
+      <Header visitor={visitor} />
       <main className="flex-1">{children}</main>
       <Footer
         footerTagline={site.footerTagline}
-        footerLinks={site.footerLinks}
         footerNote={site.footerNote}
         companyName={site.companyName}
       />
