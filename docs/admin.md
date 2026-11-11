@@ -294,6 +294,24 @@ An owner can submit properties without verifying their identity, but no property
 
 The seven checkpoints (`identity_verified`, `ownership_claim_verified`, `boundary_mapped`, `cadastral_cross_check`, `overlap_clearance`, `official_search_status`, `encumbrance_clearance`) each get a status and notes through `update_checkpoint(...)`. `internal_notes` must never reach owners. When owners are given read access to checkpoints, give it through a view or column grants that leave `internal_notes` out.
 
+#### Survey records (`cadastral_cross_check`): how to check it
+
+The public record describes this check as: *"The mapped boundary matches the site plan's size and shape, as checked by our team."* It is a careful comparison by eye, not a survey. Every admin does it the same way:
+
+1. **Open the site plan** the owner uploaded (Documents). With no site plan, you can't verify this check: request one, or waive it with a public note saying why (for example, "No site plan available for this property").
+2. **Record the area** the plan states, in the unit it uses, in the "Site plan" panel under this checkpoint. You can't verify the check without it (`record_site_plan_area()`).
+3. **Compare the shape** with the owner's drawing on the Map:
+   - **Corners:** the same number, in the same arrangement (a long thin plot stays long and thin).
+   - **Side lengths:** roughly in proportion to the dimensions written on the plan.
+   - **Surroundings:** roads, access lanes and neighbouring plots named on the plan, where they show on the satellite image.
+4. **Decide:**
+   - **Verify** when the area is within 10% and the shape and position agree with the plan.
+   - **Request changes** when the console warns that the drawing is more than 10% off, or the shape or position is clearly wrong. In the request's message, ask the owner to redraw the boundary using their site plan, and say what's wrong in plain words ("Your drawing is about 25% larger than your site plan; the north side looks too long"). They redraw it from "Change your answers or boundary" on their property page.
+   - **Flag** when the plan itself looks inconsistent or doubtful (no barcode or stamp where one is expected, dimensions that don't add up to the stated area). The public note describes the issue; the internal note records what you saw.
+5. **Write an internal note** saying what you compared, for example "Area 1,100 m² from plan; drawing 1,102 m²; shape and access road match".
+
+Never correct the owner's drawing yourself, and never type coordinates from the plan into the map: site plans use the Ghana National Grid, and converting it to map coordinates is not built yet (see `docs/proposals/site-plan-boundaries.md`).
+
 ### Encumbrances
 
 `encumbrance_clearance` checks for court cases and registered encumbrances (a mortgage, a caveat, a lease) on the land. A Lands Commission search shows registered encumbrances but not reliably cases still in court, so the admin also checks the court registry. The admin records the searches they ran (reference and date) in the checkpoint's internal notes. There is no separate searches table.

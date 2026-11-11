@@ -33,7 +33,9 @@ export const PUBLIC_CHECKS: { key: string; title: string; text: string }[] = [
     { key: "identity_verified", title: "The owner's identity", text: "The person who registered it showed us a valid Ghana Card or passport." },
     { key: "ownership_claim_verified", title: "The ownership documents", text: "Their documents support their claim to the property." },
     { key: "boundary_mapped", title: "The boundary", text: "The property's boundary is mapped." },
-    { key: "cadastral_cross_check", title: "Survey records", text: "The boundary agrees with the survey or cadastral plan." },
+    // What an admin actually does at this check (docs/admin.md, "Survey records"): compares the mapped boundary with the
+    // site plan by eye and records the plan's area. Not a survey, so it doesn't claim one.
+    { key: "cadastral_cross_check", title: "Survey records", text: "The mapped boundary matches the site plan's size and shape, as checked by our team." },
     { key: "overlap_clearance", title: "No overlapping claims", text: "It doesn't overlap another property registered with us." },
     { key: "official_search_status", title: "Lands Commission search", text: "An official search on the land was considered." },
     { key: "encumbrance_clearance", title: "Court cases and charges", text: "No open court case or charge on the property blocks it." },

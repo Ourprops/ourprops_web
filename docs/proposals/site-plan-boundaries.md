@@ -39,6 +39,10 @@ Getting the area right doesn't fix the shape: two plots can have the same area a
 - **The "Survey records" check can't be marked verified** until that area is recorded.
 - **The console warns the admin** when the owner's drawing differs from the site plan by more than 10%, and suggests asking the owner to redraw it.
 - **The public record states where its area comes from.** It says "from the site plan, checked by OurProps" or "drawn on a map by the owner, not checked". A sketch is never presented as a survey.
+- **The check's public description matches what admins do:** "The mapped boundary matches the site plan's size and shape, as checked by our team." (It used to say "agrees with the survey or cadastral plan", which claimed more than an eye comparison.)
+- **The manual check is written down** in `docs/admin.md` ("Survey records: how to check it"), so every admin checks the same way.
+
+**Also relevant:** the registration flow used to let owners upload a GeoJSON file from their surveyor's app, which gives an exact boundary with no conversion. It was taken out of the boundary step on 2026-10-27; the code that reads the files still exists and is tested. Bringing it back as an option ("Got a digital file from your surveyor?") would give some owners exact shapes during the MVP at little cost. It was removed for a reason, so this is a product decision.
 
 This closes the most visible risk: a buyer trusting a hand-drawn number. It doesn't make the overlap check any more precise.
 
@@ -83,6 +87,7 @@ There are well-tested open-source libraries for this, so the maths itself isn't 
 
 1. **Roadmap decision:** is option B a post-MVP item, and roughly when?
 2. **Test material:** can we collect 5 to 10 real site plans (with owners' permission) from different areas and eras: Accra, Kumasi, Kasoa; old and new plans; in feet and in metres?
+   - **Consent:** owners already upload their site plans, so these are the natural test set. But using them to build and test a feature is a different purpose from verifying the owner's own property. Before we use any, either the privacy policy (being written in Sanity) must say uploaded documents may be used to improve verification, or we ask the owners directly. That's a decision for the PM and whoever advises on Ghana's Data Protection Act, 2012 (Act 843), not something engineering should assume.
 3. **Surveyor input:** do we have, or can we find, a licensed surveyor who could review our conversion results and advise on edge cases?
 4. **Product wording:** how the public record should present a verified boundary, and what happens to a property already verified with only an owner-drawn boundary (re-check on next review, or leave as is?).
 
