@@ -1,7 +1,8 @@
-import {CogIcon, HomeIcon} from '@sanity/icons'
+import {CogIcon, DocumentTextIcon, HelpCircleIcon, HomeIcon} from '@sanity/icons'
 import type {StructureResolver} from 'sanity/structure'
 
 import {SINGLETON_TYPES} from './schemaTypes'
+import {LEGAL_PAGES} from './schemaTypes/documents/legalPage'
 
 // https://www.sanity.io/docs/structure-builder-cheat-sheet
 export const structure: StructureResolver = (S) =>
@@ -17,6 +18,17 @@ export const structure: StructureResolver = (S) =>
         .title('Site settings')
         .icon(CogIcon)
         .child(S.document().schemaType('siteSettings').documentId('siteSettings')),
+      S.listItem()
+        .title('FAQ')
+        .icon(HelpCircleIcon)
+        .child(S.document().schemaType('faqPage').documentId('faqPage')),
       S.divider(),
+      // Legal pages: one fixed document each, so /privacy and /terms always find theirs
+      ...LEGAL_PAGES.map((page) =>
+        S.listItem()
+          .title(page.title)
+          .icon(DocumentTextIcon)
+          .child(S.document().schemaType('legalPage').documentId(page.id).title(page.title)),
+      ),
       ...S.documentTypeListItems().filter((item) => !SINGLETON_TYPES.has(item.getId() ?? '')),
     ])

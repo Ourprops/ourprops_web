@@ -59,6 +59,7 @@ export default function Boundary({ mapsApiKey }: BoundaryProps) {
     const boundary = useNewPropertyStore((state) => state.boundary)
     const setBoundary = useNewPropertyStore((state) => state.setBoundary)
     const handleNext = useNewPropertyStore((state) => state.handleNext)
+    const mode = useNewPropertyStore((state) => state.mode)
     const { mutate: saveDraft } = useHandleSaveDraft()
 
     // Drawing is the default; a draft saved with a pin reopens on the pin
@@ -112,7 +113,7 @@ export default function Boundary({ mapsApiKey }: BoundaryProps) {
 
     return (
         <section className="mx-auto w-full max-w-3xl px-5 py-10 md:py-14">
-            <h1 className="text-heading text-foreground md:text-2xl">Mark the property on the map</h1>
+            <h1 className="text-display text-primary">Mark the property on the map</h1>
             <p className="mt-2 text-[15px] leading-relaxed text-copy">
                 Draw round its boundary so it&apos;s clear which land it is. Not sure where the edges are? Drop a pin
                 instead, or skip this step and add it later.
@@ -145,18 +146,21 @@ export default function Boundary({ mapsApiKey }: BoundaryProps) {
                 ))}
             </div>
 
-            {/* The same checklist item as on the documents screen, so a plan added here shows there too */}
-            <ul className="mt-4">
-                <SlotItem
-                    option={SITE_PLAN_OPTION}
-                    loading={documents.isPending}
-                    documents={documents.data?.filter((document) => document.slot === "site_plan") ?? []}
-                    uploads={sitePlans.uploads}
-                    linkedDocumentId={linkedDocumentId}
-                    onAdd={(files) => sitePlans.addFiles("site_plan", files)}
-                    onDismissUpload={sitePlans.dismissUpload}
-                />
-            </ul>
+            {/* The same checklist item as on the documents screen, so a plan added here shows there too.
+                While changing a submitted property, documents go through the requests on its page instead. */}
+            {mode === "draft" && (
+                <ul className="mt-4">
+                    <SlotItem
+                        option={SITE_PLAN_OPTION}
+                        loading={documents.isPending}
+                        documents={documents.data?.filter((document) => document.slot === "site_plan") ?? []}
+                        uploads={sitePlans.uploads}
+                        linkedDocumentId={linkedDocumentId}
+                        onAdd={(files) => sitePlans.addFiles("site_plan", files)}
+                        onDismissUpload={sitePlans.dismissUpload}
+                    />
+                </ul>
+            )}
 
             {mapsApiKey ? (
                 <APIProvider apiKey={mapsApiKey} region="GH" language="en">
@@ -193,7 +197,7 @@ export default function Boundary({ mapsApiKey }: BoundaryProps) {
                     type="button"
                     onClick={handleContinue}
                     disabled={sitePlans.uploading}
-                    className="pressable h-12 w-full rounded-lg bg-secondary px-8 text-[15px] text-secondary-foreground hover:bg-secondary/90 sm:w-auto"
+                    className="pressable h-12 w-full rounded-lg bg-secondary px-8 text-[15px] font-semibold text-foreground shadow-sm hover:bg-[color-mix(in_oklab,var(--secondary),white_12%)] sm:w-auto"
                 >
                     {sitePlans.uploading ? "Uploading…" : "Continue"}
                     {!sitePlans.uploading && <ArrowRight size={16} aria-hidden />}

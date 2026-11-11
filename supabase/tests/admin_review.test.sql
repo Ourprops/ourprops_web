@@ -1,5 +1,6 @@
 -- run with: npx supabase test db
 -- everything happens in one transaction that is rolled back, so the local database is left as it was.
+-- queries are limited to the rows made here, so data already in the local database doesn't change the results.
 begin;
 create extension if not exists pgtap with schema extensions;
 
@@ -57,13 +58,13 @@ select is(
 -- Kofi signed in with a second factor
 select set_config('request.jwt.claims', '{"sub": "22222222-2222-2222-2222-222222222222", "role": "authenticated", "aal": "aal2"}', true);
 select set_eq(
-  $$ select id from public.properties $$,
+  $$ select id from public.properties where id::text like 'aaaaaaaa-0000-0000-0000-%' $$,
   $$ values ('aaaaaaaa-0000-0000-0000-000000000001'::uuid), ('aaaaaaaa-0000-0000-0000-000000000002'::uuid) $$,
   'an admin reads submitted properties but not drafts'
 );
 
 select set_eq(
-  $$ select property_id from public.property_boundaries $$,
+  $$ select property_id from public.property_boundaries where property_id::text like 'aaaaaaaa-0000-0000-0000-%' $$,
   $$ values ('aaaaaaaa-0000-0000-0000-000000000001'::uuid), ('aaaaaaaa-0000-0000-0000-000000000002'::uuid) $$,
   'an admin reads the boundaries of submitted properties but not drafts'
 );
@@ -81,7 +82,7 @@ select is(
 );
 
 select is(
-  (select count(*)::int from public.profiles),
+  (select count(*)::int from public.profiles where id::text ~ '^(1|2|3)\1{7}-'),
   3,
   'an admin reads every profile, to see who owns a property'
 );
@@ -158,7 +159,8 @@ select set_eq(
 );
 
 select results_eq(
-  $$ select actor_id from public.audit_logs where action = 'property_review_started' $$,
+  $$ select actor_id from public.audit_logs
+     where action = 'property_review_started' and property_id = 'aaaaaaaa-0000-0000-0000-000000000001' $$,
   $$ values ('22222222-2222-2222-2222-222222222222'::uuid) $$,
   'the audit log records who started the review, which is how the console shows the reviewer'
 );
@@ -216,7 +218,10 @@ select throws_ok(
 reset role;
 insert into public.identity_documents (profile_id, document_type, issuing_country, document_number, expires_on, file_path, verification_status)
 values ('11111111-1111-1111-1111-111111111111', 'ghana_card', 'GH', 'GHA-123456789-0', current_date + 365,
-        '11111111-1111-1111-1111-111111111111/card.jpg', 'verified');
+        '11111111-1111-1111-1111-111111111111/card.jpg', 'unreviewed');
+-- verified the way review_identity_document leaves it: the number is gone, the fingerprint stays
+update public.identity_documents set verification_status = 'verified', document_number = null
+  where profile_id = '11111111-1111-1111-1111-111111111111';
 set local role authenticated;
 
 select lives_ok(
@@ -252,6 +257,7 @@ select results_eq(
   $$ select metadata ->> 'old_status', metadata ->> 'new_status', metadata ->> 'internal_note'
      from public.audit_logs
      where action = 'checkpoint_updated' and metadata ->> 'checkpoint_key' = 'boundary_mapped'
+       and property_id = 'aaaaaaaa-0000-0000-0000-000000000001'
      order by created_at, (metadata ->> 'new_status') = 'in_progress' $$,
   $$ values ('unverified'::text, 'verified'::text, 'Matches the site plan'::text),
             ('verified'::text, 'in_progress'::text, null::text) $$,

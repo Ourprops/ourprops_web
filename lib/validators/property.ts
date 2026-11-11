@@ -144,16 +144,28 @@ export const documentReferenceSchema = z.strictObject({
 
 export type DocumentReference = z.infer<typeof documentReferenceSchema>
 
-// The person who sold or transferred the property, so a reviewer can contact them
+// Text the owner may leave empty; empty is stored as nothing rather than ""
+const optionalText = z
+  .string()
+  .trim()
+  .transform((value) => value || undefined)
+  .optional()
+
+// The person who sold or transferred the property, so a reviewer can contact them. Both are optional: the owner may
+// not know, or may not want to say. A phone number is checked only when one is given, so a typo is still caught.
 export const transferredBySchema = z.strictObject({
-  name: z.string().trim().min(1, "Enter the name of the person who transferred it"),
-  phone: phoneNumberSchema,
+  name: optionalText,
+  phone: z
+    .string()
+    .trim()
+    .transform((value) => value || undefined)
+    .pipe(phoneNumberSchema.optional())
+    .optional(),
 })
 
-const DOCUMENT_NEEDED = "Upload the document, or choose No if you don't have it"
-
 // The answer saved as acquisition_method and acquisition_metadata; the questions asked depend on the method.
-// The full rules are checked when the user continues.
+// Every follow-up is optional (decided 2026-11-10): the owner tells us what they know, and a reviewer asks for more if
+// it matters. Only the method itself is needed, and "I'm not sure" is one of them.
 export const acquisitionSchema = z.discriminatedUnion("method", [
   z.strictObject({
     method: z.literal("direct_purchase"),
@@ -161,13 +173,11 @@ export const acquisitionSchema = z.discriminatedUnion("method", [
   }),
   z.strictObject({
     method: z.literal("purchase_from_owner"),
-    metadata: z
-      .strictObject({
-        transferred_by: transferredBySchema,
-        has_document: z.boolean({ error: "Say whether you have the document showing the transfer" }),
-        document: documentReferenceSchema.optional(),
-      })
-      .refine((metadata) => !metadata.has_document || metadata.document, { message: DOCUMENT_NEEDED, path: ["document"] }),
+    metadata: z.strictObject({
+      transferred_by: transferredBySchema.optional(),
+      has_document: z.boolean().optional(),
+      document: documentReferenceSchema.optional(),
+    }),
   }),
   z.strictObject({
     method: z.literal("transfer_assignment"),
@@ -177,24 +187,23 @@ export const acquisitionSchema = z.discriminatedUnion("method", [
     method: z.literal("lease_sublease"),
     metadata: z.strictObject({
       lease_years: z
-        .number({ error: "Enter how many years the lease is for" })
+        .number()
         .int("Enter a whole number of years")
-        .min(1, "Enter how many years the lease is for")
-        .max(999, "Enter a lease of 999 years or less"),
+        .min(1, "Enter a lease of at least 1 year, or leave it empty")
+        .max(999, "Enter a lease of 999 years or less")
+        .optional(),
     }),
   }),
   z.strictObject({
     method: z.literal("inheritance"),
-    metadata: z
-      .strictObject({
-        has_document: z.boolean({ error: "Say whether you have documents supporting the inheritance" }),
-        document: documentReferenceSchema.optional(),
-      })
-      .refine((metadata) => !metadata.has_document || metadata.document, { message: DOCUMENT_NEEDED, path: ["document"] }),
+    metadata: z.strictObject({
+      has_document: z.boolean().optional(),
+      document: documentReferenceSchema.optional(),
+    }),
   }),
   z.strictObject({
     method: z.literal("other"),
-    metadata: z.strictObject({ note: z.string().trim().min(1, "Tell us how you got the property") }),
+    metadata: z.strictObject({ note: optionalText }),
   }),
   // A reviewer works out the method later
   z.strictObject({ method: z.literal("unsure"), metadata: z.strictObject({}) }),
@@ -328,9 +337,14 @@ export const submitSchema = z.strictObject({
 })
 
 // A draft as stored on the server, returned after each save and used to resume registration
+// The statuses in which the owner can still change their answers: a draft, or a property an admin has asked them
+// to change (docs/admin.md, section 5)
+export const EDITABLE_STATUSES = ["draft", "action_required"] as const
+
 export const savedDraftSchema = draftSchema.extend({
   id: propertyIdSchema,
   updatedAt: z.string(),
+  status: z.enum(EDITABLE_STATUSES),
 })
 
 export type SavedDraft = z.infer<typeof savedDraftSchema>

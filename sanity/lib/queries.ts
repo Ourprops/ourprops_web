@@ -20,7 +20,13 @@ export const HOME_PAGE_QUERY = defineQuery(`*[_id == "homePage"][0]{
   audience{${SECTION_HEADER}, items[]{title, description, accessLevel, cta${LINK}}},
   values{${SECTION_HEADER}, items[]${CARD}, disclaimer},
   about{${SECTION_HEADER}, mission, vision},
-  waitlist{${SECTION_HEADER}, submitLabel, privacyNote, successTitle, successMessage}
+  waitlist{${SECTION_HEADER}, submitLabel, privacyNote, successTitle, successMessage},
+  getStarted{${SECTION_HEADER}, button${LINK}}
+}`)
+
+export const FAQ_PAGE_QUERY = defineQuery(`*[_id == "faqPage"][0]{
+  ${SECTION_HEADER},
+  items[]{question, answer}
 }`)
 
 export const SITE_SETTINGS_QUERY = defineQuery(`*[_id == "siteSettings"][0]{
@@ -36,3 +42,6 @@ export const SITE_SETTINGS_QUERY = defineQuery(`*[_id == "siteSettings"][0]{
   footerNote,
   companyName
 }`)
+
+// A legal page by its fixed document ID (privacyPolicy, termsAndConditions), as the Studio structure creates them
+export const LEGAL_PAGE_QUERY = defineQuery(`*[_id == $id][0]{title, lastUpdated, body}`)

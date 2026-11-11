@@ -330,7 +330,7 @@ An owner can choose to delegate property management to an agent. The agent is a 
 
 Risks accepted for now, each with what would close it. Remove an entry once it is resolved.
 
-**Uploaded document contents are not checked (added 2026-10-14).** The `property-documents` bucket takes PDFs, Word files (DOC, DOCX, ODT) and images (JPEG, PNG, WebP, HEIC, TIFF), up to 20 MB each. Storage decides whether to accept a file by the type the browser declares; nothing looks inside the file. A harmful file renamed to `.pdf` or `.docx` is therefore accepted, and old-style `.doc` files can contain macros even though macro-enabled `.docm` files are refused.
+**Uploaded document contents are not checked (added 2026-10-14).** The `property-documents` bucket takes PDFs, Word files (DOC, DOCX, ODT) and images (JPEG, PNG, WebP, TIFF; HEIC until 2026-11-04), up to 20 MB each. Storage decides whether to accept a file by the type the browser declares; nothing looks inside the file. A harmful file renamed to `.pdf` or `.docx` is therefore accepted, and old-style `.doc` files can contain macros even though macro-enabled `.docm` files are refused.
 
 - *Who is exposed:* reviewers and administrators who download and open uploaded documents. Owners only open their own files.
 - *Until it is fixed:* open Word files in a previewer or convert them to PDF rather than opening them in Word with macros enabled, and do not open documents on machines that hold service-role keys.

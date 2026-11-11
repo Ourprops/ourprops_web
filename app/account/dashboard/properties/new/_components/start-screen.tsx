@@ -81,7 +81,7 @@ export default function StartScreen() {
                 <Button
                     type="button"
                     onClick={handleNext}
-                    className="pressable h-12 rounded-lg bg-secondary px-8 text-[15px] text-secondary-foreground hover:bg-secondary/90"
+                    className="pressable h-12 rounded-lg bg-secondary px-8 text-[15px] font-semibold text-foreground shadow-sm hover:bg-[color-mix(in_oklab,var(--secondary),white_12%)]"
                 >
                     Get started
                     <ArrowRight size={16} aria-hidden />

@@ -1,0 +1,24 @@
+# The document converter (docs/admin.md, section 7), for local development: Gotenberg turns Word and TIFF files
+# into PDFs for the admin console. Start it with `docker compose -f converter/compose.yaml up -d` and set
+# DOCUMENT_CONVERTER_URL=http://localhost:3100 in .env.local.
+#
+# The flags are the ones Cloud Run uses: only the LibreOffice route is on, every way Gotenberg can reach the
+# network itself is off, and LibreOffice restarts after every file, so a file that exploits it can't touch the
+# next one. Locally, nothing blocks the container's own network; on Cloud Run, outbound traffic goes nowhere.
+services:
+  gotenberg:
+    image: gotenberg/gotenberg:8.39.0
+    ports:
+      - "127.0.0.1:3100:3000"
+    command:
+      - gotenberg
+      - --chromium-disable-routes
+      - --pdfengines-disable-routes
+      - --webhook-disable
+      - --api-disable-download-from
+      - --libreoffice-deny-public-ips
+      - --libreoffice-deny-private-ips
+      - --libreoffice-restart-after=1
+      - --libreoffice-max-queue-size=5
+      - --api-timeout=60s
+      - --api-body-limit=25MB

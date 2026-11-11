@@ -85,7 +85,7 @@ select is(
 );
 
 update public.identity_documents
-  set verification_status = 'verified', verified_at = now()
+  set verification_status = 'verified', verified_at = now(), document_number = null
   where profile_id = '11111111-1111-1111-1111-111111111111';
 
 set local role authenticated;

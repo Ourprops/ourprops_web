@@ -24,7 +24,7 @@ vi.mock('@/lib/queries/profile', () => ({
     useCompleteOnboarding: () => ({ isPending: false, mutate: vi.fn() }),
 }))
 
-import LoginPage from '../app/account/login/page'
+import LoginForm from '../app/account/login/login-form'
 import OnboardingPage from '../app/account/onboarding/page'
 
 beforeEach(() => replace.mockClear())
@@ -38,7 +38,7 @@ describe('Loading screen', () => {
     })
 
     test('appears after signing in, while the dashboard loads', () => {
-        render(<LoginPage />)
+        render(<LoginForm />)
         expect(screen.queryByText('Signing you in…')).toBeNull()
 
         fireEvent.change(screen.getByLabelText('Email'), { target: { value: 'ama@example.com' } })

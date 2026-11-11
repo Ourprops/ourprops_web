@@ -34,7 +34,7 @@ const fetchMock = vi.fn(async (_url: string, init: RequestInit) => {
     return {
         ok: true,
         status: init.method === 'POST' ? 201 : 200,
-        json: async () => ({ id: DRAFT_ID, updatedAt: SAVED_AT, ...body }),
+        json: async () => ({ id: DRAFT_ID, updatedAt: SAVED_AT, status: 'draft', ...body }),
     }
 })
 
@@ -457,7 +457,7 @@ describe('Autosave', () => {
         let finish: () => void = () => {}
         fetchMock.mockImplementationOnce(async (_url, init) => {
             await new Promise<void>((resolve) => (finish = resolve))
-            return { ok: true, status: 201, json: async () => ({ id: DRAFT_ID, updatedAt: SAVED_AT, ...JSON.parse(init.body as string) }) }
+            return { ok: true, status: 201, json: async () => ({ id: DRAFT_ID, updatedAt: SAVED_AT, status: 'draft', ...JSON.parse(init.body as string) }) }
         })
         renderWithQuery(<Details />)
 
@@ -485,7 +485,7 @@ describe('Acquisition screen', () => {
             if (url.endsWith('/documents')) return { ok: true, status: 201, json: async () => DOCUMENT } as never
             if (url.includes('/documents/')) return { ok: true, status: 204, json: async () => ({}) } as never
             const body = JSON.parse(init.body as string)
-            return { ok: true, status: 200, json: async () => ({ id: DRAFT_ID, updatedAt: SAVED_AT, ...body }) } as never
+            return { ok: true, status: 200, json: async () => ({ id: DRAFT_ID, updatedAt: SAVED_AT, status: 'draft', ...body }) } as never
         })
     }
 
@@ -513,21 +513,26 @@ describe('Acquisition screen', () => {
         expect(useNewPropertyStore.getState().screen).toBe('documents')
     })
 
-    test('asks who transferred the property, and stores their name and number', () => {
+    // Every follow-up is optional (decided 2026-11-10): the owner tells us what they know
+    test.each([/directly from the original owner/i, /from another owner/i, /transferred or assigned/i, /leased/i, /inherited/i, /^other$/i])(
+        'moves on without any follow-up answered for %s',
+        (method) => {
+            startOnAcquisition()
+
+            fireEvent.click(screen.getByRole('radio', { name: method }))
+            fireEvent.click(continueButton())
+
+            expect(errorMessages()).toEqual([])
+            expect(useNewPropertyStore.getState().screen).toBe('documents')
+        }
+    )
+
+    test("stores who transferred it when the owner says, trimmed", () => {
         startOnAcquisition()
 
         fireEvent.click(screen.getByRole('radio', { name: /from another owner/i }))
-        fireEvent.click(continueButton())
-
-        expect(errorMessages()).toEqual([
-            'Enter the name of the person who transferred it',
-            'Enter a valid phone number.',
-            'Say whether you have the document showing the transfer',
-        ])
-        expect(document.activeElement).toBe(screen.getByLabelText('Their full name'))
-
-        typeInto('Their full name', '  Kwame Mensah ')
-        typeInto('Their phone number', '024 123 4567')
+        typeInto('Their full name (optional)', '  Kwame Mensah ')
+        typeInto('Their phone number (optional)', '024 123 4567')
         fireEvent.click(screen.getByRole('radio', { name: 'No' }))
         fireEvent.click(continueButton())
 
@@ -538,14 +543,27 @@ describe('Acquisition screen', () => {
         expect(useNewPropertyStore.getState().screen).toBe('documents')
     })
 
-    test('asks for the document when the user says they have it', () => {
+    test("still catches a phone number that can't be one, while a blank is fine", () => {
+        startOnAcquisition()
+
+        fireEvent.click(screen.getByRole('radio', { name: /from another owner/i }))
+        typeInto('Their phone number (optional)', 'ask Kwame')
+        fireEvent.click(continueButton())
+
+        expect(errorMessages()).toEqual(['Enter a valid phone number.'])
+        expect(document.activeElement).toBe(screen.getByLabelText('Their phone number (optional)'))
+        expect(useNewPropertyStore.getState().screen).toBe('acquisition')
+    })
+
+    test('lets the owner say they have the document and add it in the next step', () => {
         startOnAcquisition()
 
         fireEvent.click(screen.getByRole('radio', { name: /inherited/i }))
         fireEvent.click(screen.getByRole('radio', { name: 'Yes' }))
         fireEvent.click(continueButton())
 
-        expect(errorMessages()).toEqual(["Upload the document, or choose No if you don't have it"])
+        expect(errorMessages()).toEqual([])
+        expect(useNewPropertyStore.getState().screen).toBe('documents')
     })
 
     test('uploads a document as soon as it is chosen and keeps a reference to it in the answer', async () => {
@@ -611,7 +629,7 @@ describe('Acquisition screen', () => {
         startOnAcquisition()
 
         fireEvent.click(screen.getByRole('radio', { name: /leased/i }))
-        typeInto('How long is the lease?', '99')
+        typeInto('How long is the lease? (optional)', '99')
         fireEvent.click(screen.getByRole('radio', { name: /^other$/i }))
         fireEvent.click(screen.getByRole('radio', { name: /leased/i }))
 
@@ -619,8 +637,8 @@ describe('Acquisition screen', () => {
     })
 
     test.each([
-        { answer: /leased/i, question: 'How long is the lease?', next: /inherited/i },
-        { answer: /^other$/i, question: 'Tell us how you got the property', next: /not sure/i },
+        { answer: /leased/i, question: 'How long is the lease? (optional)', next: /inherited/i },
+        { answer: /^other$/i, question: 'Tell us how you got the property (optional)', next: /not sure/i },
     ])("shows the questions for $question right under the chosen answer, before the next one", ({ answer, question, next }) => {
         startOnAcquisition()
 
@@ -657,7 +675,7 @@ describe('Acquisition screen', () => {
         startOnAcquisition()
 
         fireEvent.click(screen.getByRole('radio', { name: /^other$/i }))
-        typeInto('Tell us how you got the property', 'A gift from my uncle')
+        typeInto('Tell us how you got the property (optional)', 'A gift from my uncle')
         fireEvent.click(continueButton())
 
         expect(useNewPropertyStore.getState().acquisition).toEqual({ method: 'other', metadata: { note: 'A gift from my uncle' } })
@@ -701,7 +719,7 @@ describe('Documents screen', () => {
             }
             if (method === 'DELETE') return { ok: true, status: 204, json: async () => ({}) } as never
             const body = JSON.parse(init.body as string)
-            return { ok: true, status: 200, json: async () => ({ id: DRAFT_ID, updatedAt: SAVED_AT, ...body }) } as never
+            return { ok: true, status: 200, json: async () => ({ id: DRAFT_ID, updatedAt: SAVED_AT, status: 'draft', ...body }) } as never
         })
     }
 
@@ -949,7 +967,7 @@ describe('Review screen', () => {
             if (url.endsWith('/documents')) return { ok: true, status: 200, json: async () => documents } as never
             if (url.endsWith('/submit')) return { ...submitResponse, json: async () => submitResponse.body } as never
             const body = JSON.parse(init.body as string)
-            return { ok: true, status: 200, json: async () => ({ id: DRAFT_ID, updatedAt: SAVED_AT, ...body }) } as never
+            return { ok: true, status: 200, json: async () => ({ id: DRAFT_ID, updatedAt: SAVED_AT, status: 'draft', ...body }) } as never
         })
     }
 
@@ -958,7 +976,7 @@ describe('Review screen', () => {
         const { details, location } = useNewPropertyStore.getState()
         render(
             <QueryClientProvider client={new QueryClient({ defaultOptions: { queries: { retry: false } } })}>
-                <NewPropertyFlow draft={{ id: DRAFT_ID, updatedAt: SAVED_AT, details, location }} mapsApiKey="" />
+                <NewPropertyFlow draft={{ id: DRAFT_ID, updatedAt: SAVED_AT, status: 'draft', details, location }} mapsApiKey="" />
             </QueryClientProvider>,
         )
     }
@@ -1116,7 +1134,7 @@ describe('Confirmation screen', () => {
         fetchMock.mockImplementation(async (url: string, init: RequestInit) => {
             if (url.endsWith('/documents')) return { ok: true, status: 200, json: async () => documents } as never
             const body = JSON.parse(init.body as string)
-            return { ok: true, status: 200, json: async () => ({ id: DRAFT_ID, updatedAt: SAVED_AT, ...body }) } as never
+            return { ok: true, status: 200, json: async () => ({ id: DRAFT_ID, updatedAt: SAVED_AT, status: 'draft', ...body }) } as never
         })
         render(
             <QueryClientProvider client={new QueryClient({ defaultOptions: { queries: { retry: false } } })}>
@@ -1192,7 +1210,7 @@ describe('Deleting a draft', () => {
     }
 
     function openDraft() {
-        useNewPropertyStore.getState().loadDraft({ id: DRAFT_ID, updatedAt: SAVED_AT, details: { name: 'East Legon house' }, location: {} })
+        useNewPropertyStore.getState().loadDraft({ id: DRAFT_ID, updatedAt: SAVED_AT, status: 'draft', details: { name: 'East Legon house' }, location: {} })
         return renderWithQuery(
             <>
                 <ProgressIndicator />
@@ -1299,6 +1317,7 @@ describe('Registration flow', () => {
         const draft: SavedDraft = {
             id: DRAFT_ID,
             updatedAt: SAVED_AT,
+            status: 'draft',
             details: { name: 'East Legon house', type: 'residential' },
             location: { region: 'Greater Accra', city: 'East Legon' },
         }

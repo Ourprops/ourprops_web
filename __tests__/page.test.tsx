@@ -4,10 +4,19 @@ import Audience from '../app/(public)/_components/audience'
 import Hero from '../app/(public)/_components/hero'
 import { HOME_DEFAULTS, type AccessLevel } from '../lib/content/defaults'
 import { withFallback } from '../lib/content/merge'
+import { SIGN_UP_PATH } from '../lib/site'
+import { PUBLIC_CHECKS } from '../lib/public-record'
 
-test('Hero renders the headline', () => {
+afterEach(cleanup)
+
+test('Hero renders the headline, the product walkthrough, and every check once for screen readers', () => {
+    // the walkthrough asks whether the visitor wants less motion; jsdom has no matchMedia
+    window.matchMedia = ((query: string) => ({ matches: false, media: query, addEventListener: () => {}, removeEventListener: () => {} })) as unknown as typeof window.matchMedia
     render(<Hero content={HOME_DEFAULTS.hero} />)
     expect(screen.getByRole('heading', { level: 1, name: HOME_DEFAULTS.hero.heading })).toBeDefined()
+    expect(screen.getByRole('tablist', { name: 'How OurProps works' })).toBeDefined()
+    // the scrolling row is doubled for a seamless loop; the copy is hidden, so each check is read once
+    for (const check of PUBLIC_CHECKS) expect(screen.getAllByText(check.title).filter((chip) => !chip.closest('[aria-hidden="true"]'))).toHaveLength(1)
 })
 
 test('withFallback keeps CMS values and fills gaps', () => {
@@ -20,37 +29,45 @@ test('withFallback keeps CMS values and fills gaps', () => {
 
     expect(content.heading).toBe('From Sanity')
     expect(content.subheading).toBe(HOME_DEFAULTS.hero.subheading)
-    expect(content.primaryCta).toEqual({ label: 'Sign up', href: '#waitlist' })
+    expect(content.primaryCta).toEqual({ label: 'Sign up', href: SIGN_UP_PATH })
     expect(content.trustPoints).toEqual([{ icon: 'Lock', text: 'Only one' }])
     expect(withFallback(HOME_DEFAULTS.hero, null)).toBe(HOME_DEFAULTS.hero)
 })
 
 describe('Who it is for', () => {
-    afterEach(cleanup)
-
-    // Each card's picture of the record, read as "part: visibility" pairs
+    // Each card's picture of the record, read as "part: visibility" pairs (the card is the list item holding its title)
     function recordViews() {
-        return screen.getAllByRole('link').map((card) =>
-            Array.from(card.querySelectorAll('li')).map((row) => row.textContent)
+        return screen.getAllByRole('heading', { level: 3 }).map((title) =>
+            Array.from(title.closest('li')?.querySelectorAll('li') ?? []).map((row) => row.textContent)
         )
     }
 
-    test('shows each audience the parts of the record their access level allows', () => {
-        render(<Audience content={HOME_DEFAULTS.audience} />)
+    // As OurProps works today: the owner sees their whole record; everyone else sees the public record, never documents
+    test('shows the owner their whole record, and everyone else the public record without documents', () => {
+        render(<Audience content={HOME_DEFAULTS.audience} variant="page" />)
 
         const [owner, buyer, professional] = recordViews()
         expect(owner.every((row) => row?.endsWith('Visible'))).toBe(true)
-        expect(buyer).toContain('IndentureStatus only')
-        expect(buyer).toContain('ReceiptsHidden')
-        expect(professional).toContain('IndentureVisible')
-        expect(professional).toContain('Mapped boundaryHidden')
+        for (const view of [buyer, professional]) {
+            expect(view).toContain('What we checkedVisible')
+            expect(view).toContain('IndenturePrivate')
+            expect(view).toContain('Site planPrivate')
+            expect(view).toContain('Exact boundaryPrivate')
+        }
     })
 
-    test('treats an access level it does not know as a summary', () => {
-        const [owner] = HOME_DEFAULTS.audience.items
-        render(<Audience content={{ ...HOME_DEFAULTS.audience, items: [{ ...owner, accessLevel: 'everything' as AccessLevel }] }} />)
+    test('never shows anyone but the owner a document, whatever the access level says', () => {
+        render(<Audience content={HOME_DEFAULTS.audience} variant="page" />)
 
-        expect(recordViews()[0]).toContain('IndentureStatus only')
+        const [, ...others] = recordViews()
+        expect(others.flat().some((row) => /^(Indenture|Site plan)Visible/.test(row ?? ''))).toBe(false)
+    })
+
+    test('treats an access level it does not know as the public record', () => {
+        const [owner] = HOME_DEFAULTS.audience.items
+        render(<Audience variant="page" content={{ ...HOME_DEFAULTS.audience, items: [{ ...owner, accessLevel: 'everything' as AccessLevel }] }} />)
+
+        expect(recordViews()[0]).toContain('IndenturePrivate')
     })
 
     test('a card from Sanity without an access level uses the default for its position', () => {
