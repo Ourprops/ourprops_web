@@ -19,7 +19,7 @@ export default async function HowItWorksPage() {
     const content = await getHomeContent()
 
     return (
-        <div className="pt-16">
+        <div>
             <HowItWorks content={content.howItWorks} variant="page" />
             <ProductPreview content={content.productPreview} />
             <Technology />

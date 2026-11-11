@@ -8,7 +8,6 @@ export const siteSettings = defineType({
   icon: CogIcon,
   groups: [
     {name: 'seo', title: 'SEO', default: true},
-    {name: 'header', title: 'Header'},
     {name: 'footer', title: 'Footer'},
   ],
   fields: [
@@ -50,19 +49,20 @@ export const siteSettings = defineType({
       fields: [defineField({name: 'alt', title: 'Alt text', type: 'string'})],
     }),
 
-    // Used by the header and the mobile menu
+    // No longer used: the site's links and main button are set in code (lib/site.ts), so they always match the pages.
+    // Hidden rather than removed, so the saved values aren't flagged as unknown.
     defineField({
       name: 'navigation',
+      hidden: true,
       title: 'Navigation links',
       type: 'array',
-      group: 'header',
       of: [defineArrayMember({type: 'link'})],
     }),
     defineField({
       name: 'headerCta',
+      hidden: true,
       title: 'Header button',
       type: 'link',
-      group: 'header',
     }),
 
     defineField({
@@ -73,6 +73,7 @@ export const siteSettings = defineType({
     }),
     defineField({
       name: 'footerLinks',
+      hidden: true,
       title: 'Footer links',
       type: 'array',
       group: 'footer',

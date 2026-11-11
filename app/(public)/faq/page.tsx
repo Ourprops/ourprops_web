@@ -3,7 +3,9 @@ import Link from "next/link"
 
 import { getFaqContent, getHomeContent } from "@/lib/content"
 
-import Faq, { faqJsonLd, toScriptJson } from "../_components/faq"
+import { toScriptJson } from "@/lib/json-ld"
+
+import Faq, { faqJsonLd } from "../_components/faq"
 import GetStarted from "../_components/get-started"
 
 export const metadata: Metadata = {
@@ -18,7 +20,7 @@ export default async function FaqPage() {
     const [faq, home] = await Promise.all([getFaqContent(), getHomeContent()])
 
     return (
-        <div className="pt-16">
+        <div>
             <script type="application/ld+json" dangerouslySetInnerHTML={{ __html: toScriptJson(faqJsonLd(faq)) }} />
             <Faq content={faq} variant="page" />
             <p className="mx-auto max-w-310 px-5 pt-10 text-base text-copy md:px-8">

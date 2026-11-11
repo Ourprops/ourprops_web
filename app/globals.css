@@ -441,3 +441,19 @@
     animation: none;
   }
 }
+
+/*
+ * The owner area in the homepage's language (2026-11-11): heavier, tighter headlines in ink, and pill buttons, so the
+ * signed-in app feels like the same product as the site. Sizes stay smaller than the site's: these are working pages.
+ */
+.owner-ui .text-display {
+  font-size: clamp(1.875rem, 1.45rem + 1.5vw, 2.625rem);
+  line-height: 1.06;
+  letter-spacing: -0.038em;
+  font-weight: 700;
+}
+
+/* every button and button-styled link (buttonVariants adds group/button to both) */
+.owner-ui .group\/button {
+  border-radius: 9999px;
+}

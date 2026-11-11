@@ -30,7 +30,7 @@ export default async function PropertiesPage({ searchParams }: PageProps<"/accou
         <OwnerShell fullName={profile?.full_name ?? "Account"}>
             <div className="flex flex-wrap items-end justify-between gap-4">
                 <div className="grid gap-1.5">
-                    <h1 className="text-display text-primary">Your properties</h1>
+                    <h1 className="text-display text-ink">Your properties</h1>
                     <p className="text-copy">
                         {properties.length === 0
                             ? "You haven't registered a property yet."

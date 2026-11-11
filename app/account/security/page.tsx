@@ -21,7 +21,7 @@ import {
 const inputClassName =
     "h-11 rounded-lg border-border bg-card px-3 text-sm text-foreground placeholder:text-muted-foreground focus-visible:border-primary focus-visible:ring-2 focus-visible:ring-primary/30";
 const primaryButtonClassName =
-    "h-11 w-full bg-secondary text-sm font-semibold text-secondary-foreground hover:bg-[color-mix(in_oklab,var(--secondary),white_12%)] focus-visible:border-primary focus-visible:ring-2 focus-visible:ring-primary/40";
+    "h-11 w-full rounded-full bg-ink text-sm font-semibold text-white hover:bg-ink/90 focus-visible:border-primary focus-visible:ring-2 focus-visible:ring-primary/40";
 
 // Codes are six digits; people often type or paste them with a space in the middle
 function normaliseCode(value: string) {
@@ -125,7 +125,7 @@ function EnterCode({ profile, factors }: { profile: Profile; factors: Factor[] }
     return (
         <>
             <header className="mb-6 text-center">
-                <h1 className="text-2xl font-semibold text-primary">Enter your code</h1>
+                <h1 className="text-3xl font-bold tracking-[-0.03em] text-ink">Enter your code</h1>
                 <p className="mt-2 text-sm sm:text-base text-copy">
                     Open your authenticator app and enter the 6-digit code for OurProps.
                 </p>
@@ -201,7 +201,7 @@ function ManageApps({ profile, status }: { profile: Profile; status: MfaStatus }
     return (
         <>
             <header className="mb-6 text-center">
-                <h1 className="text-2xl font-semibold text-primary">Sign-in security</h1>
+                <h1 className="text-3xl font-bold tracking-[-0.03em] text-ink">Sign-in security</h1>
                 <p className="mt-2 text-sm sm:text-base text-copy">
                     With an authenticator app, signing in needs a code from your phone as well as your password.
                 </p>

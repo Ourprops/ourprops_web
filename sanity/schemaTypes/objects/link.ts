@@ -15,7 +15,7 @@ export const link = defineType({
       name: 'href',
       title: 'URL',
       type: 'string',
-      description: 'A section anchor (#waitlist), a site path (/privacy) or a full URL.',
+      description: 'A page on this site (/how-it-works, /blog) or a full URL.',
       validation: (rule) =>
         rule.required().custom((value) => {
           if (!value || /^(#|\/|https?:\/\/|mailto:)/.test(value)) return true

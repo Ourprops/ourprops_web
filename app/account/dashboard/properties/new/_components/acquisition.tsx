@@ -135,7 +135,7 @@ export default function Acquisition() {
 
     return (
         <section className="mx-auto w-full max-w-xl px-5 py-10 md:py-14">
-            <h1 className="text-display text-primary">How did you get the property?</h1>
+            <h1 className="text-display text-ink">How did you get the property?</h1>
             <p className="mt-2 text-[15px] leading-relaxed text-copy">
                 This tells reviewers which documents to look for. If you&apos;re not sure, say so and a reviewer will
                 work it out. The questions after it are all optional: answer what you know.
@@ -194,7 +194,7 @@ export default function Acquisition() {
                     <Button
                         type="submit"
                         disabled={uploading}
-                        className="pressable h-12 w-full rounded-lg bg-secondary px-8 text-[15px] font-semibold text-foreground shadow-sm hover:bg-[color-mix(in_oklab,var(--secondary),white_12%)] sm:w-auto"
+                        className="pressable h-12 w-full rounded-full bg-ink px-8 text-[15px] font-semibold text-white shadow-sm hover:bg-ink/90 sm:w-auto"
                     >
                         {uploading ? "Uploading…" : "Continue"}
                         {!uploading && <ArrowRight size={16} aria-hidden />}

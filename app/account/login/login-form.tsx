@@ -188,14 +188,19 @@ export default function LoginForm({ initialMode = "login" }: { initialMode?: Aut
                 {!signupSuccess ? (
                     <>
                         <header className="mb-8">
-                            <h1 className="text-2xl font-semibold tracking-tight text-foreground">Welcome to OurProps</h1>
+                            {/* follows the tab, so someone who tapped "Get started" sees they're in the right place */}
+                            <h1 className="text-3xl font-bold tracking-[-0.03em] text-ink">
+                                {mode === "signup" ? "Create your account" : "Welcome back"}
+                            </h1>
                             <p className="mt-2 text-[15px] leading-relaxed text-copy">
-                                Manage your property information in one clear, organized place.
+                                {mode === "signup"
+                                    ? "Register your properties and get them checked. Your progress saves as you go."
+                                    : "Sign in to see your properties and anything that needs you."}
                             </p>
                         </header>
 
                         <div
-                            className="mb-6 grid grid-cols-2 gap-1 rounded-lg border border-border bg-muted p-1"
+                            className="mb-6 grid grid-cols-2 gap-1 rounded-full bg-ink/5 p-1"
                             role="tablist"
                             aria-label="Authentication tabs"
                         >
@@ -204,10 +209,10 @@ export default function LoginForm({ initialMode = "login" }: { initialMode?: Aut
                                 role="tab"
                                 aria-selected={mode === "login"}
                                 variant="ghost"
-                                className={`h-9 rounded-md px-3 py-2 text-sm font-semibold transition ${
+                                className={`h-10 rounded-full px-3 py-2 text-sm font-semibold transition ${
                                     mode === "login"
-                                        ? "bg-card text-primary shadow-xs"
-                                        : "text-copy hover:text-primary"
+                                        ? "bg-ink text-white hover:bg-ink hover:text-white"
+                                        : "text-ink/70 hover:text-ink"
                                 }`}
                                 onClick={() => switchMode("login")}
                             >
@@ -218,10 +223,10 @@ export default function LoginForm({ initialMode = "login" }: { initialMode?: Aut
                                 role="tab"
                                 aria-selected={mode === "signup"}
                                 variant="ghost"
-                                className={`h-9 rounded-md px-3 py-2 text-sm font-semibold transition ${
+                                className={`h-10 rounded-full px-3 py-2 text-sm font-semibold transition ${
                                     mode === "signup"
-                                        ? "bg-card text-primary shadow-xs"
-                                        : "text-copy hover:text-primary"
+                                        ? "bg-ink text-white hover:bg-ink hover:text-white"
+                                        : "text-ink/70 hover:text-ink"
                                 }`}
                                 onClick={() => switchMode("signup")}
                             >
@@ -300,7 +305,7 @@ export default function LoginForm({ initialMode = "login" }: { initialMode?: Aut
                                 <Button
                                     type="submit"
                                     disabled={isLoading}
-                                    className="pressable h-11 w-full bg-secondary text-[15px] font-semibold text-secondary-foreground hover:bg-secondary/90"
+                                    className="pressable rounded-full h-11 w-full bg-ink text-[15px] font-semibold text-white hover:bg-ink/90"
                                 >
                                     {isLoading ? (
                                         <span
@@ -442,7 +447,7 @@ export default function LoginForm({ initialMode = "login" }: { initialMode?: Aut
                                 <Button
                                     type="submit"
                                     disabled={isLoading}
-                                    className="pressable h-11 w-full bg-secondary text-[15px] font-semibold text-secondary-foreground hover:bg-secondary/90"
+                                    className="pressable rounded-full h-11 w-full bg-ink text-[15px] font-semibold text-white hover:bg-ink/90"
                                 >
                                     {isLoading ? (
                                         <span
@@ -454,7 +459,15 @@ export default function LoginForm({ initialMode = "login" }: { initialMode?: Aut
                                 </Button>
 
                                 <p className="text-xs leading-relaxed text-copy">
-                                    By creating an account, you agree to our Terms and Privacy Policy.
+                                    By creating an account, you agree to our{" "}
+                                    <Link href="/terms" target="_blank" className="font-medium text-ink underline underline-offset-2">
+                                        Terms &amp; conditions
+                                    </Link>{" "}
+                                    and{" "}
+                                    <Link href="/privacy" target="_blank" className="font-medium text-ink underline underline-offset-2">
+                                        Privacy policy
+                                    </Link>
+                                    .
                                 </p>
 
                                 <p className="text-center text-sm text-copy">
@@ -473,7 +486,7 @@ export default function LoginForm({ initialMode = "login" }: { initialMode?: Aut
                     </>
                 ) : (
                     <div className="space-y-4 py-4">
-                        <h2 className="text-2xl font-semibold tracking-tight text-foreground">Check your email</h2>
+                        <h2 className="text-3xl font-bold tracking-[-0.03em] text-ink">Check your email</h2>
                         <p className="text-[15px] leading-relaxed text-copy">
                             {`We've sent a confirmation link to ${email}. Confirm your email to continue.`}
                         </p>
@@ -483,7 +496,7 @@ export default function LoginForm({ initialMode = "login" }: { initialMode?: Aut
                                 setSignupSuccess(false);
                                 switchMode("login");
                             }}
-                            className="pressable h-11 bg-secondary px-5 text-[15px] font-semibold text-secondary-foreground hover:bg-secondary/90"
+                            className="pressable rounded-full h-11 bg-ink px-5 text-[15px] font-semibold text-white hover:bg-ink/90"
                         >
                             Back to login
                         </Button>

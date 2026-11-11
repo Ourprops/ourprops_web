@@ -51,11 +51,13 @@ import {
     reviewIdentityDocument,
     startReview,
     suspendProperty,
+    recordSitePlanArea,
     updateCheckpoint,
     updateEncumbrance,
 } from "./actions"
 import { BoundaryMap } from "./boundary-map"
 import { CheckpointForm } from "./checkpoint-form"
+import { SitePlanArea } from "./site-plan-area"
 import { DocumentViewer } from "./document-viewer"
 import { RequestItems } from "./request-items"
 import { ChoiceField, NoteField, TextField, YesNoField } from "./fields"
@@ -237,6 +239,8 @@ export default async function PropertyReviewPage({ params }: PageProps<"/admin/p
                             checkpoints={review.checkpoints}
                             propertyId={property.id}
                             editable={property.status === "under_review"}
+                            sitePlanAreaSqm={property.site_plan_area_sqm}
+                            drawnAreaSqm={property.property_boundaries?.area_sqm ?? null}
                         />
                     </Section>
 
@@ -665,10 +669,14 @@ function Checkpoints({
     checkpoints,
     propertyId,
     editable,
+    sitePlanAreaSqm,
+    drawnAreaSqm,
 }: {
     checkpoints: PropertyForReview["checkpoints"]
     propertyId: string
     editable: boolean
+    sitePlanAreaSqm: number | null
+    drawnAreaSqm: number | null
 }) {
     if (checkpoints.length === 0) {
         return <Empty>Created when the review starts.</Empty>
@@ -700,6 +708,15 @@ function Checkpoints({
                     ) : null}
                     {checkpoint.internal_notes ? (
                         <p className="mt-1 text-sm text-copy">Internal: {checkpoint.internal_notes}</p>
+                    ) : null}
+                    {/* the survey records check is where the site plan's area is recorded and compared */}
+                    {checkpoint.checkpoint_key === "cadastral_cross_check" ? (
+                        <SitePlanArea
+                            sitePlanAreaSqm={sitePlanAreaSqm}
+                            drawnAreaSqm={drawnAreaSqm}
+                            editable={editable}
+                            action={recordSitePlanArea.bind(null, propertyId)}
+                        />
                     ) : null}
                     {editable ? (
                         <CheckpointForm

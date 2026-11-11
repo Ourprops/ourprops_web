@@ -17,15 +17,15 @@ export function TodoList({ todos }: { todos: TodoItem[] }) {
         return (
             <section
                 aria-labelledby="todo-title"
-                className="animate-rise flex items-center gap-4 rounded-2xl border border-border bg-card p-5 shadow-card motion-reduce:animate-none"
+                className="animate-rise block-panel flex items-center gap-4 bg-block-mint p-6 motion-reduce:animate-none"
                 style={{ animationDelay: "80ms" }}
             >
                 <CaughtUpIllustration className="size-14 shrink-0" />
                 <div>
-                    <h2 id="todo-title" className="font-semibold tracking-tight">
+                    <h2 id="todo-title" className="text-lg font-bold tracking-tight text-ink">
                         You&apos;re all caught up
                     </h2>
-                    <p className="text-sm text-copy">Nothing needs you right now. We&apos;ll tell you here if it does.</p>
+                    <p className="text-sm text-ink/75">Nothing needs you right now. We&apos;ll tell you here if it does.</p>
                 </div>
             </section>
         )
@@ -34,10 +34,10 @@ export function TodoList({ todos }: { todos: TodoItem[] }) {
     return (
         <section aria-labelledby="todo-title" className="animate-rise grid gap-3 motion-reduce:animate-none" style={{ animationDelay: "80ms" }}>
             <div className="flex items-baseline gap-2">
-                <h2 id="todo-title" className="font-semibold tracking-tight">
+                <h2 id="todo-title" className="text-xl font-bold tracking-tight text-ink">
                     To do
                 </h2>
-                <span className="rounded-full bg-secondary/15 px-2 py-0.5 text-xs font-semibold text-foreground tabular-nums">{todos.length}</span>
+                <span className="rounded-full bg-secondary px-2 py-0.5 text-xs font-bold text-ink tabular-nums">{todos.length}</span>
             </div>
             <ul className="grid gap-2.5">
                 {todos.map((todo) => {
@@ -47,9 +47,9 @@ export function TodoList({ todos }: { todos: TodoItem[] }) {
                             <Link
                                 href={todo.href}
                                 className={cn(
-                                    "group relative flex flex-col gap-3 overflow-hidden rounded-xl border border-border bg-card p-4 pl-5 shadow-card transition-all duration-150",
+                                    "group relative flex flex-col gap-3 overflow-hidden rounded-2xl border border-border bg-card p-4 pl-5 transition-all duration-150 sm:p-5 sm:pl-6",
                                     "before:absolute before:inset-y-0 before:left-0 before:w-1",
-                                    "hover:-translate-y-px hover:border-primary/25 motion-reduce:hover:translate-y-0",
+                                    "hover:-translate-y-px hover:border-ink/25 hover:shadow-[0_16px_40px_-24px_rgba(11,30,51,0.4)] motion-reduce:hover:translate-y-0",
                                     "outline-none focus-visible:ring-3 focus-visible:ring-ring/50 sm:flex-row sm:items-center",
                                     edge
                                 )}
@@ -57,16 +57,16 @@ export function TodoList({ todos }: { todos: TodoItem[] }) {
                                 <span className="flex min-w-0 flex-1 gap-3">
                                     <Icon className={cn("mt-0.5 size-5 shrink-0", iconClass)} aria-hidden />
                                     <span className="grid min-w-0 gap-0.5">
-                                        <span className="font-medium">{todo.title}</span>
+                                        <span className="font-semibold text-ink">{todo.title}</span>
                                         <span className="text-sm text-copy wrap-anywhere">{todo.text}</span>
                                     </span>
                                 </span>
                                 <span
                                     className={cn(
-                                        "flex h-9 shrink-0 items-center justify-center gap-1.5 self-start rounded-lg px-3.5 text-sm font-semibold transition-colors sm:self-center",
+                                        "flex h-10 shrink-0 items-center justify-center gap-1.5 self-start rounded-full px-4 text-sm font-semibold transition-colors sm:self-center",
                                         todo.tone === "waiting" || todo.tone === "ready"
-                                            ? "bg-secondary text-foreground group-hover:bg-[color-mix(in_oklab,var(--secondary),white_12%)]"
-                                            : "bg-muted text-primary group-hover:bg-primary/10"
+                                            ? "bg-ink text-white group-hover:bg-ink/90"
+                                            : "bg-ink/5 text-ink group-hover:bg-ink/10"
                                     )}
                                 >
                                     {todo.action}

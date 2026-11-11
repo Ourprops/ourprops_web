@@ -45,7 +45,7 @@ export default async function IdentityPage() {
     return (
         <OwnerShell fullName={profile?.full_name ?? "Account"}>
             <div className="grid max-w-2xl gap-2">
-                <h1 className="text-display text-primary">Verify your identity</h1>
+                <h1 className="text-display text-ink">Verify your identity</h1>
                 <p className="text-copy">
                     Before a property goes live, we check that the person registering it is who they say they are. Add your Ghana Card,
                     or your passport if you live abroad and don&apos;t have one. You only do this once, for all your properties.

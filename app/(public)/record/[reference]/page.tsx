@@ -5,7 +5,7 @@ import { notFound } from "next/navigation"
 
 import { ownerInter } from "@/components/owner/owner-fonts"
 import { buttonVariants } from "@/components/ui/button"
-import { PUBLIC_CHECKS, describeArea, getPublicRecord } from "@/lib/public-record"
+import { PUBLIC_CHECKS, describeRecordArea, getPublicRecord } from "@/lib/public-record"
 import { supportWhatsAppUrl } from "@/lib/support"
 import { createClient } from "@/lib/supabase/server"
 import { cn } from "@/lib/utils"
@@ -34,6 +34,7 @@ export default async function PublicRecordPage({ params }: PageProps<"/record/[r
     const verified = record.status === "active"
     const place = [record.city_town, record.district_municipality, record.region].filter(Boolean).join(", ")
     const type = TYPE_OPTIONS.find((option) => option.value === record.property_type)?.title ?? record.property_type
+    const area = describeRecordArea(record)
     const checks = PUBLIC_CHECKS.map((check) => ({ ...check, result: record.checkpoints?.find((each) => each.key === check.key) }))
 
     return (
@@ -57,9 +58,13 @@ export default async function PublicRecordPage({ params }: PageProps<"/record/[r
                                 <MapPin size={15} className="shrink-0" aria-hidden /> {type} in {place}
                             </li>
                         ) : null}
-                        {record.area_sqm ? (
-                            <li className="flex items-center gap-2">
-                                <Ruler size={15} className="shrink-0" aria-hidden /> {describeArea(record.area_sqm)}, from its mapped boundary
+                        {area ? (
+                            // says where the number comes from, so a sketch is never read as a survey
+                            <li className="flex items-start gap-2">
+                                <Ruler size={15} className="mt-0.5 shrink-0" aria-hidden />
+                                <span>
+                                    {area.text}, <span className={area.checked ? "font-medium text-success" : undefined}>{area.source}</span>
+                                </span>
                             </li>
                         ) : null}
                     </ul>

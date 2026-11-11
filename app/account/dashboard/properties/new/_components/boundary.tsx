@@ -113,7 +113,7 @@ export default function Boundary({ mapsApiKey }: BoundaryProps) {
 
     return (
         <section className="mx-auto w-full max-w-3xl px-5 py-10 md:py-14">
-            <h1 className="text-display text-primary">Mark the property on the map</h1>
+            <h1 className="text-display text-ink">Mark the property on the map</h1>
             <p className="mt-2 text-[15px] leading-relaxed text-copy">
                 Draw round its boundary so it&apos;s clear which land it is. Not sure where the edges are? Drop a pin
                 instead, or skip this step and add it later.
@@ -197,7 +197,7 @@ export default function Boundary({ mapsApiKey }: BoundaryProps) {
                     type="button"
                     onClick={handleContinue}
                     disabled={sitePlans.uploading}
-                    className="pressable h-12 w-full rounded-lg bg-secondary px-8 text-[15px] font-semibold text-foreground shadow-sm hover:bg-[color-mix(in_oklab,var(--secondary),white_12%)] sm:w-auto"
+                    className="pressable h-12 w-full rounded-full bg-ink px-8 text-[15px] font-semibold text-white shadow-sm hover:bg-ink/90 sm:w-auto"
                 >
                     {sitePlans.uploading ? "Uploading…" : "Continue"}
                     {!sitePlans.uploading && <ArrowRight size={16} aria-hidden />}

@@ -1,8 +1,8 @@
 /**
  * One-off content update for the switch from the waitlist to registering, and for the new pages (2026-11-10).
  *
- *   - hero, header and "who it's for" buttons → register (/account/login?mode=signup) or the new pages
- *   - header and footer links → /how-it-works, /who-its-for, /faq, /about (instead of #anchors on the homepage)
+ *   - hero second button and "who it's for" buttons → sign-up or the new pages (instead of #anchors on the homepage)
+ *     (the header, footer and the hero's main button are set in code now: lib/site.ts)
  *   - the site description loses "Join the waitlist."
  *   - adds the homepage's "Get started" section and the FAQ document, with the built-in text, so both are in Studio
  *
@@ -16,7 +16,7 @@
  */
 import { randomUUID } from "node:crypto"
 
-import { FAQ_DEFAULTS, HOME_DEFAULTS, SITE_DEFAULTS } from "../../lib/content/defaults"
+import { FAQ_DEFAULTS, HOME_DEFAULTS } from "../../lib/content/defaults"
 
 const projectId = process.env.NEXT_PUBLIC_SANITY_PROJECT_ID
 const dataset = process.env.NEXT_PUBLIC_SANITY_DATASET
@@ -29,7 +29,6 @@ if (!token) throw new Error("Set SANITY_API_WRITE_TOKEN (an Editor token from sa
 
 const key = () => randomUUID().replace(/-/g, "").slice(0, 12)
 const link = (value: { label: string; href: string }) => ({ _type: "link", ...value })
-const links = (values: { label: string; href: string }[]) => values.map((value) => ({ _key: key(), ...link(value) }))
 const header = (value: { eyebrow: string; heading: string; description: string }) => ({ _type: "sectionHeader", ...value })
 
 async function query<T>(groq: string): Promise<T> {
@@ -59,7 +58,6 @@ async function main() {
 
     const audienceCtas = HOME_DEFAULTS.audience.items.map((item) => item.cta)
     const homeSet: Record<string, unknown> = {
-        "hero.primaryCta": link(HOME_DEFAULTS.hero.primaryCta),
         "hero.secondaryCta": link(HOME_DEFAULTS.hero.secondaryCta),
     }
     // The cards in the order they're shown: owners, buyers, professionals
@@ -87,9 +85,6 @@ async function main() {
                 id: "siteSettings",
                 ifRevisionID: site._rev,
                 set: {
-                    navigation: links(SITE_DEFAULTS.navigation),
-                    headerCta: link(SITE_DEFAULTS.headerCta),
-                    footerLinks: links(SITE_DEFAULTS.footerLinks),
                     ...(site.description?.includes(" Join the waitlist.")
                         ? { description: site.description.replace(" Join the waitlist.", "") }
                         : {}),

@@ -2,10 +2,11 @@ import Image from "next/image"
 import Link from "next/link"
 
 import type { SiteContent } from "@/lib/content/defaults"
+import { FOOTER_NAV } from "@/lib/site"
 
-type FooterProps = Pick<SiteContent, "footerTagline" | "footerLinks" | "footerNote" | "companyName">
+type FooterProps = Pick<SiteContent, "footerTagline" | "footerNote" | "companyName">
 
-export default function Footer({ footerTagline, footerLinks, footerNote, companyName }: FooterProps) {
+export default function Footer({ footerTagline, footerNote, companyName }: FooterProps) {
 	return (
 		<footer className="w-full border-t border-white/10 bg-primary text-primary-foreground">
 			<div className="mx-auto max-w-310 px-5 py-12 md:px-8">
@@ -20,7 +21,7 @@ export default function Footer({ footerTagline, footerLinks, footerNote, company
 
 					<nav aria-label="Footer">
 						<ul className="flex flex-wrap items-center gap-x-6 gap-y-3">
-							{footerLinks.map((link) => (
+							{FOOTER_NAV.map((link) => (
 								<li key={link.label}>
 									<a href={link.href} className="text-sm text-white/75 transition-colors hover:text-white">
 										{link.label}
