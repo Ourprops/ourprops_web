@@ -3,6 +3,7 @@ import { Check } from "lucide-react"
 import type { HomeContent } from "@/lib/content/defaults"
 import { cn } from "@/lib/utils"
 import SectionHeading from "./section-heading"
+import { reveal } from "@/lib/reveal"
 
 // One colour block per card, in order, like Figma's coloured feature tiles
 const BLOCKS = ["bg-block-orange", "bg-block-sky", "bg-block-mint"]
@@ -16,7 +17,7 @@ export default function ValueProposition({ content }: { content: HomeContent["va
 
 				<ol className="mt-14 grid grid-cols-1 gap-4 md:mt-20 md:grid-cols-3 md:gap-5">
 					{content.items.map((item, index) => (
-						<li key={item.title} className={cn("block-panel flex flex-col p-7 md:p-8", BLOCKS[index % BLOCKS.length])}>
+						<li key={item.title} {...reveal(index)} className={cn("block-panel flex flex-col p-7 md:p-8", BLOCKS[index % BLOCKS.length])}>
 							<span className="text-data text-6xl font-medium tracking-tighter text-ink/25 md:text-7xl" aria-hidden>
 								{String(index + 1).padStart(2, "0")}
 							</span>

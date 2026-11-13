@@ -4,6 +4,7 @@ import Link from "next/link"
 
 import type { HomeContent } from "@/lib/content/defaults"
 import { Eyebrow } from "./section-heading"
+import { reveal } from "@/lib/reveal"
 
 // Deep blue with a faint plan grid: the brand's main surface colour, used for the page's firmest statements
 // On the homepage it links on to /about; on /about it's the second section, so no link
@@ -13,7 +14,7 @@ export default function Values({ content, showMore = false }: { content: HomeCon
   return (
     <section className="w-full py-6 md:py-10" id="our-values">
       <div className="mx-auto max-w-310 px-3 sm:px-5 md:px-8">
-      <div className="block-panel survey-grid grid grid-cols-1 gap-12 bg-primary px-5 py-16 text-primary-foreground [--grid-line:rgba(255,255,255,0.05)] sm:px-8 md:px-12 md:py-24 lg:grid-cols-12 lg:gap-16">
+      <div {...reveal()} className="block-panel survey-grid grid grid-cols-1 gap-12 bg-primary px-5 py-16 text-primary-foreground [--grid-line:rgba(255,255,255,0.05)] sm:px-8 md:px-12 md:py-24 lg:grid-cols-12 lg:gap-16">
         <div className="max-w-2xl lg:col-span-5">
           <Eyebrow className="bg-white/10 text-white">{eyebrow}</Eyebrow>
           <h2 className="text-section mt-4">{heading}</h2>

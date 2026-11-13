@@ -6,6 +6,7 @@ import { cn } from "@/lib/utils"
 import MoreLink from "./more-link"
 import { SAMPLE_PROPERTY } from "./property-record"
 import SectionHeading from "./section-heading"
+import { reveal } from "@/lib/reveal"
 
 type Visibility = "visible" | "status" | "hidden"
 
@@ -56,7 +57,7 @@ export default function Audience({ content, variant = "home" }: AudienceProps) {
 				<ul className="mt-14 grid grid-cols-1 gap-4 md:mt-20 md:grid-cols-3 md:gap-5">
 					{content.items.map((item, index) => (
 						// The card isn't a link; only its button is, so the link reads as one clear phrase
-						<li key={item.title} className={cn("block-panel flex flex-col p-6 md:p-8", AUDIENCE_BLOCKS[index % AUDIENCE_BLOCKS.length])}>
+						<li key={item.title} {...reveal(index)} className={cn("block-panel flex flex-col p-6 md:p-8", AUDIENCE_BLOCKS[index % AUDIENCE_BLOCKS.length])}>
 							{page ? <RecordView level={toAccessLevel(item.accessLevel)} /> : null}
 							<h3 className={cn("text-2xl font-bold tracking-tight text-ink", page && "mt-6")}>{item.title}</h3>
 							<p className="mt-3 flex-1 text-base leading-relaxed text-ink/75">{item.description}</p>

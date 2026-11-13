@@ -3,6 +3,7 @@ import { getSiteContent } from "@/lib/content";
 import { SanityLive } from "@/sanity/lib/live";
 import Header from "./_components/header";
 import Footer from "./_components/footer";
+import RevealOnScroll from "./_components/reveal-on-scroll";
 
 export default async function MarketingLayout({
   children,
@@ -21,6 +22,8 @@ export default async function MarketingLayout({
         footerNote={site.footerNote}
         companyName={site.companyName}
       />
+      {/* boxes marked with reveal() float up as they scroll into view */}
+      <RevealOnScroll />
       {/* Refreshes cached Sanity content when it's published */}
       <SanityLive />
     </div>

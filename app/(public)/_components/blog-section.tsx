@@ -3,6 +3,7 @@ import type { PostCard as Post } from "@/lib/content/blog"
 import MoreLink from "./more-link"
 import PostCard from "./post-card"
 import SectionHeading from "./section-heading"
+import { reveal } from "@/lib/reveal"
 
 // The newest posts on the homepage. Shows nothing until the first post is published, so there's never an empty block.
 export default function BlogSection({ posts }: { posts: Post[] }) {
@@ -22,7 +23,7 @@ export default function BlogSection({ posts }: { posts: Post[] }) {
                 </div>
                 <ul className="mt-14 grid grid-cols-1 gap-5 md:mt-16 md:grid-cols-3">
                     {posts.map((post, index) => (
-                        <li key={post.id} className="flex">
+                        <li key={post.id} {...reveal(index)} className="flex">
                             <PostCard post={post} index={index} />
                         </li>
                     ))}

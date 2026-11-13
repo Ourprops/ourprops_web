@@ -1,6 +1,7 @@
 import type { FaqContent } from "@/lib/content/defaults"
 import MoreLink from "./more-link"
 import SectionHeading from "./section-heading"
+import { reveal } from "@/lib/reveal"
 
 // How many questions the homepage shows; Studio says "the first three also show on the homepage"
 export const HOME_FAQ_COUNT = 3
@@ -23,7 +24,7 @@ export default function Faq({ content, variant = "home" }: FaqProps) {
 					{page ? null : <MoreLink href="/faq" className="mt-6">All questions</MoreLink>}
 				</div>
 
-				<div className="divide-y divide-border border-y border-border lg:col-span-7">
+				<div {...reveal(1)} className="divide-y divide-border border-y border-border lg:col-span-7">
 					{items.map(({ question, answer }) => (
 						<details key={question} className="group py-6">
 							<summary className="cursor-pointer list-none text-lg font-semibold tracking-tight text-ink md:text-xl marker:hidden [&::-webkit-details-marker]:hidden">
