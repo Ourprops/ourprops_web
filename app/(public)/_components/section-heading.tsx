@@ -1,4 +1,5 @@
 import { cn } from "@/lib/utils"
+import { reveal } from "@/lib/reveal"
 
 type SectionHeadingProps = {
     eyebrow?: string
@@ -24,6 +25,7 @@ export default function SectionHeading({
 }: SectionHeadingProps) {
     return (
         <div
+            {...reveal()}
             className={cn(
                 "max-w-3xl",
                 align === "center" && "mx-auto text-center",

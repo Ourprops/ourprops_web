@@ -9,7 +9,8 @@
     "lint": "eslint",
     "test": "vitest",
     "studio:build": "SANITY_STUDIO_BASE_PATH=/ sanity build",
-    "studio:deploy": "SANITY_STUDIO_BASE_PATH=/ sanity deploy"
+    "studio:deploy": "SANITY_STUDIO_BASE_PATH=/ sanity deploy",
+    "emails:build": "tsx scripts/build-emails.ts"
   },
   "dependencies": {
     "@base-ui/react": "^1.8.0",

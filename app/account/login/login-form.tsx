@@ -72,7 +72,7 @@ function toFormErrors(
     return next;
 }
 
-export default function LoginForm({ initialMode = "login" }: { initialMode?: AuthMode }) {
+export default function LoginForm({ initialMode = "login", linkExpired = false }: { initialMode?: AuthMode; linkExpired?: boolean }) {
     const [mode, setMode] = useState<AuthMode>(initialMode);
     const [signupSuccess, setSignupSuccess] = useState(false);
     // Set once sign-in succeeds; covers the screen until the next page arrives
@@ -199,6 +199,12 @@ export default function LoginForm({ initialMode = "login" }: { initialMode?: Aut
                             </p>
                         </header>
 
+                        {linkExpired ? (
+                            <p role="alert" className="mb-5 rounded-lg border border-warning/30 bg-warning-soft p-3 text-sm text-ink">
+                                That link has expired or was already used. Sign in below, or use &ldquo;Forgot password?&rdquo; for a new one.
+                            </p>
+                        ) : null}
+
                         <div
                             className="mb-6 grid grid-cols-2 gap-1 rounded-full bg-ink/5 p-1"
                             role="tablist"
@@ -263,9 +269,10 @@ export default function LoginForm({ initialMode = "login" }: { initialMode?: Aut
                                         <label htmlFor="password" className="block text-sm font-medium text-foreground">
                                             Password
                                         </label>
+                                        {/* carries the email they've typed, so they don't type it twice */}
                                         <Link
-                                            href="#"
-                                            className="rounded-sm text-sm font-medium text-primary hover:underline focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
+                                            href={email.trim() ? `/account/forgot-password?email=${encodeURIComponent(email.trim())}` : "/account/forgot-password"}
+                                            className="rounded-sm text-sm font-medium text-ink underline-offset-2 hover:underline focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
                                         >
                                             Forgot password?
                                         </Link>

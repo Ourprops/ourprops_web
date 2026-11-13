@@ -5,6 +5,7 @@ import { SAMPLE_PROPERTY } from "./property-record"
 import { cn } from "@/lib/utils"
 import MoreLink from "./more-link"
 import SectionHeading from "./section-heading"
+import { reveal } from "@/lib/reveal"
 
 const STEP_BLOCKS = ["bg-block-sand", "bg-block-sky", "bg-block-mint"]
 
@@ -22,7 +23,7 @@ export default function HowItWorks({ content, variant = "home" }: HowItWorksProp
 
 				<ol className="mt-14 grid grid-cols-1 gap-4 md:mt-20 md:grid-cols-3 md:gap-5">
 					{content.steps.map((step, index) => (
-						<li key={step.title} className={cn("block-panel flex flex-col p-5 md:p-6", STEP_BLOCKS[index % STEP_BLOCKS.length])}>
+						<li key={step.title} {...reveal(index)} className={cn("block-panel flex flex-col p-5 md:p-6", STEP_BLOCKS[index % STEP_BLOCKS.length])}>
 							{/* The same record at this step, so the steps read as one record filling in */}
 							<RecordAtStage stage={Math.min(index + 1, 3)} />
 							<div className="mt-7 flex items-baseline gap-3 px-1">

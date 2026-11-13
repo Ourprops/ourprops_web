@@ -2,6 +2,7 @@ import { Fingerprint, History, KeyRound, Layers, Lock, Ruler } from "lucide-reac
 
 import { cn } from "@/lib/utils"
 import { Eyebrow } from "./section-heading"
+import { reveal } from "@/lib/reveal"
 
 // How OurProps keeps land records safe, in everyday words for any Ghanaian visitor, not engineers. Every claim is
 // something the product does today: the overlap check (check_property_boundary_overlaps), saved corners (property
@@ -25,6 +26,7 @@ export default function Technology({ as: Heading = "h2" }: { as?: "h1" | "h2" })
 
 					<ul className="mt-12 grid grid-cols-1 gap-4 md:mt-16 md:grid-cols-6">
 						<Tile
+							index={0}
 							className="md:col-span-4"
 							icon={Layers}
 							title="We spot land sold twice"
@@ -33,6 +35,7 @@ export default function Technology({ as: Heading = "h2" }: { as?: "h1" | "h2" })
 							<OverlapVisual />
 						</Tile>
 						<Tile
+							index={1}
 							className="md:col-span-2"
 							icon={Ruler}
 							title="Your land, exactly on the map"
@@ -41,6 +44,7 @@ export default function Technology({ as: Heading = "h2" }: { as?: "h1" | "h2" })
 							<CornersVisual />
 						</Tile>
 						<Tile
+							index={2}
 							className="md:col-span-2"
 							icon={Fingerprint}
 							title="Your Ghana Card, used only by you"
@@ -49,6 +53,7 @@ export default function Technology({ as: Heading = "h2" }: { as?: "h1" | "h2" })
 							<CardVisual />
 						</Tile>
 						<Tile
+							index={3}
 							className="md:col-span-2"
 							icon={History}
 							title="Every decision written down"
@@ -57,6 +62,7 @@ export default function Technology({ as: Heading = "h2" }: { as?: "h1" | "h2" })
 							<HistoryVisual />
 						</Tile>
 						<Tile
+							index={4}
 							className="md:col-span-2"
 							icon={KeyRound}
 							title="Your documents stay private"
@@ -72,12 +78,14 @@ export default function Technology({ as: Heading = "h2" }: { as?: "h1" | "h2" })
 }
 
 function Tile({
+	index,
 	icon: Icon,
 	title,
 	text,
 	className,
 	children,
 }: {
+	index: number
 	icon: typeof Layers
 	title: string
 	text: string
@@ -85,7 +93,7 @@ function Tile({
 	children: React.ReactNode
 }) {
 	return (
-		<li className={cn("flex flex-col overflow-hidden rounded-2xl border border-white/10 bg-white/[0.04] backdrop-blur-sm", className)}>
+		<li {...reveal(index)} className={cn("flex flex-col overflow-hidden rounded-2xl border border-white/10 bg-white/[0.04] backdrop-blur-sm", className)}>
 			<div className="flex min-h-44 items-center justify-center border-b border-white/10 p-5" aria-hidden>
 				{children}
 			</div>
