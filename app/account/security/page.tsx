@@ -106,7 +106,9 @@ function EnterCode({ profile, factors }: { profile: Profile; factors: Factor[] }
             { factorId, code: normalised },
             {
                 onSuccess: () => {
-                    router.replace(homePath(profile));
+                    // back to "Set a new password" when that's what sent them here; nowhere else, so it can't be abused
+                    const next = new URLSearchParams(window.location.search).get("next");
+                    router.replace(next === "/account/reset-password" ? next : homePath(profile));
                     router.refresh();
                 },
                 onError: (mutationError) => {
