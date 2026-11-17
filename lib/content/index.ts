@@ -5,7 +5,8 @@ import { urlFor } from "@/sanity/lib/image"
 import { sanityFetch } from "@/sanity/lib/live"
 import { FAQ_PAGE_QUERY, HOME_PAGE_QUERY, SITE_SETTINGS_QUERY } from "@/sanity/lib/queries"
 import { FAQ_DEFAULTS, HOME_DEFAULTS, SITE_DEFAULTS, type FaqContent, type HomeContent, type SiteContent } from "./defaults"
-import { withFallback } from "./merge"
+import { withFallback, withoutAnchorLinks } from "./merge"
+import { PRIMARY_CTA } from "@/lib/site"
 
 export type ShareImage = { url: string; alt: string; width: number; height: number }
 
@@ -26,7 +27,9 @@ const FALLBACK_SHARE_IMAGE: ShareImage = {
 export const getHomeContent = cache(async (): Promise<HomeContent> => {
   try {
     const { data } = await sanityFetch({ query: HOME_PAGE_QUERY, stega: false })
-    return withFallback(HOME_DEFAULTS, data)
+    const content = withoutAnchorLinks(withFallback(HOME_DEFAULTS, data), HOME_DEFAULTS)
+    // the main button is the site's one action, set in code (lib/site.ts)
+    return { ...content, hero: { ...content.hero, primaryCta: PRIMARY_CTA } }
   } catch (error) {
     console.error("Failed to load homepage content from Sanity", error)
     return HOME_DEFAULTS
@@ -42,8 +45,12 @@ export const getSiteContent = cache(async (): Promise<SiteContent & { shareImage
     // A small image (e.g. a logo) would be blown up and cropped, so keep the generated one instead
     const useSanityImage = Boolean(ogImage?.asset) && (ogImage?.width ?? 0) >= MIN_SHARE_IMAGE_WIDTH
 
+    const site = withFallback(SITE_DEFAULTS, data)
     return {
-      ...withFallback(SITE_DEFAULTS, data),
+      ...site,
+      // the waitlist is gone; an old "Join the waitlist." in the Sanity description shouldn't reach Google
+      description: site.description.replace(/\s*Join the waitlist\.?/i, "").trim(),
+      shareDescription: site.shareDescription.replace(/\s*Join the waitlist\.?/i, "").trim(),
       shareImage: useSanityImage && ogImage
         ? {
             url: urlFor(ogImage).width(SHARE_IMAGE_SIZE.width).height(SHARE_IMAGE_SIZE.height).fit("crop").url(),

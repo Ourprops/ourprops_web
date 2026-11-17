@@ -5,6 +5,8 @@ import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { type FormEvent, useState } from "react";
 import type { Factor } from "@supabase/supabase-js";
+import { CircleCheck } from "lucide-react";
+import { toast } from "sonner";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { formatAuthError, signOut } from "@/lib/supabase/auth";
@@ -21,7 +23,7 @@ import {
 const inputClassName =
     "h-11 rounded-lg border-border bg-card px-3 text-sm text-foreground placeholder:text-muted-foreground focus-visible:border-primary focus-visible:ring-2 focus-visible:ring-primary/30";
 const primaryButtonClassName =
-    "h-11 w-full bg-secondary text-sm font-semibold text-secondary-foreground hover:bg-[color-mix(in_oklab,var(--secondary),white_12%)] focus-visible:border-primary focus-visible:ring-2 focus-visible:ring-primary/40";
+    "h-11 w-full rounded-full bg-ink text-sm font-semibold text-white hover:bg-ink/90 focus-visible:border-primary focus-visible:ring-2 focus-visible:ring-primary/40";
 
 // Codes are six digits; people often type or paste them with a space in the middle
 function normaliseCode(value: string) {
@@ -106,7 +108,10 @@ function EnterCode({ profile, factors }: { profile: Profile; factors: Factor[] }
             { factorId, code: normalised },
             {
                 onSuccess: () => {
-                    router.replace(homePath(profile));
+                    toast.success("Code accepted. You're signed in.");
+                    // back to "Set a new password" when that's what sent them here; nowhere else, so it can't be abused
+                    const next = new URLSearchParams(window.location.search).get("next");
+                    router.replace(next === "/account/reset-password" ? next : homePath(profile));
                     router.refresh();
                 },
                 onError: (mutationError) => {
@@ -125,7 +130,7 @@ function EnterCode({ profile, factors }: { profile: Profile; factors: Factor[] }
     return (
         <>
             <header className="mb-6 text-center">
-                <h1 className="text-2xl font-semibold text-primary">Enter your code</h1>
+                <h1 className="text-3xl font-bold tracking-[-0.03em] text-ink">Enter your code</h1>
                 <p className="mt-2 text-sm sm:text-base text-copy">
                     Open your authenticator app and enter the 6-digit code for OurProps.
                 </p>
@@ -192,16 +197,20 @@ function ManageApps({ profile, status }: { profile: Profile; status: MfaStatus }
         }
 
         setError(undefined);
+        const name = factor.friendly_name || "Authenticator app";
         removeFactor.mutate(
             { factorId: factor.id },
-            { onError: (mutationError) => setError(formatAuthError(mutationError).message) }
+            {
+                onSuccess: () => toast.success(`${name} removed`),
+                onError: (mutationError) => setError(formatAuthError(mutationError).message),
+            }
         );
     }
 
     return (
         <>
             <header className="mb-6 text-center">
-                <h1 className="text-2xl font-semibold text-primary">Sign-in security</h1>
+                <h1 className="text-3xl font-bold tracking-[-0.03em] text-ink">Sign-in security</h1>
                 <p className="mt-2 text-sm sm:text-base text-copy">
                     With an authenticator app, signing in needs a code from your phone as well as your password.
                 </p>
@@ -274,6 +283,8 @@ function AddApp({ appCount }: { appCount: number }) {
     const [pending, setPending] = useState<PendingTotp>();
     const [code, setCode] = useState("");
     const [error, setError] = useState<string>();
+    // The name of the app just set up, so the card can say it worked
+    const [added, setAdded] = useState<string>();
 
     function reset() {
         setIsAdding(false);
@@ -284,6 +295,7 @@ function AddApp({ appCount }: { appCount: number }) {
     }
 
     function handleStart() {
+        setAdded(undefined);
         setIsAdding(true);
         setFriendlyName(appCount === 0 ? "Authenticator app" : `Authenticator app ${appCount + 1}`);
     }
@@ -320,7 +332,14 @@ function AddApp({ appCount }: { appCount: number }) {
         verifyCode.mutate(
             { factorId: pending.factorId, code: normalised },
             {
-                onSuccess: reset,
+                onSuccess: () => {
+                    const name = friendlyName.trim() || "Authenticator app";
+                    reset();
+                    setAdded(name);
+                    toast.success("Authenticator app added", {
+                        description: "You'll enter a code from it each time you sign in.",
+                    });
+                },
                 onError: (mutationError) => {
                     setCode("");
                     setError(formatAuthError(mutationError).message);
@@ -339,9 +358,17 @@ function AddApp({ appCount }: { appCount: number }) {
 
     if (!isAdding) {
         return (
-            <Button type="button" onClick={handleStart} className={primaryButtonClassName}>
-                Add an authenticator app
-            </Button>
+            <>
+                {added ? <AppAdded name={added} /> : null}
+                <Button
+                    type="button"
+                    variant={added ? "outline" : "default"}
+                    onClick={handleStart}
+                    className={added ? "h-11 w-full rounded-full text-sm font-semibold" : primaryButtonClassName}
+                >
+                    {added ? "Add another app" : "Add an authenticator app"}
+                </Button>
+            </>
         );
     }
 
@@ -409,6 +436,26 @@ function AddApp({ appCount }: { appCount: number }) {
                 Cancel
             </Button>
         </form>
+    );
+}
+
+// Shown once an app is set up, so finishing the QR-code steps lands on something, not just a reset form
+function AppAdded({ name }: { name: string }) {
+    return (
+        <div
+            role="status"
+            className="mb-4 flex items-start gap-3 rounded-lg border border-success/30 bg-success-soft p-4 animate-in fade-in zoom-in-95 duration-300"
+        >
+            <span className="flex size-9 shrink-0 items-center justify-center rounded-full bg-success text-white animate-in zoom-in-50 duration-500">
+                <CircleCheck className="size-5" aria-hidden />
+            </span>
+            <div>
+                <p className="text-sm font-semibold text-foreground">All set. {name} is protecting your account.</p>
+                <p className="mt-0.5 text-sm text-copy">
+                    Next time you sign in, we&apos;ll ask for a code from it after your password.
+                </p>
+            </div>
+        </div>
     );
 }
 

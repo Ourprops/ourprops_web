@@ -63,7 +63,7 @@ export default function Details() {
 
     return (
         <section className="mx-auto w-full max-w-xl px-5 py-10 md:py-14">
-            <h1 className="text-display text-primary">Tell us about the property</h1>
+            <h1 className="text-display text-ink">Tell us about the property</h1>
             <p className="mt-2 text-[15px] leading-relaxed text-copy">
                 Give it a name you&apos;ll recognise and choose the type that fits best.
             </p>
@@ -153,7 +153,7 @@ export default function Details() {
                     </Button> */}
                     <Button
                         type="submit"
-                        className="pressable h-12 w-full rounded-lg bg-secondary px-8 text-[15px] font-semibold text-foreground shadow-sm hover:bg-[color-mix(in_oklab,var(--secondary),white_12%)] sm:w-auto"
+                        className="pressable h-12 w-full rounded-full bg-ink px-8 text-[15px] font-semibold text-white shadow-sm hover:bg-ink/90 sm:w-auto"
                     >
                         Continue
                         <ArrowRight size={16} aria-hidden />

@@ -18,7 +18,7 @@ export default async function AboutPage() {
     const content = await getHomeContent()
 
     return (
-        <div className="pt-16">
+        <div>
             <About content={content.about} />
             <Values content={content.values} />
             <GetStarted content={content.getStarted} />

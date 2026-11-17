@@ -22,8 +22,9 @@ export function PropertyCard({ property, index = 0 }: { property: OwnPropertySum
     return (
         <li
             className={cn(
-                "animate-rise grid gap-4 rounded-2xl border bg-card p-4 shadow-card motion-reduce:animate-none sm:p-5",
-                verified ? "border-success/30" : "border-border"
+                "animate-rise grid gap-4 rounded-3xl p-5 motion-reduce:animate-none sm:p-6",
+                // verified ones on the homepage's green block; the rest on white with a hairline
+                verified ? "bg-block-mint" : "border border-border bg-card"
             )}
             style={{ animationDelay: `${160 + index * 60}ms` }}
         >
@@ -31,7 +32,7 @@ export function PropertyCard({ property, index = 0 }: { property: OwnPropertySum
                 <span className="flex min-w-0 gap-3">
                     <StatusGlyph status={property.status} className="mt-0.5" />
                     <span className="grid min-w-0 gap-1">
-                        <span className="font-semibold tracking-tight group-hover:text-primary wrap-anywhere">{property.name ?? "Untitled property"}</span>
+                        <span className="text-lg font-bold tracking-tight text-ink group-hover:underline wrap-anywhere">{property.name ?? "Untitled property"}</span>
                         <span className="flex flex-wrap items-center gap-x-3 gap-y-0.5 text-sm text-copy">
                             {place ? (
                                 <span className="flex items-center gap-1">
@@ -49,14 +50,14 @@ export function PropertyCard({ property, index = 0 }: { property: OwnPropertySum
 
             <div className="flex flex-wrap items-baseline justify-between gap-x-3 gap-y-1 text-sm">
                 <p>
-                    <span className="font-medium">{explained.label}</span>
+                    <span className="font-semibold text-ink">{explained.label}</span>
                     <span className="text-copy"> · {explained.next}</span>
                 </p>
                 <span className="text-xs text-muted-foreground">Updated {dateFormat.format(new Date(property.updated_at))}</span>
             </div>
 
             {verified ? (
-                <div className="flex flex-wrap gap-2 border-t border-border pt-4">
+                <div className="flex flex-wrap gap-2 border-t border-ink/10 pt-4">
                     <Link href={`/record/${property.prop_id}`} className={buttonVariants({ variant: "cta", className: "h-10 px-4" })}>
                         View public record <ArrowUpRight aria-hidden />
                     </Link>

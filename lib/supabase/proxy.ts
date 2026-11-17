@@ -41,6 +41,8 @@ export async function updateSession(request: NextRequest) {
     
     const { pathname } = request.nextUrl
     const isLogin = pathname === '/account/login'
+    // Reached from a password reset link, which signs the person in for it (app/api/auth/confirm)
+    const isResetPassword = pathname === '/account/reset-password'
     // Where users set up an authenticator app, and enter its code after their password
     const isSecurity = pathname === '/account/security'
     const isOnboarding = pathname === '/account/onboarding' || pathname.startsWith('/account/onboarding/')
@@ -52,16 +54,20 @@ export async function updateSession(request: NextRequest) {
     const isAdminPage = pathname === '/admin' || pathname.startsWith('/admin/')
 
     // Redirect while keeping any refreshed auth cookies set above
-    function redirectTo(path: string) {
+    function redirectTo(path: string, search = '') {
         const url = request.nextUrl.clone()
         url.pathname = path
-        url.search = ''
+        url.search = search ? `?${search}` : ''
         const response = NextResponse.redirect(url)
         supabaseResponse.cookies.getAll().forEach((cookie) => response.cookies.set(cookie))
         return response
     }
 
     if (!userId) {
+        // no session: the link expired, was used, or was opened without one. Ask for a new link.
+        if (isResetPassword) {
+            return redirectTo('/account/forgot-password', 'expired=1')
+        }
         if (isOnboarding || isAppPage || isAdminPage || isSecurity) {
             return redirectTo('/account/login')
         }
@@ -80,6 +86,11 @@ export async function updateSession(request: NextRequest) {
 
     if (needsCode && (isOnboarding || isAppPage || isAdminPage)) {
         return redirectTo('/account/security')
+    }
+
+    // Supabase lets only a fully signed-in session change the password: the code first, then back here
+    if (needsCode && isResetPassword) {
+        return redirectTo('/account/security', 'next=/account/reset-password')
     }
 
     if (isOnboarding || isAppPage || isAdminPage) {

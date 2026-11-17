@@ -24,7 +24,7 @@ const HELP: NavItem = { href: "/help", label: "Help", icon: CircleHelp, match: (
 function Count({ value, className }: { value: number; className?: string }) {
     if (value === 0) return null
     return (
-        <span className={cn("rounded-full bg-secondary px-1.5 text-[0.7rem] leading-[1.125rem] font-semibold text-foreground tabular-nums", className)}>
+        <span className={cn("rounded-full bg-secondary px-1.5 text-[0.7rem] leading-[1.125rem] font-semibold text-ink tabular-nums", className)}>
             {value > 99 ? "99+" : value}
             <span className="sr-only"> new</span>
         </span>
@@ -44,11 +44,12 @@ export function SidebarNav({ unseen }: { unseen: number }) {
                 href={item.href}
                 aria-current={active ? "page" : undefined}
                 className={cn(
-                    "flex h-9 items-center gap-2.5 rounded-lg px-2.5 text-sm font-medium transition-colors outline-none focus-visible:ring-3 focus-visible:ring-ring/50",
-                    active ? "bg-card text-foreground shadow-card ring-1 ring-border/70" : "text-copy hover:bg-card/70 hover:text-foreground"
+                    "flex h-10 items-center gap-2.5 rounded-full px-3.5 text-sm font-medium transition-colors outline-none focus-visible:ring-3 focus-visible:ring-ring/50",
+                    // the page you're on: a solid ink pill, like the homepage's buttons
+                    active ? "bg-ink font-semibold text-white" : "text-ink/75 hover:bg-ink/5 hover:text-ink"
                 )}
             >
-                <Icon size={17} className={active ? "text-primary" : undefined} aria-hidden />
+                <Icon size={17} className={active ? "text-secondary" : undefined} aria-hidden />
                 <span className="flex-1">{item.label}</span>
                 {item === UPDATES ? <Count value={unseen} /> : null}
             </Link>
@@ -83,7 +84,7 @@ export function TabBar({ unseen }: { unseen: number }) {
                                 aria-current={active ? "page" : undefined}
                                 className={cn(
                                     "relative flex h-16 flex-col items-center justify-center gap-1 text-[0.7rem] font-medium outline-none focus-visible:bg-muted",
-                                    active ? "text-primary" : "text-muted-foreground"
+                                    active ? "font-semibold text-ink" : "text-muted-foreground"
                                 )}
                             >
                                 {active ? <span aria-hidden className="absolute top-0 h-0.5 w-8 rounded-full bg-secondary" /> : null}

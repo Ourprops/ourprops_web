@@ -24,7 +24,7 @@ export default async function UpdatesPage() {
     return (
         <OwnerShell fullName={profile?.full_name ?? "Account"}>
             <div className="grid gap-1.5">
-                <h1 className="text-display text-primary">Updates</h1>
+                <h1 className="text-display text-ink">Updates</h1>
                 <p className="text-copy">What has happened to your properties and your identity document.</p>
             </div>
             <div className="max-w-2xl">

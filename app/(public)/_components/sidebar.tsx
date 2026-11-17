@@ -10,9 +10,13 @@ import {
     DrawerTitle,
     DrawerTrigger,
 } from "@/components/ui/drawer"
-import type { Link } from "@/lib/content/defaults"
+import type { Visitor } from "@/lib/auth/visitor"
+import { MAIN_NAV, PRIMARY_CTA } from "@/lib/site"
 
-export default function Sidebar({ navigation, cta }: { navigation: Link[]; cta: Link }) {
+import { Initial } from "./header"
+
+// The phone menu: the same links, then Get started and Sign in, or, when signed in, who they are and their account
+export default function Sidebar({ visitor }: { visitor: Visitor | null }) {
     return (
         <Drawer showSwipeHandle>
             <DrawerTrigger
@@ -20,7 +24,7 @@ export default function Sidebar({ navigation, cta }: { navigation: Link[]; cta: 
                     <Button
                         variant="ghost"
                         size="icon"
-                        className="size-9 rounded-lg text-foreground hover:bg-background md:hidden"
+                        className="size-9 rounded-lg text-foreground hover:bg-background lg:hidden"
                         aria-label="Open menu"
                     />
                 }
@@ -32,7 +36,7 @@ export default function Sidebar({ navigation, cta }: { navigation: Link[]; cta: 
                     <DrawerTitle className="text-primary">OurProps</DrawerTitle>
                 </DrawerHeader>
                 <nav className="flex flex-col gap-1 p-4" aria-label="Main">
-                    {navigation.map((link) => (
+                    {MAIN_NAV.map((link) => (
                         <DrawerClose
                             key={link.href}
                             nativeButton={false}
@@ -45,32 +49,57 @@ export default function Sidebar({ navigation, cta }: { navigation: Link[]; cta: 
                 </nav>
 
                 <DrawerFooter>
-                    <DrawerClose
-                        nativeButton={false}
-                        render={
-                            <Button
-                                className="pressable h-12 w-full rounded-lg bg-secondary text-[15px] text-secondary-foreground hover:bg-secondary/90"
+                    {visitor ? (
+                        <>
+                            <p className="flex items-center gap-3 px-1 pb-1 text-sm text-copy">
+                                <Initial visitor={visitor} className="ring-0" />
+                                <span>
+                                    Signed in{visitor.firstName ? <> as <span className="font-semibold text-ink">{visitor.firstName}</span></> : null}
+                                </span>
+                            </p>
+                            <DrawerClose
                                 nativeButton={false}
-                                render={<a href={cta.href} />}
-                            />
-                        }
-                    >
-                        {cta.label}
-                    </DrawerClose>
-                    {/* for owners who already have an account */}
-                    <DrawerClose
-                        nativeButton={false}
-                        render={
-                            <Button
-                                variant="outline"
-                                className="pressable h-12 w-full rounded-lg bg-card text-[15px] text-primary"
+                                render={
+                                    <Button
+                                        className="pressable h-12 w-full rounded-full bg-ink text-[15px] text-white hover:bg-ink/90"
+                                        nativeButton={false}
+                                        render={<a href={visitor.accountHref} />}
+                                    />
+                                }
+                            >
+                                {visitor.accountLabel}
+                            </DrawerClose>
+                        </>
+                    ) : (
+                        <>
+                            <DrawerClose
                                 nativeButton={false}
-                                render={<a href="/account/login" />}
-                            />
-                        }
-                    >
-                        Sign in
-                    </DrawerClose>
+                                render={
+                                    <Button
+                                        className="pressable h-12 w-full rounded-full bg-ink text-[15px] text-white hover:bg-ink/90"
+                                        nativeButton={false}
+                                        render={<a href={PRIMARY_CTA.href} />}
+                                    />
+                                }
+                            >
+                                {PRIMARY_CTA.label}
+                            </DrawerClose>
+                            {/* for owners who already have an account */}
+                            <DrawerClose
+                                nativeButton={false}
+                                render={
+                                    <Button
+                                        variant="outline"
+                                        className="pressable h-12 w-full rounded-full bg-card text-[15px] text-ink"
+                                        nativeButton={false}
+                                        render={<a href="/account/login" />}
+                                    />
+                                }
+                            >
+                                Sign in
+                            </DrawerClose>
+                        </>
+                    )}
                 </DrawerFooter>
             </DrawerContent>
         </Drawer>

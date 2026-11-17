@@ -26,3 +26,24 @@ export function withFallback<T>(fallback: T, value: unknown): T {
 
   return typeof value === typeof fallback ? (value as T) : fallback
 }
+
+/**
+ * Replace links that point at a homepage #anchor with the built-in link in the same place. Every section moved to its
+ * own page (and the waitlist is gone), so a "#waitlist" or "#about" left in Sanity would go nowhere.
+ * Walks `value` and `fallback` together; both must have the same shape (run withFallback first).
+ */
+export function withoutAnchorLinks<T>(value: T, fallback: T): T {
+  if (Array.isArray(value)) {
+    const items = fallback as unknown[]
+    return value.map((item, index) => withoutAnchorLinks(item, (items[index] ?? items[0]) as typeof item)) as T
+  }
+  if (typeof value !== "object" || value === null) return value
+
+  const record = value as Record<string, unknown>
+  if (typeof record.href === "string" && typeof record.label === "string" && record.href.startsWith("#")) return fallback
+
+  const fallbackRecord = (fallback ?? {}) as Record<string, unknown>
+  return Object.fromEntries(
+    Object.entries(record).map(([key, item]) => [key, withoutAnchorLinks(item, fallbackRecord[key] as typeof item)])
+  ) as T
+}

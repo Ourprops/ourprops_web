@@ -2,6 +2,7 @@
 
 import { useRouter } from "next/navigation"
 import { useState } from "react"
+import { toast } from "sonner"
 
 import { Button } from "@/components/ui/button"
 import { Spinner } from "@/components/ui/spinner"
@@ -60,6 +61,7 @@ export function RequestUpload({ propertyId, slot, uploads }: Props) {
                 return
             }
 
+            toast.success("File uploaded", { description: file.name })
             router.refresh()
         } catch {
             setError("The file didn't upload. Check your connection and try again.")
@@ -68,12 +70,13 @@ export function RequestUpload({ propertyId, slot, uploads }: Props) {
         }
     }
 
-    async function remove(documentId: string) {
+    async function remove(documentId: string, fileName: string) {
         setError(null)
         setBusy(true)
         try {
             const response = await fetch(`/api/property/draft/${propertyId}/documents/${documentId}`, { method: "DELETE" })
-            if (!response.ok) setError("That file can't be removed now.")
+            if (response.ok) toast.success("File removed", { description: fileName })
+            else setError("That file can't be removed now.")
             router.refresh()
         } finally {
             setBusy(false)
@@ -87,7 +90,7 @@ export function RequestUpload({ propertyId, slot, uploads }: Props) {
                     {uploads.map((document) => (
                         <li key={document.id} className="flex flex-wrap items-center gap-2">
                             <span className="min-w-0 wrap-anywhere">{document.file_name}</span>
-                            <Button type="button" size="xs" variant="ghost" disabled={busy} onClick={() => remove(document.id)}>
+                            <Button type="button" size="xs" variant="ghost" disabled={busy} onClick={() => remove(document.id, document.file_name)}>
                                 Remove
                             </Button>
                         </li>

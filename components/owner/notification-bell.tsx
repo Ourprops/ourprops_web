@@ -26,18 +26,18 @@ export function NotificationBell({ unseen, latest }: { unseen: number; latest: O
         <Menu.Root onOpenChange={opened}>
             <Menu.Trigger
                 aria-label={count > 0 ? `Updates, ${count} new` : "Updates"}
-                className="relative flex size-10 items-center justify-center rounded-full text-copy outline-none transition-colors hover:bg-muted hover:text-foreground focus-visible:ring-3 focus-visible:ring-ring/50"
+                className="relative flex size-10 items-center justify-center rounded-full text-ink/75 outline-none transition-colors hover:bg-ink/5 hover:text-ink focus-visible:ring-3 focus-visible:ring-ring/50"
             >
                 <Bell size={19} aria-hidden />
                 {count > 0 ? (
-                    <span className="absolute top-1.5 right-1.5 flex min-w-4 items-center justify-center rounded-full bg-secondary px-1 text-[0.65rem] leading-4 font-semibold text-foreground ring-2 ring-background tabular-nums">
+                    <span className="absolute top-1.5 right-1.5 flex min-w-4 items-center justify-center rounded-full bg-secondary px-1 text-[0.65rem] leading-4 font-semibold text-ink ring-2 ring-card tabular-nums">
                         {count > 9 ? "9+" : count}
                     </span>
                 ) : null}
             </Menu.Trigger>
             <Menu.Portal>
                 <Menu.Positioner align="end" sideOffset={6} className="z-50">
-                    <Menu.Popup className="w-[min(22rem,calc(100vw-2rem))] overflow-hidden rounded-xl border border-border bg-popover text-popover-foreground shadow-lg outline-none">
+                    <Menu.Popup className="w-[min(22rem,calc(100vw-2rem))] overflow-hidden rounded-2xl border border-border bg-popover text-popover-foreground shadow-lg outline-none">
                         <p className="border-b border-border px-4 py-3 text-sm font-semibold">Updates</p>
                         {latest.length === 0 ? (
                             <p className="px-4 py-6 text-center text-sm text-copy">Nothing yet. We&apos;ll tell you here when something changes.</p>

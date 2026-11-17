@@ -7,6 +7,7 @@ import { toLegalContent } from "@/lib/content/legal"
 
 // the loader's Sanity client needs project env vars; these tests only use the pure parts
 vi.mock("@/sanity/lib/live", () => ({ sanityFetch: vi.fn() }))
+vi.mock("@/sanity/lib/image", () => ({ urlFor: vi.fn() }))
 
 afterEach(cleanup)
 

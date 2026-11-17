@@ -17,6 +17,7 @@ import {
     identityReviewSchema,
     overlapResolutionSchema,
     reopenSchema,
+    sitePlanAreaSchema,
     suspensionSchema,
 } from "@/lib/validators/admin"
 import { propertyIdSchema } from "@/lib/validators/property"
@@ -84,6 +85,22 @@ export async function updateCheckpoint(
         status: update.status,
         public_note: update.publicNote,
         internal_note: update.internalNote,
+    })
+}
+
+// Records the area the site plan states, converted to square metres. The survey records check can't be verified
+// without it, and once it is, the public record shows this area as checked (20261111120000_site_plan_area.sql).
+export async function recordSitePlanArea(propertyId: string, _previous: ActionState, formData: FormData): Promise<ActionState> {
+    const { supabase } = await requireAdmin()
+
+    const parsed = sitePlanAreaSchema.safeParse({ propertyId, value: formData.get("area"), unit: formData.get("unit") })
+    if (!parsed.success) {
+        return { error: parsed.error.issues[0].message }
+    }
+
+    return callReviewFunction(supabase, "record_site_plan_area", {
+        property_id: parsed.data.propertyId,
+        area_sqm: parsed.data.areaSqm,
     })
 }
 

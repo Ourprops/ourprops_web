@@ -36,7 +36,6 @@ export const homePage = defineType({
     {name: 'values', title: 'Values'},
     {name: 'about', title: 'About'},
     {name: 'getStarted', title: 'Get started'},
-    {name: 'waitlist', title: 'Waitlist (not shown)'},
   ],
   fields: [
     defineField({
@@ -58,7 +57,8 @@ export const homePage = defineType({
           validation: (rule) => rule.required(),
         }),
         defineField({name: 'subheading', title: 'Subheading', type: 'text', rows: 3}),
-        defineField({name: 'primaryCta', title: 'Primary button', type: 'link'}),
+        // Set in code (lib/site.ts PRIMARY_CTA): "Get started", to sign-up
+        defineField({name: 'primaryCta', title: 'Primary button', type: 'link', hidden: true}),
         defineField({name: 'secondaryCta', title: 'Secondary button', type: 'link'}),
         defineField({
           name: 'launchNote',
@@ -282,14 +282,13 @@ export const homePage = defineType({
       ],
     }),
 
-    // No longer shown: the site asks owners to register instead. Kept so the saved text isn't lost.
-    // Form fields and role options stay in code (lib/validators/waitlist.ts)
-    // because they must match the database.
+    // No longer used: the waitlist was removed (2026-11-11) and the site asks people to sign up instead.
+    // Hidden rather than deleted, so the saved text isn't flagged as unknown.
     defineField({
       name: 'waitlist',
-      title: 'Waitlist (not shown on the site)',
+      title: 'Waitlist (not used)',
+      hidden: true,
       type: 'object',
-      group: 'waitlist',
       fields: [
         defineField({name: 'header', title: 'Header', type: 'sectionHeader'}),
         defineField({name: 'submitLabel', title: 'Submit button label', type: 'string'}),

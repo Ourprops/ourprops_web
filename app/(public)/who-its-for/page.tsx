@@ -17,7 +17,7 @@ export default async function WhoItsForPage() {
     const content = await getHomeContent()
 
     return (
-        <div className="pt-16">
+        <div>
             <Audience content={content.audience} variant="page" />
             <GetStarted content={content.getStarted} />
         </div>

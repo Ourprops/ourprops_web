@@ -16,7 +16,7 @@ function Logo({ className }: { className?: string }) {
     return (
         <Link
             href="/account/dashboard"
-            className={cn("flex items-center gap-2 rounded-lg font-semibold tracking-tight text-primary outline-none focus-visible:ring-3 focus-visible:ring-ring/50", className)}
+            className={cn("flex items-center gap-2 rounded-lg text-lg font-bold tracking-tight text-ink outline-none focus-visible:ring-3 focus-visible:ring-ring/50", className)}
             aria-label="OurProps home"
         >
             <Image src="/logo.png" alt="" width={32} height={32} className="h-8 w-auto object-contain" priority />
@@ -29,14 +29,14 @@ function Logo({ className }: { className?: string }) {
 // the bottom of a phone, and the updates bell and account at the top of both. The registration flow has its own frame,
 // without links out, so an owner doesn't leave a half-filled step by accident.
 //
-// owner-ui gives the owner area its look (app/globals.css): Inter, softer cards, orange for the main action.
+// owner-ui gives the owner area its look (app/globals.css): the homepage's ink headlines and pill buttons, on white.
 export async function OwnerShell({ fullName, children }: { fullName: string; children: React.ReactNode }) {
     const supabase = await createClient()
     const [unseen, latest] = await Promise.all([countUnseenNotifications(supabase), listRecentNotifications(supabase, 6)])
 
     return (
-        <div className={cn(ownerInter.variable, "owner-ui min-h-screen bg-background text-foreground")}>
-            <aside className="fixed inset-y-0 left-0 z-20 hidden w-60 flex-col gap-6 border-r border-border/70 bg-muted/60 px-3 py-4 lg:flex">
+        <div className={cn(ownerInter.variable, "owner-ui min-h-screen bg-card text-foreground")}>
+            <aside className="fixed inset-y-0 left-0 z-20 hidden w-60 flex-col gap-7 border-r border-border/70 bg-card px-3 py-4 lg:flex">
                 <Logo className="px-2.5 py-1" />
                 <SidebarNav unseen={unseen} />
             </aside>

@@ -7,7 +7,8 @@ const buttonVariants = cva(
   {
     variants: {
       variant: {
-        default: "bg-primary text-primary-foreground hover:bg-primary/80",
+        // ink, as on the homepage, so every solid button on the site matches
+        default: "bg-ink text-white hover:bg-ink/90",
         outline:
           "border-border bg-background hover:bg-muted hover:text-foreground aria-expanded:bg-muted aria-expanded:text-foreground dark:border-input dark:bg-input/30 dark:hover:bg-input/50",
         secondary:
@@ -17,9 +18,9 @@ const buttonVariants = cva(
         destructive:
           "bg-destructive/10 text-destructive hover:bg-destructive/20 focus-visible:border-destructive/40 focus-visible:ring-destructive/20 dark:bg-destructive/20 dark:hover:bg-destructive/30 dark:focus-visible:ring-destructive/40",
         link: "text-primary underline-offset-4 hover:underline",
-        // The main action on an owner page, in the brand orange (docs/design.md, "Buttons"). Navy text, not white:
-        // white on #FF6B35 is 2.84:1, too faint to read; navy is 5.16:1.
-        cta: "bg-secondary font-semibold text-foreground shadow-sm hover:bg-[color-mix(in_oklab,var(--secondary),white_12%)]",
+        // The main action on a page: the ink pill the homepage uses (2026-11-11). It used to be brand orange with navy
+        // text; orange is now kept for accents and the big homepage blocks.
+        cta: "rounded-full! bg-ink font-semibold text-white shadow-sm hover:bg-ink/90",
       },
       size: {
         default:

@@ -21,15 +21,15 @@ export function Welcome() {
     return (
         <section
             aria-labelledby="welcome-title"
-            className="animate-rise grid gap-6 overflow-hidden rounded-2xl border border-border bg-card shadow-card motion-reduce:animate-none"
+            className="animate-rise block-panel survey-grid grid gap-6 overflow-hidden bg-block-orange [--grid-line:rgba(255,107,53,0.1)] motion-reduce:animate-none"
             style={{ animationDelay: "80ms" }}
         >
-            <div className="grid gap-5 p-5 sm:grid-cols-[1fr_auto] sm:items-center sm:p-6">
+            <div className="grid gap-5 p-6 sm:grid-cols-[1fr_auto] sm:items-center sm:p-8">
                 <div className="grid gap-2">
-                    <h2 id="welcome-title" className="text-xl font-semibold tracking-tight">
+                    <h2 id="welcome-title" className="text-2xl font-bold tracking-tight text-ink sm:text-3xl">
                         Register your first property
                     </h2>
-                    <p className="text-copy">
+                    <p className="text-ink/75">
                         OurProps checks the ownership evidence for your property, so buyers and family can trust it. Save as you go and
                         come back any time.
                     </p>
@@ -37,33 +37,33 @@ export function Welcome() {
                 <PlotIllustration className="w-full max-w-60 justify-self-center sm:w-52" />
             </div>
 
-            <ol className="grid gap-4 px-5 sm:grid-cols-3 sm:px-6">
+            <ol className="grid gap-3 px-6 sm:grid-cols-3 sm:px-8">
                 {STEPS.map((step, index) => (
-                    <li key={step.title} className="grid content-start gap-2">
-                        <span className="text-data flex size-7 items-center justify-center rounded-lg bg-secondary/15 text-sm font-semibold text-foreground">
+                    <li key={step.title} className="grid content-start gap-2 rounded-2xl bg-card/80 p-4 ring-1 ring-ink/5">
+                        <span className="text-data flex size-8 items-center justify-center rounded-full bg-ink text-sm font-semibold text-white">
                             {index + 1}
                         </span>
-                        <span className="font-medium">{step.title}</span>
+                        <span className="font-semibold text-ink">{step.title}</span>
                         <span className="text-sm text-copy">{step.text}</span>
                     </li>
                 ))}
             </ol>
 
-            <div className="grid gap-4 border-t border-border bg-muted/40 p-5 sm:p-6">
+            <div className="grid gap-4 border-t border-ink/10 p-6 sm:p-8">
                 <div className="grid gap-2">
-                    <p className="text-sm font-medium">Good to have ready</p>
+                    <p className="text-sm font-semibold text-ink">Good to have ready</p>
                     <ul className="grid gap-2">
                         {READY.map(({ icon: Icon, text }) => (
-                            <li key={text} className="flex items-start gap-2.5 text-sm text-copy">
-                                <Icon size={16} className="mt-0.5 shrink-0 text-primary" aria-hidden /> {text}
+                            <li key={text} className="flex items-start gap-2.5 text-sm text-ink/75">
+                                <Icon size={16} className="mt-0.5 shrink-0 text-ink" aria-hidden /> {text}
                             </li>
                         ))}
                     </ul>
                 </div>
-                <Link href="/account/dashboard/properties/new" className={buttonVariants({ variant: "cta", size: "lg", className: "h-11 w-full sm:w-fit sm:px-6" })}>
+                <Link href="/account/dashboard/properties/new" className={buttonVariants({ variant: "cta", size: "lg", className: "h-12 w-full sm:w-fit sm:px-7" })}>
                     Register a property <ArrowRight aria-hidden />
                 </Link>
-                <p className="flex items-start gap-2 text-xs text-muted-foreground">
+                <p className="flex items-start gap-2 text-xs text-ink/65">
                     <LockKeyhole size={14} className="mt-0.5 shrink-0" aria-hidden />
                     Your documents stay private. Only our verification team sees them, never the public.
                 </p>

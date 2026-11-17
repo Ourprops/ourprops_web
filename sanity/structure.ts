@@ -23,6 +23,8 @@ export const structure: StructureResolver = (S) =>
         .icon(HelpCircleIcon)
         .child(S.document().schemaType('faqPage').documentId('faqPage')),
       S.divider(),
+      S.documentTypeListItem('post').title('Blog posts'),
+      S.divider(),
       // Legal pages: one fixed document each, so /privacy and /terms always find theirs
       ...LEGAL_PAGES.map((page) =>
         S.listItem()
@@ -30,5 +32,5 @@ export const structure: StructureResolver = (S) =>
           .icon(DocumentTextIcon)
           .child(S.document().schemaType('legalPage').documentId(page.id).title(page.title)),
       ),
-      ...S.documentTypeListItems().filter((item) => !SINGLETON_TYPES.has(item.getId() ?? '')),
+      ...S.documentTypeListItems().filter((item) => !SINGLETON_TYPES.has(item.getId() ?? '') && item.getId() !== 'post'),
     ])

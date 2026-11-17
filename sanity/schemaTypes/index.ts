@@ -1,6 +1,7 @@
 import { type SchemaTypeDefinition } from 'sanity'
 
 import { legalPage } from './documents/legalPage'
+import { post } from './documents/post'
 import { link } from './objects/link'
 import { sectionHeader } from './objects/sectionHeader'
 import { faqPage } from './singletons/faqPage'
@@ -18,6 +19,7 @@ export const schema: { types: SchemaTypeDefinition[] } = {
     siteSettings,
     faqPage,
     // Documents
+    post,
     legalPage,
     // Objects
     sectionHeader,

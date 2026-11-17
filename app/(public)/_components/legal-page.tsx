@@ -1,43 +1,11 @@
 import { FileText } from "lucide-react"
 import Link from "next/link"
-import { PortableText, type PortableTextComponents } from "next-sanity"
 
 import type { LegalContent } from "@/lib/content/legal"
 
-const dateFormat = new Intl.DateTimeFormat("en-GB", { day: "numeric", month: "long", year: "numeric", timeZone: "UTC" })
+import { RichText } from "./rich-text"
 
-// Headings, lists and links in the house style; the body comes from Sanity's Portable Text editor
-const components: PortableTextComponents = {
-    block: {
-        normal: ({ children }) => <p className="text-copy leading-7">{children}</p>,
-        h1: ({ children }) => <h2 className="mt-6 text-xl font-semibold tracking-tight">{children}</h2>,
-        h2: ({ children }) => <h2 className="mt-6 text-xl font-semibold tracking-tight">{children}</h2>,
-        h3: ({ children }) => <h3 className="mt-4 text-lg font-semibold">{children}</h3>,
-        h4: ({ children }) => <h4 className="mt-2 font-semibold">{children}</h4>,
-        blockquote: ({ children }) => <blockquote className="border-l-2 border-primary/30 pl-4 text-copy">{children}</blockquote>,
-    },
-    list: {
-        bullet: ({ children }) => <ul className="grid list-disc gap-1.5 pl-5 text-copy leading-7">{children}</ul>,
-        number: ({ children }) => <ol className="grid list-decimal gap-1.5 pl-5 text-copy leading-7">{children}</ol>,
-    },
-    marks: {
-        link: ({ children, value }) => {
-            const href = typeof value?.href === "string" ? value.href : ""
-            // only web, mail and phone links; anything else (e.g. javascript:) renders as plain text
-            if (!/^(https?:|mailto:|tel:|\/|#)/i.test(href)) return <>{children}</>
-            const external = /^https?:/i.test(href)
-            return (
-                <a
-                    href={href}
-                    className="font-medium text-primary underline underline-offset-2"
-                    {...(external ? { target: "_blank", rel: "noopener noreferrer" } : {})}
-                >
-                    {children}
-                </a>
-            )
-        },
-    },
-}
+const dateFormat = new Intl.DateTimeFormat("en-GB", { day: "numeric", month: "long", year: "numeric", timeZone: "UTC" })
 
 // The privacy policy or the terms: the published text from Sanity, or a plain placeholder until there is one
 export function LegalPage({ heading, content }: { heading: string; content: LegalContent | null }) {
@@ -57,7 +25,7 @@ export function LegalPage({ heading, content }: { heading: string; content: Lega
 
             {content ? (
                 <div className="grid gap-4">
-                    <PortableText value={content.body} components={components} />
+                    <RichText value={content.body} />
                 </div>
             ) : (
                 <div className="grid gap-2 rounded-2xl border border-dashed border-border bg-card p-6 shadow-card">

@@ -3,6 +3,7 @@ import Link from "next/link"
 
 import type { HomeContent } from "@/lib/content/defaults"
 import { Eyebrow } from "./section-heading"
+import { reveal } from "@/lib/reveal"
 
 // The last section of the homepage and of each page about OurProps: one clear next step, to register.
 // A full orange block with ink text (6.9:1), the loudest thing on the page, as Figma ends on a bold colour block.
@@ -12,7 +13,7 @@ export default function GetStarted({ content }: { content: HomeContent["getStart
 	return (
 		<section className="w-full py-6 md:py-10" aria-labelledby="get-started-title">
 			<div className="mx-auto max-w-310 px-3 sm:px-5 md:px-8">
-				<div className="block-panel survey-grid relative overflow-hidden bg-secondary px-6 py-16 text-center text-ink [--grid-line:rgba(11,30,51,0.07)] sm:px-10 md:py-28">
+				<div {...reveal()} className="block-panel survey-grid relative overflow-hidden bg-secondary px-6 py-16 text-center text-ink [--grid-line:rgba(11,30,51,0.07)] sm:px-10 md:py-28">
 					<Eyebrow className="bg-ink/10 [&>span]:bg-ink">{eyebrow}</Eyebrow>
 					<h2 id="get-started-title" className="text-hero mx-auto mt-5 max-w-4xl">
 						{heading}

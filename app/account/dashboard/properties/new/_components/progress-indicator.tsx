@@ -3,6 +3,7 @@
 import { ArrowLeft, Check, Cloud, CloudAlert, CloudCheck, X } from "lucide-react"
 import { useRouter } from "next/navigation"
 import { useState } from "react"
+import { toast } from "sonner"
 
 import { Button } from "@/components/ui/button"
 import { Spinner } from "@/components/ui/spinner"
@@ -56,7 +57,12 @@ export default function ProgressIndicator() {
 
     function handleDelete() {
         // The dialog stays open until the dashboard replaces this page, so the user sees the delete through
-        deleteDraft.mutate(undefined, { onSuccess: () => router.push(EXIT_HREF) })
+        deleteDraft.mutate(undefined, {
+            onSuccess: () => {
+                toast.success("Draft deleted")
+                router.push(EXIT_HREF)
+            },
+        })
     }
 
     if (screen === "start" || screen === "confirmation") return null
