@@ -1,7 +1,10 @@
 // Sends a Word or TIFF file to the converter (Gotenberg, docs/admin.md section 7) and gets a PDF back.
-// Server only: the converter's address, and later its credentials, never reach the browser.
-// Locally, start it with `docker compose -f converter/compose.yaml up -d`.
+// Server only: the converter's address and the token for it never reach the browser.
+// On Vercel it calls the private Cloud Run service with an ID token (lib/admin/converter-auth.ts). Locally, start it
+// with `docker compose -f converter/compose.yaml up -d`, set DOCUMENT_CONVERTER_URL=http://127.0.0.1:3100 and leave
+// the GCP_* variables unset, so no token is sent.
 
+import { getConverterIdToken, readGcpConfig } from "@/lib/admin/converter-auth"
 import { matchesDeclaredType } from "@/lib/admin/document-type"
 
 /** Why a conversion failed. The admin sees only that it failed and can try again; the details go to the log. */
@@ -34,6 +37,8 @@ export async function convertToPdf(file: Uint8Array, mimeType: string): Promise<
         throw new ConversionError(`${mimeType} files aren't converted.`)
     }
 
+    const headers = await authHeaders(baseUrl)
+
     const form = new FormData()
     form.append("files", new Blob([file as BlobPart], { type: mimeType }), `document.${extension}`)
 
@@ -41,6 +46,7 @@ export async function convertToPdf(file: Uint8Array, mimeType: string): Promise<
     try {
         response = await fetch(new URL("/forms/libreoffice/convert", baseUrl), {
             method: "POST",
+            headers,
             body: form,
             signal: AbortSignal.timeout(TIMEOUT_MS),
         })
@@ -61,4 +67,16 @@ export async function convertToPdf(file: Uint8Array, mimeType: string): Promise<
         throw new ConversionError("The converter didn't return a PDF.")
     }
     return pdf
+}
+
+// Cloud Run checks the ID token's audience against the service's own URL, so the audience is the origin alone
+async function authHeaders(baseUrl: string): Promise<Record<string, string>> {
+    try {
+        const config = readGcpConfig()
+        if (!config) return {}
+        const token = await getConverterIdToken(config, new URL(baseUrl).origin)
+        return { Authorization: `Bearer ${token}` }
+    } catch (error) {
+        throw new ConversionError("Couldn't get credentials for the converter.", { cause: error })
+    }
 }

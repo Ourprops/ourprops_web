@@ -103,8 +103,9 @@ exists gcloud iam workload-identity-pools providers describe "$PROVIDER" --locat
     --allowed-audiences="https://vercel.com/${VERCEL_TEAM}" \
     --attribute-mapping="google.subject=assertion.sub" \
     --attribute-condition="assertion.sub == '${VERCEL_SUBJECT}'"
-# The app asks IAM for an ID token for the converter's URL as this account. To check before relying on it: that
-# roles/iam.serviceAccountOpenIdTokenCreator is the role that allows generateIdToken for a federated principal.
+# The app asks IAM for an ID token for the converter's URL as this account (lib/admin/converter-auth.ts).
+# generateIdToken needs iam.serviceAccounts.getOpenIdToken, which this role grants and nothing more: unlike
+# roles/iam.workloadIdentityUser, it can't mint access tokens for the account.
 gcloud iam service-accounts add-iam-policy-binding "$CALLER_EMAIL" \
   --role=roles/iam.serviceAccountOpenIdTokenCreator \
   --member="principal://iam.googleapis.com/projects/${PROJECT_NUMBER}/locations/global/workloadIdentityPools/${POOL}/subject/${VERCEL_SUBJECT}" >/dev/null
