@@ -47,7 +47,7 @@ export function SitePlanArea({ sitePlanAreaSqm, drawnAreaSqm, editable, action }
             {editable ? (
                 <details>
                     <summary className="cursor-pointer text-primary">{sitePlanAreaSqm === null ? "Record the site plan area" : "Change it"}</summary>
-                    <ActionForm action={action} submitLabel="Save area" className="mt-3">
+                    <ActionForm action={action} submitLabel="Save area" successMessage="Area saved" className="mt-3">
                         <div className="grid gap-3 sm:grid-cols-2">
                             <FormField id="site-plan-area" label="Area on the site plan" hint="As written on the plan">
                                 <Input id="site-plan-area" name="area" aria-describedby="site-plan-area-hint" type="number" inputMode="decimal" min="0" step="any" required className="h-10 bg-card" />

@@ -224,7 +224,7 @@ export default async function OwnPropertyPage({ params }: PageProps<"/account/da
                                         <span className="text-copy">When everything above is done, send your property back to us.</span>
                                     )}
                                 </p>
-                                <ActionForm action={resubmitProperty.bind(null, property.id)} submitLabel="Send back for review" variant="cta" />
+                                <ActionForm action={resubmitProperty.bind(null, property.id)} submitLabel="Send back for review" successMessage="Sent back for review. We'll let you know what we find." variant="cta" />
                             </div>
                         </section>
                     ) : null}

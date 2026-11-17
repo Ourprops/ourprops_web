@@ -408,7 +408,7 @@ function IdentityReview({ identity, profileId }: { identity: NonNullable<Propert
         return (
             <div className="mt-4 grid gap-2">
                 <p className="text-sm text-warning">The document is verified, but its photo hasn&apos;t been deleted yet.</p>
-                <ActionForm action={retryIdentityPhotoDeletion.bind(null, profileId)} submitLabel="Delete the photo" variant="outline" />
+                <ActionForm action={retryIdentityPhotoDeletion.bind(null, profileId)} submitLabel="Delete the photo" successMessage="Photo deleted" variant="outline" />
             </div>
         )
     }
@@ -436,18 +436,18 @@ function StatusActions({
 }) {
     const identityVerified = identityStatus === "verified"
     if (property.status === "submitted") {
-        return <ActionForm action={startReview.bind(null, property.id)} submitLabel="Start review" />
+        return <ActionForm action={startReview.bind(null, property.id)} submitLabel="Start review" successMessage="Review started" />
     }
 
     if (property.status === "under_review") {
         return (
             <div className="grid gap-3">
-                <ActionForm action={approveProperty.bind(null, property.id)} submitLabel="Approve" disabled={blocked} />
+                <ActionForm action={approveProperty.bind(null, property.id)} submitLabel="Approve" successMessage="Property approved" disabled={blocked} />
                 <details>
                     <summary className="cursor-pointer text-sm text-primary">Ask the owner for documents</summary>
                     <ActionForm
                         action={requestChanges.bind(null, property.id)}
-                        submitLabel="Send request"
+                        submitLabel="Send request" successMessage="Request sent to the owner"
                         variant="outline"
                         className="mt-3"
                     >
@@ -520,14 +520,14 @@ function StatusActions({
             <div className="grid gap-3 text-sm">
                 <p className="text-copy">Live, and shown as verified. Pausing it takes it out of the public listing until it is reviewed again.</p>
                 {/* Expiring is a suspension with this reason (docs/admin.md, section 5, "Expiring a property") */}
-                <ActionForm action={suspendProperty.bind(null, property.id)} submitLabel="Expire" variant="outline">
+                <ActionForm action={suspendProperty.bind(null, property.id)} submitLabel="Expire" successMessage="Property expired" variant="outline">
                     <input type="hidden" name="reason" value="Verification expired" />
                 </ActionForm>
                 <details className="border-t border-border pt-3">
                     <summary className="cursor-pointer text-destructive">Suspend for another reason</summary>
                     <ActionForm
                         action={suspendProperty.bind(null, property.id)}
-                        submitLabel="Suspend"
+                        submitLabel="Suspend" successMessage="Property suspended"
                         variant="destructive"
                         className="mt-3"
                     >
@@ -551,7 +551,7 @@ function StatusActions({
                 </p>
                 <details>
                     <summary className="cursor-pointer text-primary">Reopen the review</summary>
-                    <ActionForm action={reopenReview.bind(null, property.id)} submitLabel="Reopen review" className="mt-3">
+                    <ActionForm action={reopenReview.bind(null, property.id)} submitLabel="Reopen review" successMessage="Review reopened" className="mt-3">
                         <fieldset className="grid gap-1.5">
                             <legend className="font-medium">Checkpoints to check again</legend>
                             {CHECKPOINT_KEYS.map((key) => (
@@ -873,7 +873,7 @@ function Encumbrances({
             )}
             <details>
                 <summary className="cursor-pointer text-sm text-primary">Record an encumbrance</summary>
-                <ActionForm action={recordEncumbrance.bind(null, propertyId)} submitLabel="Record" className="mt-3">
+                <ActionForm action={recordEncumbrance.bind(null, propertyId)} submitLabel="Record" successMessage="Encumbrance recorded" className="mt-3">
                     <ChoiceField
                         id="encumbrance-kind"
                         name="kind"
