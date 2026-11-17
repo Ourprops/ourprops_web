@@ -3,6 +3,7 @@
 import { ArrowRight, CircleAlert, Pencil, TriangleAlert } from "lucide-react"
 import { useRouter } from "next/navigation"
 import { useState, type ReactNode } from "react"
+import { toast } from "sonner"
 
 import BrandLoader from "@/components/brand-loader"
 import { Button } from "@/components/ui/button"
@@ -292,6 +293,7 @@ function ChangesFooter({ required }: { required: string[] }) {
     async function handleDone() {
         try {
             await save.mutateAsync()
+            toast.success("Changes saved", { description: "Send them back for review from your property's page." })
             router.push(`/account/dashboard/properties/${propertyId}`)
         } catch {
             // The error shows below, and the user can try again

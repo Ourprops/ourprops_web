@@ -1,6 +1,7 @@
 "use client"
 
 import { startTransition, useActionState } from "react"
+import { toast } from "sonner"
 
 import { Button } from "@/components/ui/button"
 import { Spinner } from "@/components/ui/spinner"
@@ -11,6 +12,8 @@ type Props = {
     // A server action, with its ids already bound by the page
     action: (previous: ActionState, formData: FormData) => Promise<ActionState>
     submitLabel: string
+    // Confirms it went through. A toast, because a successful action often refreshes this form away.
+    successMessage?: string
     // cta is the orange main action on owner pages
     variant?: "default" | "outline" | "destructive" | "cta"
     // Turns the button off without hiding it, e.g. while approval is blocked; the database decides all the same
@@ -20,8 +23,21 @@ type Props = {
 }
 
 // A form for one server action. The fields are plain inputs the page puts inside it.
-export function ActionForm({ action, submitLabel, variant = "default", disabled, className, children }: Props) {
-    const [state, formAction, pending] = useActionState(action, null)
+export function ActionForm({
+    action,
+    submitLabel,
+    successMessage = "Saved",
+    variant = "default",
+    disabled,
+    className,
+    children,
+}: Props) {
+    // null means both "not sent yet" and "went through", so success is announced here, where the two can't be confused
+    const [state, formAction, pending] = useActionState(async (previous: ActionState, formData: FormData) => {
+        const result = await action(previous, formData)
+        if (!result) toast.success(successMessage)
+        return result
+    }, null)
 
     // A form action resets the form when it finishes, which would wipe what the admin typed if the database
     // refuses it. Calling the action ourselves skips that reset; on success refresh() brings the saved values.
